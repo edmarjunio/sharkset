@@ -1,0 +1,452 @@
+export type SportType = 'futevolei' | 'beach_tennis' | 'volei_praia';
+
+export type AthleteLevel = 'iniciante' | 'serie_c' | 'serie_b' | 'serie_a' | 'profissional';
+
+export type ExperienceCategory = 'amador' | 'profissional';
+
+export type TournamentModalityFormat = 'duplas' | 'simples';
+
+export type RankingScope = 'geral' | 'pais' | 'estado' | 'cidade' | 'arena';
+
+export type SmartAlertType =
+  | 'vacant_2h'
+  | 'waitlist_freed'
+  | 'match_10pts_left'
+  | 'booking_15min'
+  | 'tuition_due_today'
+  | 'tuition_due_2days';
+
+export type ClassEnrollmentAuthorRole = 'aluno' | 'professor' | 'dono';
+
+export type TournamentCategory =
+  | 'iniciante'
+  | 'iniciante_serie_c'
+  | 'serie_c'
+  | 'serie_b_serie_c'
+  | 'serie_b'
+  | 'serie_a_pro'
+  | 'mista';
+
+export type DoublesCategory = TournamentCategory;
+
+export type SemiFormat = 'semi_direta' | 'semi_com_chance';
+
+export type EnrollmentStatus = 'pending' | 'confirmed' | 'rejected';
+
+export type RefundStatus = 'none' | 'refund_pending' | 'refunded';
+
+export interface AthleteGameStats {
+  aces: number;
+  errors: number;
+  sharkAttacks: number;
+  pingoPoints: number;
+  defenses: number;
+}
+
+export interface AthleteMediaItem {
+  id: string;
+  type: 'photo' | 'video';
+  url: string;
+  title: string;
+  tag: string;
+  createdAt: string;
+}
+
+export interface AthleteAchievement {
+  id: string;
+  title: string;
+  tournamentName: string;
+  year: string;
+  placement: '1º Lugar' | '2º Lugar' | '3º Lugar' | 'Destaque';
+}
+
+export interface AthleteProfile {
+  id: string;
+  name: string;
+  phone: string;
+  birthDate?: string; // YYYY-MM-DD
+  experienceCategory?: ExperienceCategory; // 'amador' | 'profissional'
+  courtSide?: 'Direita' | 'Esquerda' | 'Ambos';
+  dominantFoot?: 'Destro' | 'Canhoto' | 'Ambidestro';
+  bio?: string;
+  level: AthleteLevel;
+  points: number;
+  lastPointsDelta?: number;
+  lastMatchSummary?: string;
+  titlesCount: number;
+  matchesPlayed: number;
+  wins: number;
+  stats?: AthleteGameStats;
+  mediaGallery?: AthleteMediaItem[];
+  achievements?: AthleteAchievement[];
+  preferredSport: SportType;
+  country?: string; // e.g., 'Brasil'
+  state?: string;   // e.g., 'GO', 'SP'
+  city: string;     // e.g., 'Mineiros'
+  arenaId?: string;
+  arenaName?: string;
+  highestHistoricalLevel?: AthleteLevel; // Passaporte Único: impede descer de categoria em outra cidade
+  autoPromotedFrom?: AthleteLevel;       // Registro de subida automática por excesso de títulos/pontos
+  tournamentsPlayed?: number;            // Total de torneios oficiais disputados
+}
+
+export interface RankingMatchLog {
+  id: string;
+  tournamentId: string;
+  tournamentName: string;
+  matchNumber: number;
+  winnerNames: string;
+  loserNames: string;
+  score: string;
+  winnerLevelAvg: string;
+  loserLevelAvg: string;
+  pointsAwardedWinner: number;
+  pointsAwardedLoser: number;
+  explanation: string;
+  timestamp: string;
+}
+
+export interface ClassScheduleConfig {
+  id: string;
+  startTime: string; // e.g., "07:00"
+  endTime: string;   // e.g., "08:00"
+  daysOfWeek?: number[]; // e.g., [2, 4] = Terça e Quinta, [1, 3] = Segunda e Quarta
+  level?: AthleteLevel | 'todos'; // e.g., 'iniciante', 'serie_c'
+  title: string;     // e.g., "Turma Futevôlei Evolução"
+  coachName: string;
+  sport: SportType;
+  monthlyPrice: number;
+  dailyPrice: number;
+  maxStudents: number;
+  enrolledCount?: number;
+}
+
+export interface ClassStudent {
+  id: string;
+  tenantId: string;
+  courtId: string;
+  courtName: string;
+  classId: string;
+  classTitle: string;
+  classTime: string;
+  coachName: string;
+  sport: SportType;
+  studentName: string;
+  studentPhone: string;
+  billingType: 'mensal' | 'diaria';
+  amount: number;
+  paymentStatus: 'pago' | 'pendente';
+  enrolledAt: string; // YYYY-MM-DD (Dia da inscrição = início do ciclo da mensalidade)
+  billingStartDate?: string; // YYYY-MM-DD
+  dueDayOfMonth?: number; // Dia do vencimento mensal (1 a 31, baseado no dia da inscrição)
+  nextDueDate?: string; // YYYY-MM-DD (Data exata do próximo vencimento)
+  enrolledByRole?: ClassEnrollmentAuthorRole; // 'aluno' | 'professor' | 'dono'
+  enrolledByName?: string;
+  lastDueNotificationAt?: string;
+}
+
+export interface DayPricingRule {
+  enabled: boolean;   // Quadra aberta para locação neste dia da semana
+  normalRate: number; // Valor da hora em horário normal neste dia (R$)
+  peakRate: number;   // Valor da hora em horário de pico neste dia (R$)
+}
+
+export interface Court {
+  id: string;
+  name: string;
+  description: string;
+  sports: SportType[];
+  surface: 'Areia Fina' | 'Areia Quartzosa Premium';
+  isCovered: boolean;
+  hasLighting: boolean;
+  hourlyRate: number;
+  peakHourlyRate?: number;
+  weekendNormalRate?: number;
+  weekendPeakRate?: number;
+  peakStartTime?: string; // Ex: "18:00"
+  peakEndTime?: string;   // Ex: "22:00"
+  dayOfWeekPricing?: Partial<Record<number, DayPricingRule>>; // 0 (Dom) a 6 (Sáb)
+  openTime?: string;
+  closeTime?: string;
+  classSchedules?: ClassScheduleConfig[];
+}
+
+export interface TimeSlot {
+  id: string;
+  courtId: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  price: number;
+  isAvailable: boolean;
+  isPeakHour?: boolean;
+  dayOfWeek?: number;
+  pricingLabel?: string;
+  bookingId?: string;
+  slotType?: 'regular' | 'class';
+  classConfig?: ClassScheduleConfig;
+}
+
+export interface VacantSlotWithin2h {
+  slot: TimeSlot;
+  court: Court;
+  minutesUntilStart: number;
+}
+
+export interface Booking {
+  id: string;
+  tenantId: string;
+  arenaName?: string;
+  courtId: string;
+  courtName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  sport: SportType;
+  customerName: string;
+  customerPhone: string;
+  price: number;
+  status: 'confirmed' | 'cancelled';
+  bookingKind?: 'locacao' | 'aula_experimental';
+  createdAt: string;
+}
+
+export interface TeamPair {
+  id: string;
+  tournamentId: string;
+  player1: string;
+  player1Level: AthleteLevel;
+  player2: string;
+  player2Level: AthleteLevel;
+  phone: string;
+  category: TournamentCategory;
+  seed: number;
+  isPaid: boolean;
+  player1Paid?: boolean;
+  player2Paid?: boolean;
+  enrollmentStatus?: EnrollmentStatus; // 'pending' | 'confirmed' | 'rejected'
+  refundStatus?: RefundStatus;         // 'none' | 'refund_pending' | 'refunded'
+  rejectionReason?: string;
+  isPresent?: boolean;                 // Check-in de presença para montagem da chave
+  paymentMethod?: 'pix' | 'cartao' | 'arena';
+  registeredAt: string;
+}
+
+export type BracketStage = 'winners' | 'losers' | 'semifinals' | 'grand_final' | 'super_final';
+export type MatchStatus = 'scheduled' | 'in_progress' | 'completed';
+
+export type PointSkillType = 'normal' | 'ace' | 'shark_attack' | 'pingo' | 'erro_adv';
+
+export interface RefereePointEvent {
+  id: string;
+  timestamp: string;
+  scoringTeam: 1 | 2;
+  scorerName: string;
+  serverName: string;
+  skill: PointSkillType;
+  scoreAfter: string; // e.g. "11 x 9"
+}
+
+export interface RefereeTimeoutEvent {
+  id: string;
+  timestamp: string;
+  requestedBy: 'team1' | 'team2' | 'technical';
+  teamName: string;
+  scoreAtTimeout: string;
+}
+
+export interface RefereeCardEvent {
+  id: string;
+  timestamp: string;
+  team: 1 | 2;
+  playerName: string;
+  cardType: 'yellow' | 'red';
+  reason: string;
+  scoreAtCard: string;
+}
+
+export interface RefereeMatchState {
+  refereeName: string;
+  targetPoints: number; // default 18
+  servingTeam: 1 | 2;
+  /**
+   * 0 = Team 1 Player 1
+   * 1 = Team 2 Player 1
+   * 2 = Team 1 Player 2
+   * 3 = Team 2 Player 2
+   */
+  serverRotationIndex: 0 | 1 | 2 | 3;
+  serviceOrderLabels: [string, string, string, string];
+  team1TimeoutsUsed: number;
+  team2TimeoutsUsed: number;
+  maxTimeoutsPerTeam: number;
+  activeTimeout?: {
+    type: 'team1' | 'team2' | 'technical';
+    label: string;
+    startedAt: string;
+  } | null;
+  courtSwapsCount: number;
+  currentSidesSwapped: boolean;
+  startedAt?: string;
+  updatedAt: string;
+  pointHistory: RefereePointEvent[];
+  timeoutHistory: RefereeTimeoutEvent[];
+  cardsHistory?: RefereeCardEvent[];
+}
+
+export interface BracketMatch {
+  id: string;
+  tournamentId: string;
+  matchNumber: number;
+  stage: BracketStage;
+  round: number;
+  stageName: string;
+  team1?: TeamPair;
+  team2?: TeamPair;
+  score1?: number;
+  score2?: number;
+  winnerId?: string;
+  loserId?: string;
+  courtId?: string;
+  courtName?: string;
+  scheduledTime?: string;
+  status: MatchStatus;
+  nextMatchWinnerId?: string;
+  winnerDestinationSlot?: 'team1' | 'team2';
+  nextMatchLoserId?: string;
+  loserDestinationSlot?: 'team1' | 'team2';
+  liveReferee?: RefereeMatchState;
+}
+
+export interface Tournament {
+  id: string;
+  tenantId: string;
+  name: string;
+  sport: SportType;
+  category: TournamentCategory;
+  modalityFormat?: TournamentModalityFormat;
+  semiFormat: SemiFormat;
+  date: string;
+  location?: string;
+  specificRules?: string;
+  format: 'double_elimination_buraco4';
+  description: string;
+  maxPairs: number;
+  registrationFee: number;
+  responsibleName: string;
+  responsiblePhone: string;
+  isOpenForRegistration: boolean;
+  isFinished: boolean;
+  tableLicenseStatus?: 'unlocked_single_20' | 'unlocked_arena_pro_99';
+  tableLicenseFee?: number; // R$ 20 por tabela avulsa
+}
+
+export interface TournamentStandingRow {
+  pair: TeamPair;
+  position: number;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  pointsDiff: number;
+  winRate: number;
+  rankingPointsEarned: number;
+  statusBadge: string;
+}
+
+export interface TenantConfig {
+  id: string;
+  name: string;
+  tagline: string;
+  city: string;
+  state: string;
+  address: string;
+  distanceKm: number;
+  rating: number;
+  whatsapp: string;
+  primaryColor: string;
+  accentColor: string;
+  sandBg: string;
+  amenities: string[];
+  courts: Court[];
+  operatingHours: {
+    open: string;
+    close: string;
+  };
+  subscriptionPlan?: 'arena_pro_99' | 'pay_per_table_20';
+  monthlyPlanPrice?: number; // R$ 99/mês
+  ownerName?: string;
+  imageUrl?: string;
+}
+
+export interface LiveChatMessage {
+  id: string;
+  streamId: string;
+  authorName: string;
+  authorCity?: string;
+  authorLevel?: AthleteLevel;
+  text: string;
+  reaction?: string;
+  timestamp: string;
+}
+
+export interface HistoricalLegendVideo {
+  id: string;
+  title: string;
+  legends: string[];
+  era: string;
+  location: string;
+  youtubeEmbedUrl: string;
+  thumbnailUrl: string;
+  viewsCount: string;
+  spectatorsWatchingNow: number;
+  description: string;
+  highlightTag: string;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  tenantId: string;
+  arenaName: string;
+  slotId: string;
+  courtId: string;
+  courtName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  price: number;
+  sport: SportType;
+  customerName: string;
+  customerPhone: string;
+  position: number;
+  status: 'waiting' | 'notified' | 'converted' | 'cancelled';
+  notifiedAt?: string;
+  createdAt: string;
+}
+
+export interface WaitlistNotification {
+  id: string;
+  waitlistEntry: WaitlistEntry;
+  cancelledByCustomer?: string;
+  whatsappLink: string;
+  timestamp: string;
+}
+
+export interface SmartNotificationItem {
+  id: string;
+  type: SmartAlertType;
+  title: string;
+  body: string;
+  badgeLabel: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  whatsappUrl?: string;
+  actionLabel?: string;
+  actionTargetTab?: 'scheduler' | 'tournaments' | 'my_bookings';
+  slotId?: string;
+  matchId?: string;
+  createdAt: string;
+  read: boolean;
+  pushDelivered: boolean;
+}

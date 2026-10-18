@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        try {
+          var originalFetch = window.fetch;
+          if (originalFetch) {
+            Object.defineProperty(window, 'fetch', {
+              configurable: true,
+              enumerable: true,
+              get: function () {
+                return originalFetch;
+              },
+              set: function (newFetch) {
+                if (typeof newFetch === 'function') {
+                  originalFetch = newFetch;
+                }
+              },
+            });
+          }
+        } catch (_err) {
+          // Ignore if non-configurable in strict sandbox
+        }
+
+        window.addEventListener(
+          'error',
+          function (event) {
+            if (
+              (event.filename && event.filename.indexOf('chrome-extension://') === 0) ||
+              (event.message && event.message.indexOf('Cannot set property fetch') !== -1)
+            ) {
+              event.stopImmediatePropagation();
+              event.preventDefault();
+            }
+          },
+          true
+        );
+      })();
+    </script>
+    <title>SHARK SET - Agendamento & Campeonatos de Areia</title>
+    <meta name="description" content="SHARK SET — Sistema minimalista e intuitivo para agendamento de quadras de areia, ranking e gestão de campeonatos de Futevôlei, Beach Tennis e Vôlei de Praia." />
+    <meta property="og:title" content="SHARK SET - Agendamento & Campeonatos de Areia" />
+    <meta property="og:description" content="SHARK SET — Sistema minimalista e intuitivo para agendamento de quadras de areia, ranking e gestão de campeonatos de Futevôlei, Beach Tennis e Vôlei de Praia." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

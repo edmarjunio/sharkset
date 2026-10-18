@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "Arena": {
+      "title": "Arena",
+      "description": "Unidade esportiva da rede SHARK SET com quadras e horários de funcionamento.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 120 },
+        "city": { "type": "string", "maxLength": 80 },
+        "state": { "type": "string", "maxLength": 10 },
+        "distanceKm": { "type": "number" },
+        "rating": { "type": "number" },
+        "whatsapp": { "type": "string", "maxLength": 30 },
+        "ownerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "name", "city", "state", "ownerId"]
+    },
+    "AthletePublic": {
+      "title": "AthletePublic",
+      "description": "Perfil público e pontuação de ranking do atleta SHARK SET separado por País, Estado, Cidade e Arena.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 120 },
+        "level": {
+          "type": "string",
+          "enum": ["iniciante", "serie_c", "serie_b", "serie_a", "profissional"]
+        },
+        "experienceCategory": {
+          "type": "string",
+          "enum": ["amador", "profissional"]
+        },
+        "points": { "type": "number" },
+        "wins": { "type": "number" },
+        "matchesPlayed": { "type": "number" },
+        "titlesCount": { "type": "number" },
+        "country": { "type": "string", "maxLength": 60 },
+        "state": { "type": "string", "maxLength": 10 },
+        "city": { "type": "string", "maxLength": 80 },
+        "arenaId": { "type": "string", "maxLength": 64 },
+        "arenaName": { "type": "string", "maxLength": 120 },
+        "ownerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "name", "level", "points", "country", "state", "city", "arenaId", "ownerId"]
+    },
+    "BookingRecord": {
+      "title": "BookingRecord",
+      "description": "Reserva de horário de quadra com suporte a alerta de 15 minutos e lista de espera.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "tenantId": { "type": "string", "maxLength": 64 },
+        "courtId": { "type": "string", "maxLength": 64 },
+        "courtName": { "type": "string", "maxLength": 120 },
+        "date": { "type": "string", "maxLength": 20 },
+        "startTime": { "type": "string", "maxLength": 10 },
+        "endTime": { "type": "string", "maxLength": 10 },
+        "sport": { "type": "string", "enum": ["futevolei", "beach_tennis", "volei_praia"] },
+        "customerName": { "type": "string", "maxLength": 120 },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["confirmed", "cancelled"] },
+        "ownerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "tenantId", "courtId", "date", "startTime", "status", "ownerId"]
+    },
+    "SmartNotification": {
+      "title": "SmartNotification",
+      "description": "Notificação inteligente disparada por vaga em 2h, lista de espera, jogo a 10 pontos do fim ou lembrete de 15 min.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": {
+          "type": "string",
+          "enum": ["vacant_2h", "waitlist_freed", "match_10pts_left", "booking_15min"]
+        },
+        "title": { "type": "string", "maxLength": 160 },
+        "body": { "type": "string", "maxLength": 400 },
+        "recipientName": { "type": "string", "maxLength": 120 },
+        "ownerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "type", "title", "body", "ownerId"]
+    }
+  },
+  "firestore": {
+    "/arenas/{arenaId}": {
+      "schema": { "$ref": "#/entities/Arena" },
+      "description": "Unidades SHARK SET cadastradas"
+    },
+    "/athletes_public/{athleteId}": {
+      "schema": { "$ref": "#/entities/AthletePublic" },
+      "description": "Perfis públicos de atletas para o Ranking Geral, País, Estado, Cidade e Arena"
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/BookingRecord" },
+      "description": "Reservas de quadras de areia do usuário autenticado"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/SmartNotification" },
+      "description": "Histórico de push notifications e alertas inteligentes do usuário"
+    }
+  }
+}

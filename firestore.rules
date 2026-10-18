@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(ownerId) {
+      return isSignedIn() && request.auth.uid == ownerId;
+    }
+
+    function isValidArena(data) {
+      return data.keys().hasAll(['id', 'name', 'city', 'state', 'ownerId']) &&
+        data.keys().hasOnly(['id', 'name', 'city', 'state', 'distanceKm', 'rating', 'whatsapp', 'ownerId']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
+        data.state is string && data.state.size() >= 1 && data.state.size() <= 10 &&
+        data.ownerId is string && data.ownerId == request.auth.uid;
+    }
+
+    function isValidAthletePublic(data) {
+      return data.keys().hasAll(['id', 'name', 'level', 'points', 'country', 'state', 'city', 'arenaId', 'ownerId']) &&
+        data.keys().hasOnly([
+          'id', 'name', 'level', 'experienceCategory', 'points', 'wins',
+          'matchesPlayed', 'titlesCount', 'country', 'state', 'city',
+          'arenaId', 'arenaName', 'ownerId'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.level is string && data.level in ['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'] &&
+        data.points is number && data.points >= 0 &&
+        data.country is string && data.country.size() >= 1 && data.country.size() <= 60 &&
+        data.state is string && data.state.size() >= 1 && data.state.size() <= 10 &&
+        data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
+        data.arenaId is string && data.arenaId.size() >= 1 && data.arenaId.size() <= 64 &&
+        data.ownerId is string && data.ownerId == request.auth.uid;
+    }
+
+    function isValidBookingRecord(data) {
+      return data.keys().hasAll(['id', 'tenantId', 'courtId', 'date', 'startTime', 'status', 'ownerId']) &&
+        data.keys().hasOnly([
+          'id', 'tenantId', 'courtId', 'courtName', 'date', 'startTime',
+          'endTime', 'sport', 'customerName', 'price', 'status', 'ownerId'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.tenantId is string && data.tenantId.size() >= 1 && data.tenantId.size() <= 64 &&
+        data.courtId is string && data.courtId.size() >= 1 && data.courtId.size() <= 64 &&
+        data.date is string && data.date.size() >= 1 && data.date.size() <= 20 &&
+        data.startTime is string && data.startTime.size() >= 1 && data.startTime.size() <= 10 &&
+        data.status is string && data.status in ['confirmed', 'cancelled'] &&
+        data.ownerId is string && data.ownerId == request.auth.uid;
+    }
+
+    function isValidSmartNotification(data) {
+      return data.keys().hasAll(['id', 'type', 'title', 'body', 'ownerId']) &&
+        data.keys().hasOnly(['id', 'type', 'title', 'body', 'recipientName', 'ownerId']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.type is string && data.type in ['vacant_2h', 'waitlist_freed', 'match_10pts_left', 'booking_15min'] &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        data.body is string && data.body.size() >= 1 && data.body.size() <= 400 &&
+        data.ownerId is string && data.ownerId == request.auth.uid;
+    }
+
+    match /arenas/{arenaId} {
+      allow get: if isValidId(arenaId) && isOwner(existing().ownerId);
+      allow list: if isOwner(existing().ownerId);
+      allow create: if isVerifiedUser() && isValidId(arenaId) && isValidArena(incoming());
+      allow update: if isVerifiedUser() && isValidId(arenaId) && isValidArena(incoming()) &&
+        isOwner(existing().ownerId) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'distanceKm', 'rating', 'whatsapp']);
+      allow delete: if isVerifiedUser() && isValidId(arenaId) && isOwner(existing().ownerId);
+    }
+
+    match /athletes_public/{athleteId} {
+      allow get: if isValidId(athleteId) && isOwner(existing().ownerId);
+      allow list: if isOwner(existing().ownerId);
+      allow create: if isVerifiedUser() && isValidId(athleteId) && isValidAthletePublic(incoming());
+      allow update: if isVerifiedUser() && isValidId(athleteId) && isValidAthletePublic(incoming()) &&
+        isOwner(existing().ownerId) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'level', 'experienceCategory', 'points', 'wins', 'matchesPlayed',
+          'titlesCount', 'country', 'state', 'city', 'arenaId', 'arenaName'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(athleteId) && isOwner(existing().ownerId);
+    }
+
+    match /bookings/{bookingId} {
+      allow get: if isValidId(bookingId) && isOwner(existing().ownerId);
+      allow list: if isOwner(existing().ownerId);
+      allow create: if isVerifiedUser() && isValidId(bookingId) && isValidBookingRecord(incoming());
+      allow update: if isVerifiedUser() && isValidId(bookingId) && isValidBookingRecord(incoming()) &&
+        isOwner(existing().ownerId) &&
+        existing().status != 'cancelled' &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isVerifiedUser() && isValidId(bookingId) && isOwner(existing().ownerId);
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && isOwner(existing().ownerId);
+      allow list: if isOwner(existing().ownerId);
+      allow create: if isVerifiedUser() && isValidId(notificationId) && isValidSmartNotification(incoming());
+      allow update: if isVerifiedUser() && isValidId(notificationId) && isValidSmartNotification(incoming()) &&
+        isOwner(existing().ownerId) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body']);
+      allow delete: if isVerifiedUser() && isValidId(notificationId) && isOwner(existing().ownerId);
+    }
+  }
+}

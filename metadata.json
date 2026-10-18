@@ -1,0 +1,6 @@
+{
+  "name": "Izibola Arena - Beach Sports & Tournaments",
+  "description": "Sistema minimalista para agendamento rápido de quadras de areia e gestão de campeonatos com eliminatória dupla (Buraco 4) para Futevôlei, Beach Tennis e Vôlei de Praia.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
