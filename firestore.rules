@@ -10,6 +10,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    match /broadcasts/{broadcastId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /athlete_contacts/{athleteId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create, update: if isVerifiedUser() &&
+        get(/databases/$(database)/documents/athletes_public/$(athleteId)).data.ownerId == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['ownerId', 'phone', 'whatsappOptIn']) &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.phone is string && request.resource.data.phone.matches('^[0-9]{10,15}$') &&
+        request.resource.data.whatsappOptIn is bool;
+    }
+
     function isVerifiedUser() {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
@@ -45,7 +59,8 @@ service cloud.firestore {
         data.keys().hasOnly([
           'id', 'name', 'level', 'experienceCategory', 'points', 'wins',
           'matchesPlayed', 'titlesCount', 'country', 'state', 'city',
-          'arenaId', 'arenaName', 'ownerId'
+          'arenaId', 'arenaName', 'ownerId', 'lastMatchAt', 'rankingInactive',
+          'highestHistoricalLevel', 'levelMatches', 'levelWins', 'levelPoints'
         ]) &&
         data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
         data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&

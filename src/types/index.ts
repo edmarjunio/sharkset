@@ -61,6 +61,11 @@ export interface AthleteAchievement {
 }
 
 export interface AthleteProfile {
+  lastMatchAt?: string;
+  rankingInactive?: boolean;
+  levelMatches?: number;
+  levelWins?: number;
+  levelPoints?: number;
   id: string;
   name: string;
   phone: string;
@@ -230,6 +235,11 @@ export interface BookingLiveChatMessage {
 }
 
 export interface BookingLiveBroadcast {
+  sets1?: number;
+  sets2?: number;
+  bestOf?: 1 | 3 | 5;
+  elapsedSeconds?: number;
+  clockStartedAt?: number | null;
   isLive: boolean;
   streamTitle: string;
   videoUrl: string;

@@ -316,9 +316,9 @@ export const DoubleEliminationBracket: React.FC = () => {
     setTimeout(() => setFeedbackToast(null), 4800);
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
-      exportBracketToPDF(activeTournament, currentMatches, standings, podium, tenant);
+      await exportBracketToPDF(activeTournament, currentMatches, standings, podium, tenant);
       triggerToast('📄 PDF Oficial do Torneio gerado e baixado com sucesso!');
     } catch {
       triggerToast('Aviso: Erro ao gerar PDF. Use a opção de Impressão ou Planilha CSV.');

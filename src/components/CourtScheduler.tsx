@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import {
   AthleteLevel,
   ClassEnrollmentAuthorRole,
@@ -404,6 +405,7 @@ export const CourtScheduler: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <FreeBroadcastPanel key={tenant.id} arenaId={tenant.id} />
       {/* Toast Notification */}
       {toastMessage && (
         <div className="p-3.5 bg-slate-900 text-white rounded-xl text-xs flex items-center justify-between shadow-lg animate-in fade-in">

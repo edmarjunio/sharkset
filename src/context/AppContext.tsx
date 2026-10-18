@@ -58,6 +58,8 @@ import {
 import { useSharkStore } from '../store/useSharkStore';
 import { auth, persistBookingToFirestore } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { checkPlayerInactivity } from '../services/inactivityClient';
+import { applyRankedActivity, resetInactiveProgress } from '../services/rankingActivity';
 
 export type MainTab =
   | 'home'
@@ -73,6 +75,7 @@ export type MainTab =
 export type ArenaSubTab = 'agenda' | 'aulas' | 'campeonatos' | 'config_dono';
 
 interface AppContextType {
+  checkPlayerInactivity: () => Promise<void>;
   arenasMap: Record<string, TenantConfig>;
   tenant: TenantConfig;
   setTenantId: (id: string) => void;
@@ -300,6 +303,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       useSharkStore.getState().setFirebaseUserEmail(user?.email || null);
+      if (user) void checkPlayerInactivity().catch(error => console.warn(error.message));
     });
     return () => unsubscribe();
   }, []);
@@ -422,7 +426,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [athletes, setAthletes] = useState<AthleteProfile[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.ATHLETES);
-      return stored ? JSON.parse(stored) : INITIAL_ATHLETES;
+      return (stored ? JSON.parse(stored) : INITIAL_ATHLETES).map((athlete: AthleteProfile) => resetInactiveProgress(athlete));
     } catch {
       return INITIAL_ATHLETES;
     }
@@ -1475,9 +1479,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dominantFoot: 'Destro',
       bio: `Atleta SHARK SET de ${data.preferredSport === 'futevolei' ? 'Futevôlei' : 'Areia'} (${data.city}).`,
       level: data.level,
-      points: data.points ?? 100,
+      highestHistoricalLevel: data.level,
+      points: 0,
       titlesCount: 0,
-      matchesPlayed: 1,
+      matchesPlayed: 0,
       wins: 0,
       stats: {
         aces: 5,
@@ -1700,12 +1705,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (idx >= 0) {
             const existing = nextList[idx];
             nextList[idx] = {
-              ...existing,
-              points: existing.points + ptsDelta,
+              ...applyRankedActivity(existing, ptsDelta, won),
               lastPointsDelta: ptsDelta,
               lastMatchSummary: summary,
-              matchesPlayed: existing.matchesPlayed + 1,
-              wins: won ? existing.wins + 1 : existing.wins,
               titlesCount: won && isFinalMatch ? existing.titlesCount + 1 : existing.titlesCount,
             };
           } else {
@@ -1718,7 +1720,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               courtSide: 'Ambos',
               dominantFoot: 'Destro',
               level: playerLevel,
-              points: 100 + ptsDelta,
+              points: ptsDelta,
+              lastMatchAt: new Date().toISOString(),
+              levelMatches: 1,
+              levelWins: Number(won),
+              levelPoints: ptsDelta,
               lastPointsDelta: ptsDelta,
               lastMatchSummary: summary,
               titlesCount: won && isFinalMatch ? 1 : 0,
@@ -1876,151 +1882,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!target) {
       return { credited: false, message: 'Partida não encontrada.' };
     }
-    const participants = target.participants || [];
-    const confirmedPlayers = participants.filter((p) => p.confirmedPresent);
-    const team1Players = confirmedPlayers.filter((p) => p.teamSlot === 1);
-    const team2Players = confirmedPlayers.filter((p) => p.teamSlot === 2);
-
-    if (confirmedPlayers.length < 4 || team1Players.length < 2 || team2Players.length < 2) {
-      return {
-        credited: false,
-        message:
-          'Para valer pontos e status no Ranking, os 4 jogadores da partida (2 em cada dupla) precisam estar identificados e confirmados presentes.',
-      };
-    }
-
-    if (!target.liveBroadcast) {
-      return {
-        credited: false,
-        message: 'A partida precisa ter transmissão ao vivo ativa (Prova Real) para pontuar no Ranking.',
-      };
-    }
-
-    if (target.liveBroadcast.rankingPointsCredited) {
-      return {
-        credited: false,
-        message: 'Os pontos desta transmissão ao vivo já foram creditados no Ranking Oficial!',
-      };
-    }
-
-    const s1 = target.liveBroadcast.score1;
-    const s2 = target.liveBroadcast.score2;
-    const winScore = winningTeam === 1 ? Math.max(s1, 18) : Math.max(s2, 18);
-    const loseScore = winningTeam === 1 ? s2 : s1;
-    const finalS1 = winningTeam === 1 ? winScore : loseScore;
-    const finalS2 = winningTeam === 2 ? winScore : loseScore;
-
-    const winnerPlayers = winningTeam === 1 ? team1Players : team2Players;
-    const loserPlayers = winningTeam === 1 ? team2Players : team1Players;
-
-    const calc = calculateFutevoleiMatchPoints({
-      winnerLevels: winnerPlayers.map((p) => p.level),
-      loserLevels: loserPlayers.map((p) => p.level),
-      winnerScore: winScore,
-      loserScore: loseScore,
-      stage: 'winners',
-    });
-
-    const history = target.liveBroadcast.pointHistory || [];
-    const acesCount = history.filter((h) => h.skill === 'ace').length;
-    const sharkCount = history.filter((h) => h.skill === 'shark_attack').length;
-    const pingoCount = history.filter((h) => h.skill === 'pingo').length;
-
-    setAthletes((prev) =>
-      prev.map((ath) => {
-        const isWin = winnerPlayers.some(
-          (p) => p.athleteId === ath.id || p.name.toLowerCase() === ath.name.toLowerCase()
-        );
-        const isLose = loserPlayers.some(
-          (p) => p.athleteId === ath.id || p.name.toLowerCase() === ath.name.toLowerCase()
-        );
-        if (!isWin && !isLose) return ath;
-
-        const ptsDelta = isWin ? calc.winnerPoints : calc.loserPoints;
-        const oppLabel = (isWin ? loserPlayers : winnerPlayers).map((p) => p.name).join(' & ');
-        const currentStats = ath.stats || {
-          aces: 10,
-          errors: 4,
-          sharkAttacks: 4,
-          pingoPoints: 12,
-          defenses: 20,
-        };
-
-        return {
-          ...ath,
-          points: ath.points + ptsDelta,
-          lastPointsDelta: ptsDelta,
-          lastMatchSummary: `[PROVA REAL LIVE] ${isWin ? 'Vitória' : 'Jogo'} ${winScore}x${loseScore} vs ${oppLabel} (+${ptsDelta} pts)`,
-          matchesPlayed: ath.matchesPlayed + 1,
-          wins: isWin ? ath.wins + 1 : ath.wins,
-          stats: {
-            ...currentStats,
-            aces: currentStats.aces + (isWin ? Math.max(1, acesCount) : 0),
-            sharkAttacks: currentStats.sharkAttacks + (isWin ? Math.max(1, sharkCount) : 0),
-            pingoPoints: currentStats.pingoPoints + (isWin ? Math.max(1, pingoCount) : 1),
-            defenses: currentStats.defenses + 3,
-          },
-        };
-      })
-    );
-
-    const newLog: RankingMatchLog = {
-      id: `rlog-live-${Date.now()}`,
-      tournamentId: target.id,
-      tournamentName: `Transmissão Ao Vivo (Prova Real 4 Atletas) · ${target.arenaName || tenant.name}`,
-      matchNumber: 1,
-      winnerNames: winnerPlayers.map((p) => p.name).join(' & '),
-      loserNames: loserPlayers.map((p) => p.name).join(' & '),
-      score: `${winScore} x ${loseScore}`,
-      winnerLevelAvg: winnerPlayers.map((p) => ATHLETE_LEVEL_LABELS[p.level]).join(' + '),
-      loserLevelAvg: loserPlayers.map((p) => ATHLETE_LEVEL_LABELS[p.level]).join(' + '),
-      pointsAwardedWinner: calc.winnerPoints,
-      pointsAwardedLoser: calc.loserPoints,
-      explanation: `Prova Real por Vídeo Ao Vivo (4 jogadores identificados em quadra${
-        target.referee ? ` · Árbitro: ${target.referee.name}` : ''
-      }). ${calc.explanation}`,
-      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setRankingLogs((prev) => [newLog, ...prev]);
-
-    setBookings((prev) =>
-      prev.map((b) => {
-        if (b.id !== bookingId || !b.liveBroadcast) return b;
-        return {
-          ...b,
-          liveBroadcast: {
-            ...b.liveBroadcast,
-            score1: finalS1,
-            score2: finalS2,
-            rankingPointsCredited: true,
-            chatMessages: [
-              {
-                id: `bchat-end-${Date.now()}`,
-                author: target.referee?.name || 'Sistema Oficial SHARKSET',
-                role: 'referee_broadcaster',
-                roleLabel: 'ÁRBITRO & PROVA REAL RANKING',
-                text: `🏆 FIM DE JOGO (${finalS1} x ${finalS2})! Vitória de ${winnerPlayers
-                  .map((p) => p.name)
-                  .join(' & ')}! +${calc.winnerPoints} pts e estatísticas creditados no Ranking Oficial via Prova Real Ao Vivo!`,
-                timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-              },
-              ...b.liveBroadcast.chatMessages,
-            ],
-          },
-        };
-      })
-    );
-
-    return {
-      credited: true,
-      message: `Vitória de ${winnerPlayers.map((p) => p.name).join(' & ')} (${winScore}x${loseScore}) validada! +${calc.winnerPoints} pts e stats creditados no Ranking para os 4 atletas!`,
-    };
+    // A browser preview or an editable local scoreboard is not verified match evidence.
+    return { credited: false, message: 'O ranking de lives será liberado após a integração de vídeo e validação do resultado no servidor. A prévia não pontua.' };
   };
 
   return (
     <AppContext.Provider
       value={{
+        checkPlayerInactivity,
         arenasMap,
         tenant,
         setTenantId,

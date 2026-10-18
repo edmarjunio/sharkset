@@ -1,6 +1,9 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
+import 'dotenv/config';
+import { registerInactivityRoutes } from './server/inactivity';
+import { registerBroadcastRoutes } from './server/broadcasts';
 
 interface LiveMatchPayload {
   matchId: string;
@@ -17,6 +20,15 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+  app.use((req, res, next) => {
+    let pathname: string;
+    try { pathname = decodeURIComponent(req.path).replaceAll('\\', '/'); }
+    catch { res.sendStatus(400); return; }
+    if (pathname.split('/').includes('technical_table')) { res.sendStatus(404); return; }
+    next();
+  });
+  registerInactivityRoutes(app);
+  registerBroadcastRoutes(app);
 
   // Authoritative in-memory store for real-time live matches + connected SSE clients
   const liveMatchesState = new Map<string, LiveMatchPayload>();

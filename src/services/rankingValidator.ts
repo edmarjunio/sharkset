@@ -305,7 +305,8 @@ export function getRankingPromotionSuggestion(
     (currentLevel === 'serie_c' && wins >= 15 && winRate >= 75) ||
     (currentLevel === 'serie_b' && wins >= 22 && winRate >= 75);
 
-  if (reachedPoints || reachedTitles || reachedDominance) {
+  const hasConsistentResults = matchesPlayed >= 6 && wins >= 4 && winRate >= 60;
+  if (hasConsistentResults && (reachedPoints || reachedTitles || reachedDominance)) {
     const reasonDetail = reachedPoints
       ? `atingiu ${points} pts (teto: ${tier.maxPoints} pts)`
       : reachedTitles
@@ -325,7 +326,7 @@ export function getRankingPromotionSuggestion(
   return {
     shouldPromote: false,
     recommendedLevel: currentLevel,
-    explanation: `Faltam ${pointsToNext} pts em torneios oficiais para subir para ${ATHLETE_LEVEL_LABELS[tier.nextLevel]}.`,
+    explanation: `Para subir: ${pointsToNext} pts restantes, pelo menos 6 partidas, 4 vitórias e 60% de aproveitamento na categoria.`,
     progressPercent,
     pointsToNext,
   };

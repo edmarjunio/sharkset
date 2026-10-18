@@ -9,6 +9,7 @@ import {
 } from '../lib/firebase';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
 import { SharksetLogo } from './SharksetLogo';
+import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import {
   Trophy,
   Award,
@@ -214,6 +215,8 @@ export const RankingBoard: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 text-[#F7FAFD]">
+      <FreeBroadcastPanel />
+      <p className="rounded-xl bg-white p-4 text-sm text-slate-700">Escolha sua categoria no cadastro. A promoção exige a pontuação da categoria, pelo menos 6 partidas, 4 vitórias e 60% de aproveitamento. Após 30 dias sem partida válida, o progresso ativo zera; o histórico da categoria permanece.</p>
       {/* Top Banner & Cloud Firestore Connection Header */}
       <div className="bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
         {/* Ambient Gradient Glow */}

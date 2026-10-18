@@ -16,6 +16,7 @@ import { TenantSelectorModal } from './components/TenantSelectorModal';
 import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
+import { FreeBroadcastPanel } from './components/FreeBroadcastPanel';
 
 const MainContent: React.FC = () => {
   const {
@@ -30,10 +31,14 @@ const MainContent: React.FC = () => {
     activeTab === 'scheduler';
 
   const arenaPalette = tenant.brandPalette;
+  const broadcastId = new URLSearchParams(window.location.search).get('broadcast');
+  if (broadcastId && /^[\w-]{1,64}$/.test(broadcastId)) {
+    return <main className="shark-site-background min-h-screen p-4"><div className="max-w-5xl mx-auto"><FreeBroadcastPanel broadcastId={broadcastId} /></div></main>;
+  }
 
   return (
     <div
-      className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 pb-16 md:pb-8 transition-colors"
+      className="shark-site-background min-h-screen flex flex-col text-slate-900 pb-16 md:pb-8 transition-colors"
       style={
         isArenaWhiteLabel && arenaPalette
           ? { backgroundColor: arenaPalette.surfaceBg }

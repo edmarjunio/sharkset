@@ -164,13 +164,13 @@ export function exportBracketToCSV(
 /**
  * Generates and downloads a shareable, formatted PDF document with tournament results and bracket.
  */
-export function exportBracketToPDF(
+export async function exportBracketToPDF(
   tournament: Tournament,
   matches: BracketMatch[],
   standingsInput: StandingsInputRow[],
   podiumInput: PodiumInput,
   tenant: TenantConfig
-): void {
+): Promise<void> {
   const standings = normalizeStandings(standingsInput);
   const podium = normalizePodium(podiumInput);
   const doc = new jsPDF({
@@ -182,19 +182,24 @@ export function exportBracketToPDF(
   const pageWidth = doc.internal.pageSize.getWidth();
   let currentY = 16;
 
+  const logo = new Image();
+  logo.src = '/brand/logo.png';
+  await logo.decode();
+
   // Header Banner
   doc.setFillColor(15, 23, 42); // slate-900
   doc.rect(10, 10, pageWidth - 20, 24, 'F');
 
-  doc.setTextColor(245, 158, 11); // amber-500
-  doc.setFontSize(16);
+  doc.setTextColor(9, 135, 206); // amber-500
+  doc.addImage(logo, 'PNG', 14, 12, 20, 20);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('SHARK SET • RELATÓRIO OFICIAL DO TORNEIO', 15, 20);
+  doc.text('SHARKSET | RELATÓRIO DO TORNEIO', 38, 20);
 
   doc.setTextColor(226, 232, 240); // slate-200
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${tenant.name} | ${tenant.city} - ${tenant.state} | Data: ${tournament.date}`, 15, 28);
+  doc.text(`${tenant.name} | ${tenant.city} - ${tenant.state} | Data: ${tournament.date}`, 38, 28);
 
   currentY = 40;
 
@@ -219,11 +224,11 @@ export function exportBracketToPDF(
   currentY += 32;
 
   // Podium Section
-  doc.setFillColor(254, 243, 199); // amber-100
-  doc.setDrawColor(245, 158, 11);
+  doc.setFillColor(232, 248, 252); // amber-100
+  doc.setDrawColor(9, 135, 206);
   doc.roundedRect(10, currentY, pageWidth - 20, 22, 2, 2, 'FD');
 
-  doc.setTextColor(180, 83, 9);
+  doc.setTextColor(9, 135, 206);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('🏆 PÓDIO OFICIAL DO CAMPEONATO', 15, currentY + 6);
@@ -245,7 +250,7 @@ export function exportBracketToPDF(
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text('Classificação Geral & Aproveitamento (Win Rate %)', 10, currentY);
+  doc.text('Classificação e aproveitamento', 10, currentY);
 
   currentY += 4;
 
@@ -350,7 +355,7 @@ export function exportBracketToPDF(
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   doc.text(
-    'Documento oficial exportado pelo sistema SHARK SET Arena & Futevôlei. Certificado para federações e organizadores.',
+    'Documento oficial exportado pelo sistema SHARK SET Arena & Futevôlei. Resultados registrados pelo organizador.',
     pageWidth / 2,
     290,
     { align: 'center' }
@@ -423,7 +428,7 @@ export function openBracketPrintWindow(
         <td style="padding: 8px;">${t1}</td>
         <td style="padding: 8px; text-align: center; font-size: 14px;">${score}</td>
         <td style="padding: 8px;">${t2}</td>
-        <td style="padding: 8px; font-weight: 600; color: #d97706;">${winner}</td>
+        <td style="padding: 8px; font-weight: 600; color: #0987CE;">${winner}</td>
       </tr>
     `;
     })
@@ -442,9 +447,11 @@ export function openBracketPrintWindow(
       <meta charset="UTF-8">
       <title>Relatório Oficial - ${tournament.name}</title>
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 24px; color: #0f172a; }
+        body { font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 24px; color: #0f172a; }
+        button { box-shadow: 0 3px 0 #071d3d33, 0 5px 12px #071d3d22; }
+        .header img { width: 64px; height: 64px; border-radius: 50%; float: left; margin-right: 16px; }
         .header { background: #0f172a; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .podium-box { background: #fef3c7; border: 2px solid #f59e0b; padding: 14px 20px; border-radius: 8px; margin-bottom: 24px; }
+        .podium-box { background: #e8f8fc; border: 2px solid #0987CE; padding: 14px 20px; border-radius: 8px; margin-bottom: 24px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
         th { background: #f1f5f9; padding: 8px; text-align: left; font-size: 12px; text-transform: uppercase; color: #475569; }
         @media print {
@@ -455,12 +462,13 @@ export function openBracketPrintWindow(
     </head>
     <body>
       <div class="no-print" style="margin-bottom: 16px; display: flex; gap: 10px;">
-        <button onclick="window.print()" style="background: #f59e0b; color: white; font-weight: bold; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;">🖨️ Imprimir / Salvar como PDF</button>
+        <button onclick="window.print()" style="background: #0987CE; color: white; font-weight: bold; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;">🖨️ Imprimir / Salvar como PDF</button>
         <button onclick="window.close()" style="background: #e2e8f0; color: #1e293b; font-weight: bold; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;">Fechar</button>
       </div>
 
       <div class="header">
-        <h1 style="margin: 0 0 6px 0; font-size: 22px; color: #f59e0b;">SHARK SET • RELATÓRIO OFICIAL DO TORNEIO</h1>
+        <img src="${window.location.origin}/brand/logo.png" alt="SHARKSET" />
+        <h1 style="margin: 0 0 6px 0; font-size: 22px; color: #0987CE;">SHARK SET • RELATÓRIO OFICIAL DO TORNEIO</h1>
         <p style="margin: 0; font-size: 14px; color: #cbd5e1;">${tenant.name} | ${tenant.city} - ${tenant.state} | ${tournament.date}</p>
       </div>
 
@@ -475,7 +483,7 @@ export function openBracketPrintWindow(
       </div>
 
       <div class="podium-box">
-        <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #b45309;">🏆 PÓDIO OFICIAL DO CAMPEONATO</h3>
+        <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #0987CE;">🏆 PÓDIO OFICIAL DO CAMPEONATO</h3>
         <div style="display: flex; gap: 30px; font-size: 14px; font-weight: bold;">
           <div>🥇 1º Lugar: <span style="color: #0f172a;">${p1}</span></div>
           <div>🥈 2º Lugar: <span style="color: #0f172a;">${p2}</span></div>
@@ -483,7 +491,7 @@ export function openBracketPrintWindow(
         </div>
       </div>
 
-      <h3 style="margin: 0 0 8px 0; font-size: 16px;">Classificação Geral & Aproveitamento (Win Rate %)</h3>
+      <h3 style="margin: 0 0 8px 0; font-size: 16px;">Classificação e aproveitamento</h3>
       <table>
         <thead>
           <tr>
