@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
+import { createServer } from 'node:http';
 import 'dotenv/config';
 import { registerInactivityRoutes } from './server/inactivity';
 import { registerBroadcastRoutes } from './server/broadcasts';
@@ -17,7 +18,12 @@ interface LiveMatchPayload {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const port = Number(process.env.PORT || 369);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('PORT deve ser um número inteiro entre 1 e 65535.');
+  }
+  const httpServer = createServer(app);
+  let vite: Awaited<ReturnType<typeof createViteServer>> | undefined;
 
   app.use(express.json());
   app.use((req, res, next) => {
@@ -117,8 +123,12 @@ async function startServer() {
   });
 
   if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
+    vite = await createViteServer({
+      server: {
+        middlewareMode: true,
+        hmr: process.env.DISABLE_HMR !== 'true',
+        ws: { server: httpServer },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -130,9 +140,22 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SHARK SET Server running on http://localhost:${PORT}`);
-  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      httpServer.once('error', reject);
+      httpServer.listen(port, '0.0.0.0', resolve);
+    });
+    console.log(`SHARKSET disponível em http://localhost:${port}`);
+  } catch (error) {
+    await vite?.close();
+    if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+      throw new Error(`A porta ${port} já está ocupada. Encerre a outra instância do SHARKSET ou configure PORT no .env.`);
+    }
+    throw error;
+  }
 }
 
-startServer();
+startServer().catch(error => {
+  console.error(error instanceof Error ? error.message : 'Não foi possível iniciar o SHARKSET.');
+  process.exitCode = 1;
+});
