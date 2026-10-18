@@ -1,46 +1,34 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
-import { findVacantSlotsInNext2Hours } from '../services/smartAlertEngine';
 import { SharksetLogo } from './SharksetLogo';
-import { useI18n } from '../hooks/useI18n';
 import {
-  MapPin,
-  Command,
-  Trophy,
-  Users,
-  User,
-  ChevronDown,
+  Search,
+  Video,
   Bell,
-  Zap,
-  Flame,
-  Tv,
-  Building2,
-  Globe,
-  GraduationCap,
+  Palette,
+  Radio,
+  MapPin,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const {
     tenant,
-    slots,
     activeTab,
     setActiveTab,
-    setArenaSubTab,
     setCommandPaletteOpen,
     setTenantModalOpen,
     bookings,
     waitlist,
     waitlistNotifications,
+    setActiveLiveBroadcastBookingId,
+    userProfile,
   } = useApp();
-
-  const { t, isPortuguese, toggleLocale } = useI18n();
 
   const {
     smartNotifications,
     notificationDrawerOpen,
     setNotificationDrawerOpen,
-    referenceClockTime,
   } = useSharkStore();
 
   const activeBookingsCount = bookings.filter((b) => b.status === 'confirmed').length;
@@ -48,251 +36,244 @@ export const Navbar: React.FC = () => {
     waitlist.filter((w) => w.status === 'notified').length + waitlistNotifications.length;
   const unreadSmartCount = smartNotifications.filter((n) => !n.read).length;
 
-  const vacantInNext2h = React.useMemo(
-    () => findVacantSlotsInNext2Hours(slots, tenant.courts, referenceClockTime),
-    [slots, tenant.courts, referenceClockTime]
-  );
+  // Check if we are viewing the Arena page with White-Label Arena Branding enabled
+  const isArenaWhiteLabelSite =
+    (activeTab === 'scheduler' || Boolean(tenant.whiteLabelEnabled)) &&
+    Boolean(tenant.whiteLabelEnabled && tenant.logoUrl && tenant.brandPalette);
+
+  const arenaPalette = tenant.brandPalette;
+
+  const handleOpenLiveBroadcastStudio = () => {
+    const firstActive = bookings.find((b) => b.status === 'confirmed');
+    if (firstActive) {
+      setActiveLiveBroadcastBookingId(firstActive.id);
+    } else {
+      setActiveTab('scheduler');
+    }
+  };
+
+  const navItems: { id: typeof activeTab; label: string; isArena?: boolean }[] = [
+    { id: 'tournaments', label: 'CAMPEONATOS' },
+    { id: 'arenas_directory', label: 'ARENAS', isArena: true },
+    { id: 'ranking_athletes', label: 'RANKINGS' },
+    { id: 'shark_academy', label: 'COMUNIDADE' },
+    { id: 'home', label: 'AO VIVO' },
+    { id: 'register_dupla', label: 'INSCRIÇÕES' },
+  ];
+
+  const activeAccentHex =
+    isArenaWhiteLabelSite && arenaPalette ? arenaPalette.primary : '#FF6B00';
 
   return (
-    <header className="sticky top-0 z-40 bg-[#030B17] text-[#F7FAFD] border-b border-[#145A9B] shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3 h-16">
-        {/* Zone 1: SHARK SET Official Logo & É O TUBA Subtitle + Arena Switcher */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <a
-            href="#sharkset"
-            onClick={(e) => {
-              e.preventDefault();
-              setActiveTab('home');
-            }}
-            className="flex flex-col items-center justify-center group cursor-pointer transition-transform hover:scale-[1.02]"
-            title="SHARKSET · É O TUBA"
-          >
-            <SharksetLogo size="sm" showSubtitle={true} />
-          </a>
+    <header
+      className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md text-slate-900 border-b border-slate-200 shadow-xs transition-colors"
+      style={
+        isArenaWhiteLabelSite && arenaPalette
+          ? {
+              borderBottomColor: `${arenaPalette.primary}33`,
+            }
+          : undefined
+      }
+    >
+      {/* Top White-Label Ribbon when Arena Custom Site Mode is Active */}
+      {isArenaWhiteLabelSite && arenaPalette && (
+        <div
+          className="w-full px-4 py-1 text-[11px] font-black tracking-wider uppercase flex items-center justify-between"
+          style={{
+            backgroundColor: arenaPalette.headerBg,
+            color: '#FFFFFF',
+          }}
+        >
+          <div className="flex items-center gap-2 truncate">
+            <MapPin className="w-3 h-3 shrink-0" style={{ color: arenaPalette.accent }} />
+            <span className="truncate">
+              SITE OFICIAL: {tenant.name} ({tenant.city}/{tenant.state})
+            </span>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="px-2 py-0.5 rounded bg-white/10 text-[10px] font-black tracking-widest text-white/90 border border-white/15">
+              DESENVOLVIDO POR SHARKSET
+            </span>
+          </div>
+        </div>
+      )}
 
-          <div className="hidden sm:block h-7 w-px bg-[#145A9B]/60 mx-1" />
-
-          <button
-            onClick={() => setTenantModalOpen(true)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
-            title="Alternar Arena ativa"
-          >
-            <MapPin className="w-3.5 h-3.5 text-[#0987CE] shrink-0" />
-            <span className="truncate max-w-[130px]">{tenant.name}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          </button>
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 flex items-center justify-between gap-3 min-h-[96px] sm:min-h-[108px] py-2">
+        {/* LEFT: Super Large Brand Logo (Either Arena's White-Label Logo OR Extra-Large SHARKSET Logo) */}
+        <div className="flex items-center gap-3 shrink-0">
+          {isArenaWhiteLabelSite && tenant.logoUrl ? (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab('scheduler')}
+                className="flex items-center gap-3 group cursor-pointer text-left"
+                title={`Site Oficial ${tenant.name}`}
+              >
+                <img
+                  src={tenant.logoUrl}
+                  alt={tenant.name}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-contain bg-slate-900 p-1.5 border-2 shadow-md transition-transform group-hover:scale-105 shrink-0"
+                  style={{ borderColor: arenaPalette?.primary || '#FF6B00' }}
+                />
+                <div className="hidden xl:block">
+                  <div
+                    className="text-lg font-black tracking-tight leading-tight"
+                    style={{ color: arenaPalette?.headerBg || '#0F172A' }}
+                  >
+                    {tenant.name}
+                  </div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mt-0.5">
+                    DESENVOLVIDO POR SHARKSET
+                  </div>
+                </div>
+              </button>
+            </div>
+          ) : (
+            <a
+              href="#sharkset"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('home');
+              }}
+              className="flex items-center gap-2.5 group cursor-pointer transition-transform hover:scale-[1.03] shrink-0"
+              title="SHARKSET Oficial"
+            >
+              {/* Extra-Large Logo as requested: "Quero a logo maior do que na imagem que enviei, quero bem grande a logo marca" */}
+              <SharksetLogo size="xl" />
+            </a>
+          )}
         </div>
 
-        {/* Zone 2: Clean Navigation with Translations */}
-        <nav className="hidden lg:flex items-center gap-1 bg-[#071D3D]/90 p-1.5 rounded-2xl border border-[#145A9B]">
-          <button
-            onClick={() => setActiveTab('home')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === 'home'
-                ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
-                : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
-            }`}
-          >
-            <Tv className="w-3.5 h-3.5" />
-            {'home_live'.tr}
-          </button>
+        {/* CENTER: Clean Descontraído Uppercase Navigation matching the attached print + ARENAS */}
+        <nav className="hidden lg:flex items-center gap-5 xl:gap-7 h-full">
+          {navItems.map((item) => {
+            const isActive =
+              activeTab === item.id ||
+              (item.isArena && (activeTab === 'arenas_directory' || activeTab === 'scheduler'));
 
-          <button
-            onClick={() => setActiveTab('arenas_directory')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === 'arenas_directory' || activeTab === 'scheduler'
-                ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
-                : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            {'arenas_classes'.tr}
-            {vacantInNext2h.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-[10px] font-black bg-[#12C7BB] text-slate-950 rounded-md">
-                {vacantInNext2h.length} LIVRE
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('tournaments')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === 'tournaments'
-                ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
-                : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            {'tournaments_bracket'.tr}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('ranking_athletes')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === 'ranking_athletes'
-                ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
-                : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5 text-[#12C7BB]" />
-            {'ranking_board'.tr}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('shark_academy')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === 'shark_academy'
-                ? 'bg-[#12C7BB] text-slate-950 shadow-md shadow-[#12C7BB]/25'
-                : 'text-[#12C7BB] hover:text-white hover:bg-[#0B254E]'
-            }`}
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            {'shark_academy'.tr}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('register_dupla')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === 'register_dupla'
-                ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
-                : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            {'doubles_registration'.tr}
-          </button>
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className={`relative py-3 text-xs xl:text-[13px] font-extrabold tracking-wider uppercase transition-colors whitespace-nowrap cursor-pointer ${
+                  isActive ? 'text-slate-950' : 'text-slate-600 hover:text-slate-950'
+                }`}
+                style={isActive ? { color: activeAccentHex } : undefined}
+              >
+                <span className="flex items-center gap-1.5">
+                  {item.id === 'home' && (
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  )}
+                  {item.label}
+                </span>
+                {isActive && (
+                  <span
+                    className="absolute bottom-0 left-0 right-0 h-[3px] rounded-full transition-all"
+                    style={{ backgroundColor: activeAccentHex }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Zone 3: Language Toggle, Quick Conversion & Notifications */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Language Switcher (PT / EN) */}
+        {/* RIGHT: Pill Search Bar + Transmitir Ao Vivo / Criar Torneio Orange Pill Button + User Avatar */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Search Input Pill (Matches screenshot "Buscar atletas ou torneios...") */}
           <button
-            onClick={toggleLocale}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-black text-slate-200 bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-all cursor-pointer shadow-xs"
-            title={isPortuguese ? 'Mudar idioma para Inglês' : 'Switch language to Portuguese'}
-          >
-            <Globe className="w-3.5 h-3.5 text-[#0987CE]" />
-            <span className="text-[11px] font-mono">{isPortuguese ? '🇧🇷 PT' : '🇺🇸 EN'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('saas_hub')}
-            className={`hidden xl:flex items-center gap-1.5 px-3 py-2 text-xs font-black rounded-xl transition-all cursor-pointer border ${
-              activeTab === 'saas_hub'
-                ? 'bg-[#0987CE] text-white border-[#0987CE]'
-                : 'bg-[#071D3D] hover:bg-[#0B254E] text-[#12C7BB] border-[#145A9B]'
-            }`}
-            title="Planos: R$ 20 por Tabela ou R$ 99/mês para Arenas"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>{'pricing_saas'.tr}</span>
-          </button>
-
-          <button
-            onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
-            className="relative flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer"
-            title={t('smart_alerts')}
-          >
-            <Bell className="w-3.5 h-3.5 text-[#0987CE]" />
-            {unreadSmartCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-[#0987CE] text-white font-black text-[10px]">
-                {unreadSmartCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('my_bookings')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-              activeTab === 'my_bookings'
-                ? 'bg-[#0987CE] text-white border-[#0987CE]'
-                : 'bg-[#071D3D] hover:bg-[#0B254E] text-slate-200 border-[#145A9B]'
-            }`}
-          >
-            <User className="w-3.5 h-3.5 text-[#0987CE]" />
-            <span className="hidden sm:inline">{'profile'.tr} ({activeBookingsCount})</span>
-            {notifiedWaitlistCount > 0 && (
-              <span className="px-1.5 py-0.5 text-[9px] font-black bg-[#12C7BB] text-slate-950 rounded animate-pulse">
-                VAGA
-              </span>
-            )}
-          </button>
-
-          <button
+            type="button"
             onClick={() => setCommandPaletteOpen(true)}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-2 text-xs text-slate-300 bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer"
-            title="Busca rápida (Ctrl+K / Cmd+K)"
+            className="hidden md:flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200/75 border border-slate-200/90 text-xs font-medium text-slate-500 w-48 xl:w-60 transition-all cursor-pointer text-left"
+            title="Buscar atletas, arenas ou torneios (Ctrl+K)"
           >
-            <Command className="w-3.5 h-3.5 text-[#0987CE]" />
+            <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="truncate">Buscar atletas ou torneios...</span>
           </button>
 
+          {/* Direct Live Broadcast Button ("fazer uma transmissão live ao vivo direto pelo site") */}
           <button
-            onClick={() => {
-              setArenaSubTab('agenda');
-              setActiveTab('scheduler');
-            }}
-            className="px-3.5 py-2 text-xs font-black text-slate-950 bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 active:scale-[0.98] rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 shadow-md"
+            type="button"
+            onClick={handleOpenLiveBroadcastStudio}
+            className="px-3.5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all whitespace-nowrap"
+            title="Iniciar ou abrir transmissão ao vivo de agendamento na Arena"
           >
-            <Flame className="w-3.5 h-3.5 fill-slate-950" />
-            {'reserve_now'.tr}
+            <Radio className="w-3.5 h-3.5 text-red-400 animate-pulse shrink-0" />
+            <span className="hidden sm:inline">Transmitir Live</span>
+          </button>
+
+          {/* Primary Orange Pill CTA Button (Matches screenshot "Criar Torneio") */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('tournaments')}
+            className="px-4 sm:px-5 py-2.5 rounded-full text-white text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer shadow-sm hover:brightness-105 active:scale-[0.99]"
+            style={{ backgroundColor: activeAccentHex }}
+          >
+            Criar Torneio
+          </button>
+
+          {/* Notifications Bell */}
+          <button
+            type="button"
+            onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
+            className="relative p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+            title="Alertas e Notificações"
+          >
+            <Bell className="w-4 h-4" />
+            {(unreadSmartCount > 0 || notifiedWaitlistCount > 0) && (
+              <span
+                className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-black text-white flex items-center justify-center"
+                style={{ backgroundColor: activeAccentHex }}
+              >
+                {unreadSmartCount + notifiedWaitlistCount}
+              </span>
+            )}
+          </button>
+
+          {/* User Avatar Circle matching the screenshot */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('my_bookings')}
+            className="relative flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all cursor-pointer"
+            title={`Perfil de ${userProfile.name} (${activeBookingsCount} reservas)`}
+          >
+            <div className="relative w-9 h-9 rounded-full overflow-hidden bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
+              <img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+                alt={userProfile.name}
+                className="w-full h-full object-cover"
+              />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+            </div>
+            <span className="hidden xl:inline text-xs font-extrabold text-slate-800 max-w-[90px] truncate">
+              {userProfile.name.split(' ')[0]}
+            </span>
           </button>
         </div>
       </div>
 
-      {/* Mobile Clean Navigation Bar */}
-      <div className="lg:hidden flex items-center justify-between border-t border-[#145A9B]/60 bg-[#030B17] px-2 py-2 overflow-x-auto gap-1.5">
-        <button
-          onClick={() => setActiveTab('home')}
-          className={`flex-1 px-2.5 py-2 text-xs font-extrabold rounded-lg whitespace-nowrap cursor-pointer text-center transition-all ${
-            activeTab === 'home' ? 'bg-[#0987CE] text-white shadow-xs' : 'text-slate-300 bg-[#071D3D]'
-          }`}
-        >
-          {'home_live'.tr}
-        </button>
-        <button
-          onClick={() => setActiveTab('arenas_directory')}
-          className={`flex-1 px-2.5 py-2 text-xs font-extrabold rounded-lg whitespace-nowrap cursor-pointer text-center transition-all ${
-            activeTab === 'arenas_directory' || activeTab === 'scheduler'
-              ? 'bg-[#0987CE] text-white shadow-xs'
-              : 'text-slate-300 bg-[#071D3D]'
-          }`}
-        >
-          {'arenas_classes'.tr}
-        </button>
-        <button
-          onClick={() => setActiveTab('tournaments')}
-          className={`flex-1 px-2.5 py-2 text-xs font-extrabold rounded-lg whitespace-nowrap cursor-pointer text-center transition-all ${
-            activeTab === 'tournaments' ? 'bg-[#0987CE] text-white shadow-xs' : 'text-slate-300 bg-[#071D3D]'
-          }`}
-        >
-          {'tournaments_bracket'.tr.split(' ')[1] || 'Torneios'}
-        </button>
-        <button
-          onClick={() => setActiveTab('ranking_athletes')}
-          className={`flex-1 px-2.5 py-2 text-xs font-extrabold rounded-lg whitespace-nowrap cursor-pointer text-center transition-all ${
-            activeTab === 'ranking_athletes' ? 'bg-[#0987CE] text-white shadow-xs' : 'text-slate-300 bg-[#071D3D]'
-          }`}
-        >
-          {'ranking_board'.tr}
-        </button>
-        <button
-          onClick={() => setActiveTab('shark_academy')}
-          className={`flex-1 px-2.5 py-2 text-xs font-extrabold rounded-lg whitespace-nowrap cursor-pointer text-center transition-all ${
-            activeTab === 'shark_academy'
-              ? 'bg-[#12C7BB] text-slate-950 shadow-xs'
-              : 'text-[#12C7BB] bg-[#071D3D]'
-          }`}
-        >
-          {'shark_academy'.tr}
-        </button>
-        <button
-          onClick={() => setActiveTab('register_dupla')}
-          className={`flex-1 px-2.5 py-2 text-xs font-extrabold rounded-lg whitespace-nowrap cursor-pointer text-center transition-all ${
-            activeTab === 'register_dupla' ? 'bg-[#0987CE] text-white shadow-xs' : 'text-slate-300 bg-[#071D3D]'
-          }`}
-        >
-          {'doubles_registration'.tr.split(' ')[0] || 'Inscrição'}
-        </button>
+      {/* Mobile & Tablet Horizontal Navigation Bar */}
+      <div className="lg:hidden flex items-center justify-between border-t border-slate-200 bg-slate-50 px-3 py-2 overflow-x-auto gap-2">
+        {navItems.map((item) => {
+          const isActive =
+            activeTab === item.id ||
+            (item.isArena && (activeTab === 'arenas_directory' || activeTab === 'scheduler'));
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveTab(item.id)}
+              className={`px-3 py-1.5 text-[11px] font-extrabold rounded-full whitespace-nowrap cursor-pointer transition-all ${
+                isActive
+                  ? 'text-white shadow-xs'
+                  : 'text-slate-600 bg-white border border-slate-200'
+              }`}
+              style={isActive ? { backgroundColor: activeAccentHex } : undefined}
+            >
+              {item.label}
+            </button>
+          );
+        })}
       </div>
     </header>
   );

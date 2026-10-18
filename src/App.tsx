@@ -15,12 +15,31 @@ import { CommandPalette } from './components/CommandPalette';
 import { TenantSelectorModal } from './components/TenantSelectorModal';
 import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
+import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 
 const MainContent: React.FC = () => {
-  const { activeTab, tenant } = useApp();
+  const {
+    activeTab,
+    tenant,
+    activeLiveBroadcastBookingId,
+    setActiveLiveBroadcastBookingId,
+  } = useApp();
+
+  const isArenaWhiteLabel =
+    Boolean(tenant.whiteLabelEnabled && tenant.logoUrl && tenant.brandPalette) &&
+    activeTab === 'scheduler';
+
+  const arenaPalette = tenant.brandPalette;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#030B17] text-[#F7FAFD] pb-16 md:pb-8">
+    <div
+      className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 pb-16 md:pb-8 transition-colors"
+      style={
+        isArenaWhiteLabel && arenaPalette
+          ? { backgroundColor: arenaPalette.surfaceBg }
+          : undefined
+      }
+    >
       <Navbar />
 
       {/* Top Dashboard Visual Notification / Badge for Vacant Court in Next 2h + Smart Push Center (D-2 Tuition) */}
@@ -41,24 +60,69 @@ const MainContent: React.FC = () => {
         {activeTab === 'my_bookings' && <MyBookings />}
       </main>
 
-      <footer className="border-t border-[#145A9B]/60 bg-[#071D3D] py-6 mt-12 text-[#F7FAFD]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
-          <div className="flex items-center gap-3">
-            <SharksetLogo size="xs" />
-            <span className="font-black text-white tracking-tight">SHARK<span className="text-[#0987CE]">SET</span></span>
-            <span aria-hidden="true" className="text-slate-500">·</span>
-            <span className="font-semibold text-slate-200">{tenant.name}</span>
-            <span aria-hidden="true" className="text-slate-500">·</span>
-            <span className="text-slate-400">
-              {tenant.city}, {tenant.state}
-            </span>
-          </div>
+      <footer
+        className="border-t border-slate-200 bg-white py-6 mt-12 text-slate-700"
+        style={
+          isArenaWhiteLabel && arenaPalette
+            ? {
+                backgroundColor: arenaPalette.headerBg,
+                borderColor: `${arenaPalette.primary}40`,
+                color: '#FFFFFF',
+              }
+            : undefined
+        }
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          {isArenaWhiteLabel && tenant.logoUrl ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <img
+                src={tenant.logoUrl}
+                alt={tenant.name}
+                className="w-10 h-10 rounded-xl object-contain bg-white/10 p-1 border border-white/20"
+              />
+              <div>
+                <span className="font-black text-sm tracking-tight block">{tenant.name}</span>
+                <span className="text-[11px] opacity-80">
+                  {tenant.address} · {tenant.city}/{tenant.state}
+                </span>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[10px] font-black uppercase tracking-widest">
+                DESENVOLVIDO POR SHARKSET
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <SharksetLogo size="sm" />
+              <span className="font-black text-slate-900 tracking-tight text-sm">
+                SHARK<span className="text-[#FF6B00]">SET</span>
+              </span>
+              <span aria-hidden="true" className="text-slate-300">
+                ·
+              </span>
+              <span className="font-semibold text-slate-700">{tenant.name}</span>
+              <span aria-hidden="true" className="text-slate-300">
+                ·
+              </span>
+              <span className="text-slate-500">
+                {tenant.city}, {tenant.state}
+              </span>
+            </div>
+          )}
 
-          <div className="flex items-center gap-4 text-slate-400 font-medium">
-            <span className="text-[#12C7BB] font-bold">⚽ Futevôlei · 🎾 Beach Tennis · 🏐 Vôlei de Praia</span>
+          <div className="flex items-center gap-4 font-bold">
+            <span className={isArenaWhiteLabel ? 'text-white/90' : 'text-slate-600'}>
+              ⚽ Futevôlei · 🎾 Beach Tennis · 🏐 Vôlei de Praia
+            </span>
           </div>
         </div>
       </footer>
+
+      {activeLiveBroadcastBookingId && (
+        <LiveBookingBroadcastModal
+          bookingId={activeLiveBroadcastBookingId}
+          onClose={() => setActiveLiveBroadcastBookingId(null)}
+        />
+      )}
 
       <CommandPalette />
       <TenantSelectorModal />

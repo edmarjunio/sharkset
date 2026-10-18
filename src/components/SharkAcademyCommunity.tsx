@@ -450,7 +450,7 @@ export const SharkAcademyCommunity: React.FC = () => {
 
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
-    doc.text('SHARKSET - MANUAL TATICO DE FUTEVOLEI (E O TUBA!)', 14, 18);
+    doc.text('SHARKSET - MANUAL TATICO DE FUTEVOLEI', 14, 18);
     doc.setFontSize(10);
     doc.setTextColor(18, 199, 187);
     doc.text(
@@ -506,7 +506,7 @@ export const SharkAcademyCommunity: React.FC = () => {
       )}
 
       {/* =================================================================== */}
-      {/* HERO HEADER: ACADEMIA DO TUBA & COMUNIDADE FUTEVÔLEI SHARKSET       */}
+      {/* HERO HEADER: SHARK ACADEMY & COMUNIDADE FUTEVÔLEI SHARKSET          */}
       {/* =================================================================== */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#030B17] via-[#071D3D] to-[#0B254E] border-2 border-[#0987CE] p-6 sm:p-8 shadow-2xl">
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-[#0987CE]/15 rounded-full blur-3xl pointer-events-none" />
@@ -515,10 +515,10 @@ export const SharkAcademyCommunity: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-[#0987CE] text-white font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 shadow-md">
                 <GraduationCap className="w-3.5 h-3.5" />
-                ACADEMIA DO TUBA · COMUNIDADE FUTEVÔLEI SHARKSET
+                SHARK ACADEMY · COMUNIDADE FUTEVÔLEI SHARKSET
               </span>
               <span className="px-3 py-1 rounded-full bg-[#030B17] border border-[#12C7BB]/50 text-[#12C7BB] font-mono text-[11px] font-bold">
-                É O TUBA 🦈 · Evolução Técnica & Tática
+                Evolução Técnica & Tática
               </span>
             </div>
 
@@ -552,7 +552,7 @@ export const SharkAcademyCommunity: React.FC = () => {
           </div>
 
           <div className="shrink-0 flex flex-col items-center bg-[#030B17]/80 border border-[#145A9B] rounded-2xl p-4">
-            <SharksetLogo size="lg" showSubtitle={true} />
+            <SharksetLogo size="lg" />
             <span className="text-[10px] font-mono text-slate-300 mt-2 font-bold uppercase tracking-wider">
               CT Oficial · {posts.length} Materiais Ativos
             </span>

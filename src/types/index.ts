@@ -193,6 +193,59 @@ export interface VacantSlotWithin2h {
   minutesUntilStart: number;
 }
 
+export interface ArenaBrandPalette {
+  primary: string;
+  secondary: string;
+  accent: string;
+  headerBg: string;
+  surfaceBg: string;
+  textOnPrimary: string;
+  paletteName?: string;
+}
+
+export interface BookingParticipant {
+  athleteId: string;
+  name: string;
+  level: AthleteLevel;
+  teamSlot: 1 | 2;
+  confirmedPresent: boolean;
+  invitedBy?: string;
+}
+
+export interface BookingRefereeInvite {
+  athleteId: string;
+  name: string;
+  phone?: string;
+  status: 'invited' | 'accepted';
+  isBroadcastOwner: boolean;
+}
+
+export interface BookingLiveChatMessage {
+  id: string;
+  author: string;
+  role: 'referee_broadcaster' | 'player' | 'spectator';
+  roleLabel: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface BookingLiveBroadcast {
+  isLive: boolean;
+  streamTitle: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  spectatorsCount: number;
+  score1: number;
+  score2: number;
+  targetPoints: number;
+  servingTeam: 1 | 2;
+  serverName: string;
+  startedAt: string;
+  rankingPointsCredited?: boolean;
+  pointHistory: RefereePointEvent[];
+  chatMessages: BookingLiveChatMessage[];
+}
+
 export interface Booking {
   id: string;
   tenantId: string;
@@ -209,6 +262,9 @@ export interface Booking {
   status: 'confirmed' | 'cancelled';
   bookingKind?: 'locacao' | 'aula_experimental';
   createdAt: string;
+  participants?: BookingParticipant[];
+  referee?: BookingRefereeInvite | null;
+  liveBroadcast?: BookingLiveBroadcast;
 }
 
 export interface TeamPair {
@@ -232,7 +288,7 @@ export interface TeamPair {
   registeredAt: string;
 }
 
-export type BracketStage = 'winners' | 'losers' | 'semifinals' | 'grand_final' | 'super_final';
+export type BracketStage = 'winners' | 'losers' | 'semifinals' | 'third_place' | 'grand_final' | 'super_final';
 export type MatchStatus = 'scheduled' | 'in_progress' | 'completed';
 
 export type PointSkillType = 'normal' | 'ace' | 'shark_attack' | 'pingo' | 'erro_adv';
@@ -379,6 +435,9 @@ export interface TenantConfig {
   monthlyPlanPrice?: number; // R$ 99/mês
   ownerName?: string;
   imageUrl?: string;
+  logoUrl?: string;
+  whiteLabelEnabled?: boolean;
+  brandPalette?: ArenaBrandPalette;
 }
 
 export interface LiveChatMessage {

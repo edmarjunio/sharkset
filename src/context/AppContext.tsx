@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import {
+  ArenaBrandPalette,
   AthleteAchievement,
   AthleteGameStats,
   AthleteLevel,
@@ -256,6 +257,23 @@ interface AppContextType {
     updates: { team1?: TeamPair; team2?: TeamPair; courtName?: string; scheduledTime?: string }
   ) => void;
   regenerateBracket: (tournamentId: string, customFormat?: SemiFormat) => void;
+  updateArenaBranding: (
+    targetTenantId: string,
+    branding: {
+      logoUrl?: string;
+      whiteLabelEnabled?: boolean;
+      brandPalette?: ArenaBrandPalette;
+      name?: string;
+      tagline?: string;
+    }
+  ) => void;
+  updateBookingMatchSetup: (bookingId: string, updater: (prev: Booking) => Booking) => void;
+  finishLiveBookingMatchAndCreditRanking: (
+    bookingId: string,
+    winningTeam: 1 | 2
+  ) => { credited: boolean; message: string };
+  activeLiveBroadcastBookingId: string | null;
+  setActiveLiveBroadcastBookingId: (bookingId: string | null) => void;
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
   tenantModalOpen: boolean;
@@ -265,13 +283,13 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  ARENAS: 'sharkset_v2_arenas',
+  ARENAS: 'sharkset_v3_arenas',
   TENANT: 'sharkset_v1_tenant_id',
-  BOOKINGS: 'sharkset_v1_bookings',
+  BOOKINGS: 'sharkset_v2_bookings',
   WAITLIST: 'sharkset_v1_waitlist',
   TOURNAMENTS: 'sharkset_v1_tournaments',
   PAIRS: 'sharkset_v2_pairs',
-  MATCHES: 'sharkset_v3_matches',
+  MATCHES: 'sharkset_v4_matches',
   ATHLETES: 'sharkset_v2_athletes',
   RANKING_LOGS: 'sharkset_v1_ranking_logs',
   CLASS_STUDENTS: 'sharkset_v2_class_students',
@@ -327,6 +345,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Modals & Palettes
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [tenantModalOpen, setTenantModalOpen] = useState(false);
+  const [activeLiveBroadcastBookingId, setActiveLiveBroadcastBookingId] = useState<string | null>(null);
 
   // User quick profile
   const [userProfile, setUserProfileState] = useState<{ name: string; phone: string; level: AthleteLevel }>(() => {
@@ -1807,6 +1826,198 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     ]);
   };
 
+  // White-Label Arena Branding (Logo + Automatic Palette + Website Mode)
+  const updateArenaBranding = (
+    targetTenantId: string,
+    branding: {
+      logoUrl?: string;
+      whiteLabelEnabled?: boolean;
+      brandPalette?: ArenaBrandPalette;
+      name?: string;
+      tagline?: string;
+    }
+  ) => {
+    setArenasMap((prev) => {
+      const current = prev[targetTenantId];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [targetTenantId]: {
+          ...current,
+          ...(branding.name !== undefined ? { name: branding.name } : {}),
+          ...(branding.tagline !== undefined ? { tagline: branding.tagline } : {}),
+          ...(branding.logoUrl !== undefined ? { logoUrl: branding.logoUrl } : {}),
+          ...(branding.whiteLabelEnabled !== undefined
+            ? { whiteLabelEnabled: branding.whiteLabelEnabled }
+            : {}),
+          ...(branding.brandPalette !== undefined
+            ? {
+                brandPalette: branding.brandPalette,
+                primaryColor: branding.brandPalette.primary,
+                accentColor: branding.brandPalette.accent,
+              }
+            : {}),
+        },
+      };
+    });
+  };
+
+  // Update Booking Match Setup (4 Players, Referee Invite, Live Broadcast, Score & Highlighted Chat)
+  const updateBookingMatchSetup = (bookingId: string, updater: (prev: Booking) => Booking) => {
+    setBookings((prev) => prev.map((b) => (b.id === bookingId ? updater(b) : b)));
+  };
+
+  // Finish Live Booking Match & Credit Ranking Points if 4 Players are Identified & Present + Live Broadcast
+  const finishLiveBookingMatchAndCreditRanking = (
+    bookingId: string,
+    winningTeam: 1 | 2
+  ): { credited: boolean; message: string } => {
+    const target = bookings.find((b) => b.id === bookingId);
+    if (!target) {
+      return { credited: false, message: 'Partida não encontrada.' };
+    }
+    const participants = target.participants || [];
+    const confirmedPlayers = participants.filter((p) => p.confirmedPresent);
+    const team1Players = confirmedPlayers.filter((p) => p.teamSlot === 1);
+    const team2Players = confirmedPlayers.filter((p) => p.teamSlot === 2);
+
+    if (confirmedPlayers.length < 4 || team1Players.length < 2 || team2Players.length < 2) {
+      return {
+        credited: false,
+        message:
+          'Para valer pontos e status no Ranking, os 4 jogadores da partida (2 em cada dupla) precisam estar identificados e confirmados presentes.',
+      };
+    }
+
+    if (!target.liveBroadcast) {
+      return {
+        credited: false,
+        message: 'A partida precisa ter transmissão ao vivo ativa (Prova Real) para pontuar no Ranking.',
+      };
+    }
+
+    if (target.liveBroadcast.rankingPointsCredited) {
+      return {
+        credited: false,
+        message: 'Os pontos desta transmissão ao vivo já foram creditados no Ranking Oficial!',
+      };
+    }
+
+    const s1 = target.liveBroadcast.score1;
+    const s2 = target.liveBroadcast.score2;
+    const winScore = winningTeam === 1 ? Math.max(s1, 18) : Math.max(s2, 18);
+    const loseScore = winningTeam === 1 ? s2 : s1;
+    const finalS1 = winningTeam === 1 ? winScore : loseScore;
+    const finalS2 = winningTeam === 2 ? winScore : loseScore;
+
+    const winnerPlayers = winningTeam === 1 ? team1Players : team2Players;
+    const loserPlayers = winningTeam === 1 ? team2Players : team1Players;
+
+    const calc = calculateFutevoleiMatchPoints({
+      winnerLevels: winnerPlayers.map((p) => p.level),
+      loserLevels: loserPlayers.map((p) => p.level),
+      winnerScore: winScore,
+      loserScore: loseScore,
+      stage: 'winners',
+    });
+
+    const history = target.liveBroadcast.pointHistory || [];
+    const acesCount = history.filter((h) => h.skill === 'ace').length;
+    const sharkCount = history.filter((h) => h.skill === 'shark_attack').length;
+    const pingoCount = history.filter((h) => h.skill === 'pingo').length;
+
+    setAthletes((prev) =>
+      prev.map((ath) => {
+        const isWin = winnerPlayers.some(
+          (p) => p.athleteId === ath.id || p.name.toLowerCase() === ath.name.toLowerCase()
+        );
+        const isLose = loserPlayers.some(
+          (p) => p.athleteId === ath.id || p.name.toLowerCase() === ath.name.toLowerCase()
+        );
+        if (!isWin && !isLose) return ath;
+
+        const ptsDelta = isWin ? calc.winnerPoints : calc.loserPoints;
+        const oppLabel = (isWin ? loserPlayers : winnerPlayers).map((p) => p.name).join(' & ');
+        const currentStats = ath.stats || {
+          aces: 10,
+          errors: 4,
+          sharkAttacks: 4,
+          pingoPoints: 12,
+          defenses: 20,
+        };
+
+        return {
+          ...ath,
+          points: ath.points + ptsDelta,
+          lastPointsDelta: ptsDelta,
+          lastMatchSummary: `[PROVA REAL LIVE] ${isWin ? 'Vitória' : 'Jogo'} ${winScore}x${loseScore} vs ${oppLabel} (+${ptsDelta} pts)`,
+          matchesPlayed: ath.matchesPlayed + 1,
+          wins: isWin ? ath.wins + 1 : ath.wins,
+          stats: {
+            ...currentStats,
+            aces: currentStats.aces + (isWin ? Math.max(1, acesCount) : 0),
+            sharkAttacks: currentStats.sharkAttacks + (isWin ? Math.max(1, sharkCount) : 0),
+            pingoPoints: currentStats.pingoPoints + (isWin ? Math.max(1, pingoCount) : 1),
+            defenses: currentStats.defenses + 3,
+          },
+        };
+      })
+    );
+
+    const newLog: RankingMatchLog = {
+      id: `rlog-live-${Date.now()}`,
+      tournamentId: target.id,
+      tournamentName: `Transmissão Ao Vivo (Prova Real 4 Atletas) · ${target.arenaName || tenant.name}`,
+      matchNumber: 1,
+      winnerNames: winnerPlayers.map((p) => p.name).join(' & '),
+      loserNames: loserPlayers.map((p) => p.name).join(' & '),
+      score: `${winScore} x ${loseScore}`,
+      winnerLevelAvg: winnerPlayers.map((p) => ATHLETE_LEVEL_LABELS[p.level]).join(' + '),
+      loserLevelAvg: loserPlayers.map((p) => ATHLETE_LEVEL_LABELS[p.level]).join(' + '),
+      pointsAwardedWinner: calc.winnerPoints,
+      pointsAwardedLoser: calc.loserPoints,
+      explanation: `Prova Real por Vídeo Ao Vivo (4 jogadores identificados em quadra${
+        target.referee ? ` · Árbitro: ${target.referee.name}` : ''
+      }). ${calc.explanation}`,
+      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setRankingLogs((prev) => [newLog, ...prev]);
+
+    setBookings((prev) =>
+      prev.map((b) => {
+        if (b.id !== bookingId || !b.liveBroadcast) return b;
+        return {
+          ...b,
+          liveBroadcast: {
+            ...b.liveBroadcast,
+            score1: finalS1,
+            score2: finalS2,
+            rankingPointsCredited: true,
+            chatMessages: [
+              {
+                id: `bchat-end-${Date.now()}`,
+                author: target.referee?.name || 'Sistema Oficial SHARKSET',
+                role: 'referee_broadcaster',
+                roleLabel: 'ÁRBITRO & PROVA REAL RANKING',
+                text: `🏆 FIM DE JOGO (${finalS1} x ${finalS2})! Vitória de ${winnerPlayers
+                  .map((p) => p.name)
+                  .join(' & ')}! +${calc.winnerPoints} pts e estatísticas creditados no Ranking Oficial via Prova Real Ao Vivo!`,
+                timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+              },
+              ...b.liveBroadcast.chatMessages,
+            ],
+          },
+        };
+      })
+    );
+
+    return {
+      credited: true,
+      message: `Vitória de ${winnerPlayers.map((p) => p.name).join(' & ')} (${winScore}x${loseScore}) validada! +${calc.winnerPoints} pts e stats creditados no Ranking para os 4 atletas!`,
+    };
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1881,6 +2092,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleResetMatch,
         handleOverrideMatch,
         regenerateBracket,
+        updateArenaBranding,
+        updateBookingMatchSetup,
+        finishLiveBookingMatchAndCreditRanking,
+        activeLiveBroadcastBookingId,
+        setActiveLiveBroadcastBookingId,
         commandPaletteOpen,
         setCommandPaletteOpen,
         tenantModalOpen,

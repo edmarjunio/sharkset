@@ -54,19 +54,16 @@ export const SmartNotificationBanner: React.FC = () => {
     firebaseUserEmail,
   } = useSharkStore();
 
-  // 1. Detect vacant court slots in the next 2 hours using Clean Code engine
   const vacantSlotsNext2h = React.useMemo(
     () => findVacantSlotsInNext2Hours(slots, tenant.courts, referenceClockTime),
     [slots, tenant.courts, referenceClockTime]
   );
 
-  // 2. Detect bookings starting in ~15 minutes
   const bookingsStartingIn15m = React.useMemo(
     () => findBookingsStartingSoon(bookings, referenceClockTime),
     [bookings, referenceClockTime]
   );
 
-  // 3. Detect students whose monthly tuition is due today
   const studentsDueToday = React.useMemo(
     () => findStudentsWithTuitionDueToday(classStudents),
     [classStudents]
@@ -177,27 +174,27 @@ export const SmartNotificationBanner: React.FC = () => {
   const getBadgeStyle = (type: string) => {
     switch (type) {
       case 'vacant_2h':
-        return 'bg-amber-400 text-slate-950';
+        return 'bg-[#0987CE] text-white';
       case 'waitlist_freed':
-        return 'bg-emerald-400 text-slate-950';
+        return 'bg-[#12C7BB] text-slate-950';
       case 'match_10pts_left':
-        return 'bg-rose-500 text-white';
+        return 'bg-rose-600 text-white';
       case 'tuition_due_today':
-        return 'bg-indigo-400 text-slate-950';
+        return 'bg-[#145A9B] text-white';
       case 'booking_15min':
       default:
-        return 'bg-sky-400 text-slate-950';
+        return 'bg-[#5BC3FA] text-slate-950';
     }
   };
 
   return (
-    <section className="bg-slate-950 border-b border-slate-800 text-white">
+    <section className="bg-[#030B17] border-b border-[#145A9B]/60 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 space-y-2.5">
         {/* TOP VISUAL BADGE & CALLOUT: Vacant Court Slot in the Next 2 Hours */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-amber-500/15 via-slate-900 to-slate-900 border border-amber-400/40 rounded-xl px-4 py-2.5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-[#071D3D] via-[#0B254E]/80 to-[#030B17] border border-[#145A9B] rounded-xl px-4 py-2.5">
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-black uppercase tracking-tight text-[11px] shadow-xs animate-pulse">
-              <Flame className="w-3.5 h-3.5 fill-slate-950" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-black uppercase tracking-tight text-[11px] shadow-xs">
+              <Flame className="w-3.5 h-3.5" />
               {vacantSlotsNext2h.length > 0
                 ? `${vacantSlotsNext2h.length} HORÁRIO(S) VAGO(S) NAS PRÓXIMAS 2H`
                 : 'AGENDA NAS PRÓXIMAS 2H'}
@@ -208,11 +205,11 @@ export const SmartNotificationBanner: React.FC = () => {
                 <span className="font-extrabold text-white">
                   {primaryVacant.court.name.split(' - ')[0]}
                 </span>
-                <span className="text-amber-400 font-mono font-bold">
+                <span className="text-[#5BC3FA] font-mono font-bold">
                   às {primaryVacant.slot.startTime} (em {primaryVacant.minutesUntilStart} min)
                 </span>
                 <span className="text-slate-400">·</span>
-                <span className="text-emerald-400 font-mono font-bold">
+                <span className="text-[#12C7BB] font-mono font-bold">
                   R$ {primaryVacant.slot.price.toFixed(2)}
                 </span>
                 <span className="hidden sm:inline text-slate-300">
@@ -227,9 +224,8 @@ export const SmartNotificationBanner: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {/* Reference clock selector so user can test 2h vacancy & 15m reminder at any hour */}
-            <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px]">
-              <Clock className="w-3 h-3 text-amber-400" />
+            <div className="flex items-center gap-1 bg-[#030B17] border border-[#145A9B] rounded-lg px-2 py-1 text-[11px]">
+              <Clock className="w-3 h-3 text-[#0987CE]" />
               <span className="text-slate-400">Agora:</span>
               <select
                 value={referenceClockTime}
@@ -237,19 +233,19 @@ export const SmartNotificationBanner: React.FC = () => {
                 className="bg-transparent text-white font-mono font-bold focus:outline-none cursor-pointer"
                 title="Horário de referência para radar de 2h e alerta de 15 min"
               >
-                <option value="16:45" className="bg-slate-900">16:45</option>
-                <option value="17:45" className="bg-slate-900">17:45</option>
-                <option value="18:45" className="bg-slate-900">18:45</option>
-                <option value="19:45" className="bg-slate-900">19:45</option>
+                <option value="16:45" className="bg-[#030B17]">16:45</option>
+                <option value="17:45" className="bg-[#030B17]">17:45</option>
+                <option value="18:45" className="bg-[#030B17]">18:45</option>
+                <option value="19:45" className="bg-[#030B17]">19:45</option>
               </select>
             </div>
 
             {primaryVacant && (
               <button
                 onClick={handleQuickFillVacantSlot}
-                className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                className="px-3 py-1.5 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
-                <Zap className="w-3.5 h-3.5 fill-slate-950" />
+                <Zap className="w-3.5 h-3.5" />
                 Preencher Horário ({primaryVacant.slot.startTime})
               </button>
             )}
@@ -258,31 +254,31 @@ export const SmartNotificationBanner: React.FC = () => {
               onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
               className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 border ${
                 notificationDrawerOpen
-                  ? 'bg-white text-slate-950 border-white'
-                  : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-700'
+                  ? 'bg-[#0987CE] text-white border-[#0987CE]'
+                  : 'bg-[#030B17] hover:bg-[#0B254E] text-white border-[#145A9B]'
               }`}
             >
-              <BellRing className="w-3.5 h-3.5 text-amber-400" />
+              <BellRing className="w-3.5 h-3.5 text-[#12C7BB]" />
               Central Push ({unreadCount})
             </button>
           </div>
         </div>
 
-        {/* EXPANDABLE SMART PUSH NOTIFICATION DRAWER (All 4 Smart Triggers + Browser Push + Firestore Sync) */}
+        {/* EXPANDABLE SMART PUSH NOTIFICATION DRAWER */}
         {notificationDrawerOpen && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4 animate-in fade-in">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4 animate-in fade-in">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#145A9B]/60">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[10px] uppercase">
+                  <span className="px-2 py-0.5 rounded bg-[#0987CE] text-white font-black text-[10px] uppercase">
                     SHARK SET SMART PUSH ENGINE
                   </span>
                   <span className="text-xs font-bold text-white">
                     Notificações em Tempo Real (Quadra Vaga 2h · Fila de Espera · Jogo Faltando 10 Pts · Partida em 15 Min)
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  Disparo integrado via Push Notification do navegador, API Node.js (<code className="text-amber-300">/api/notifications/dispatch</code>), Cloud Firestore e WhatsApp 1-clique.
+                <p className="text-[11px] text-slate-300">
+                  Disparo integrado via Push Notification do navegador, Cloud Firestore e WhatsApp 1-clique.
                 </p>
               </div>
 
@@ -291,8 +287,8 @@ export const SmartNotificationBanner: React.FC = () => {
                   onClick={() => enablePushNotifications()}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                     pushPermission === 'granted'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+                      ? 'bg-[#12C7BB]/20 text-[#12C7BB] border border-[#12C7BB]/40'
+                      : 'bg-[#0987CE] hover:bg-[#0772b0] text-white'
                   }`}
                 >
                   <Bell className="w-3.5 h-3.5" />
@@ -304,26 +300,26 @@ export const SmartNotificationBanner: React.FC = () => {
                 {firebaseUserEmail ? (
                   <button
                     onClick={() => signOutFirebase()}
-                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 cursor-pointer flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#030B17] hover:bg-[#0B254E] text-[#12C7BB] border border-[#145A9B] cursor-pointer flex items-center gap-1.5"
                     title="Sincronizado com Cloud Firestore"
                   >
-                    <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+                    <Cloud className="w-3.5 h-3.5 text-[#12C7BB]" />
                     Firestore: {firebaseUserEmail.split('@')[0]} (Sair)
                   </button>
                 ) : (
                   <button
                     onClick={() => signInWithGooglePopup().catch(() => {})}
-                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#030B17] hover:bg-[#0B254E] text-slate-200 border border-[#145A9B] cursor-pointer flex items-center gap-1.5"
                     title="Autenticar para gravar também no Cloud Firestore"
                   >
-                    <Cloud className="w-3.5 h-3.5 text-amber-400" />
+                    <Cloud className="w-3.5 h-3.5 text-[#0987CE]" />
                     Conectar Cloud Firestore
                   </button>
                 )}
 
                 <button
                   onClick={markAllNotificationsAsRead}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#030B17] hover:bg-[#0B254E] text-slate-300 border border-[#145A9B] cursor-pointer flex items-center gap-1"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
                   Marcar Lidas
@@ -338,13 +334,12 @@ export const SmartNotificationBanner: React.FC = () => {
               </div>
             </div>
 
-            {/* 1-Click Instant Test/Dispatch Bar for the 5 Smart Notification Rules */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
               <button
                 onClick={handleTriggerVacant2hPush}
-                className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800/90 border border-amber-400/30 text-left transition-all cursor-pointer group"
+                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#0987CE]/50 text-left transition-all cursor-pointer group"
               >
-                <div className="flex items-center justify-between text-[10px] font-black text-amber-400 uppercase mb-1">
+                <div className="flex items-center justify-between text-[10px] font-black text-[#0987CE] uppercase mb-1">
                   <span>1. Horário Vago (2h)</span>
                   <Flame className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
@@ -356,9 +351,9 @@ export const SmartNotificationBanner: React.FC = () => {
 
               <button
                 onClick={handleTriggerWaitlistPush}
-                className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800/90 border border-emerald-400/30 text-left transition-all cursor-pointer group"
+                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#12C7BB]/50 text-left transition-all cursor-pointer group"
               >
-                <div className="flex items-center justify-between text-[10px] font-black text-emerald-400 uppercase mb-1">
+                <div className="flex items-center justify-between text-[10px] font-black text-[#12C7BB] uppercase mb-1">
                   <span>2. Push Fila Espera</span>
                   <Users className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
@@ -370,10 +365,10 @@ export const SmartNotificationBanner: React.FC = () => {
 
               <button
                 onClick={handleTrigger10PtsMatchPush}
-                className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800/90 border border-rose-400/30 text-left transition-all cursor-pointer group"
+                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-rose-500/50 text-left transition-all cursor-pointer group"
               >
                 <div className="flex items-center justify-between text-[10px] font-black text-rose-400 uppercase mb-1">
-                  <span>3. Jogo Faltando 10 Pts</span>
+                  <span>3. Jogo Ao Vivo (10 Pts)</span>
                   <Trophy className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
                 <p className="text-xs font-bold text-white">Chamar Próxima Dupla</p>
@@ -384,9 +379,9 @@ export const SmartNotificationBanner: React.FC = () => {
 
               <button
                 onClick={handleTrigger15MinBookingPush}
-                className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800/90 border border-sky-400/30 text-left transition-all cursor-pointer group"
+                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#5BC3FA]/50 text-left transition-all cursor-pointer group"
               >
-                <div className="flex items-center justify-between text-[10px] font-black text-sky-400 uppercase mb-1">
+                <div className="flex items-center justify-between text-[10px] font-black text-[#5BC3FA] uppercase mb-1">
                   <span>4. Partida em 15 Min</span>
                   <Clock className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
@@ -398,9 +393,9 @@ export const SmartNotificationBanner: React.FC = () => {
 
               <button
                 onClick={handleTriggerTuitionDuePush}
-                className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800/90 border border-indigo-400/40 text-left transition-all cursor-pointer group"
+                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-left transition-all cursor-pointer group"
               >
-                <div className="flex items-center justify-between text-[10px] font-black text-indigo-400 uppercase mb-1">
+                <div className="flex items-center justify-between text-[10px] font-black text-[#0987CE] uppercase mb-1">
                   <span>5. Vencimento Aula</span>
                   <Bell className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
@@ -418,8 +413,8 @@ export const SmartNotificationBanner: React.FC = () => {
                   key={item.id}
                   className={`p-3 rounded-xl border transition-all flex flex-col justify-between gap-2 ${
                     item.read
-                      ? 'bg-slate-950/60 border-slate-800/80 text-slate-300'
-                      : 'bg-slate-950 border-amber-400/40 text-white shadow-xs'
+                      ? 'bg-[#030B17]/60 border-[#145A9B]/40 text-slate-300'
+                      : 'bg-[#030B17] border-[#0987CE] text-white shadow-xs'
                   }`}
                 >
                   <div className="space-y-1">
@@ -446,7 +441,7 @@ export const SmartNotificationBanner: React.FC = () => {
                     <p className="text-[11px] text-slate-300 leading-relaxed">{item.body}</p>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#145A9B]/40">
                     {item.actionTargetTab && (
                       <button
                         onClick={() => {
@@ -454,7 +449,7 @@ export const SmartNotificationBanner: React.FC = () => {
                           setActiveTab(item.actionTargetTab!);
                           setNotificationDrawerOpen(false);
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] cursor-pointer flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-[11px] cursor-pointer flex items-center gap-1"
                       >
                         <Sparkles className="w-3 h-3" />
                         {item.actionLabel || 'Abrir Agora'}
@@ -466,7 +461,7 @@ export const SmartNotificationBanner: React.FC = () => {
                         href={item.whatsappUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-bold text-[11px] flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-[#12C7BB]/20 hover:bg-[#12C7BB]/30 text-[#12C7BB] border border-[#12C7BB]/30 font-bold text-[11px] flex items-center gap-1"
                       >
                         <MessageSquare className="w-3 h-3" />
                         Enviar Push WhatsApp

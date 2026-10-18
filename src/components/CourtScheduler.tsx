@@ -29,6 +29,7 @@ import {
 } from '../data/initialData';
 import { CourtPricingAdminPanel } from './CourtPricingAdminPanel';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
+import { ArenaWhiteLabelCustomizerModal } from './ArenaWhiteLabelCustomizerModal';
 import { useSharkStore } from '../store/useSharkStore';
 import {
   Check,
@@ -48,6 +49,10 @@ import {
   CreditCard,
   BellRing,
   UserCheck,
+  Video,
+  Palette,
+  Radio,
+  Crown,
 } from 'lucide-react';
 
 export const CourtScheduler: React.FC = () => {
@@ -84,7 +89,10 @@ export const CourtScheduler: React.FC = () => {
     registeredPairs,
     registerDouble,
     athletes,
+    setActiveLiveBroadcastBookingId,
   } = useApp();
+
+  const [showWhiteLabelModal, setShowWhiteLabelModal] = useState(false);
 
   // Filter by specific court inside the arena agenda
   const [selectedCourtId, setSelectedCourtId] = useState<string>('all');
@@ -476,116 +484,302 @@ export const CourtScheduler: React.FC = () => {
         </div>
       )}
 
-      {/* Arena Overview Header — High-Contrast SHARK SET Design with Arena Cover Image */}
-      <div className="bg-slate-950 text-white border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+      {/* Arena Overview Header — Supports White-Label Arena Website Mode (Logo + Extracted Palette + DESENVOLVIDO POR SHARKSET) */}
+      <div
+        className="text-white border rounded-3xl overflow-hidden shadow-lg transition-all"
+        style={{
+          backgroundColor:
+            tenant.whiteLabelEnabled && tenant.brandPalette
+              ? tenant.brandPalette.headerBg
+              : '#0F172A',
+          borderColor:
+            tenant.whiteLabelEnabled && tenant.brandPalette
+              ? tenant.brandPalette.primary
+              : '#1E293B',
+        }}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-12">
-          {/* Arena Photo Banner */}
-          <div className="lg:col-span-4 relative min-h-[190px] bg-slate-900">
+          {/* Arena Photo Banner + Custom Arena Logo Spotlight */}
+          <div className="lg:col-span-4 relative min-h-[210px] bg-slate-900">
             <img
               src={
                 tenant.imageUrl ||
                 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=1000&q=85'
               }
               alt={tenant.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover opacity-85"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
-            <div className="absolute top-3 left-3">
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/35 to-transparent" />
+            <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
               <button
                 onClick={() => setActiveTab('arenas_directory')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950/90 hover:bg-slate-900 text-amber-400 text-xs font-black border border-white/15 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950/90 hover:bg-slate-900 text-white text-xs font-black border border-white/15 cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                Trocar Arena
+                Todas Arenas
               </button>
+
+              <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 backdrop-blur-md text-[10px] font-black tracking-widest uppercase text-white/90 border border-white/15">
+                DESENVOLVIDO POR SHARKSET
+              </span>
             </div>
-            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white">
-              <span className="font-black text-amber-400">★ {tenant.rating.toFixed(1)} Oficial</span>
-              <span className="font-mono font-bold text-emerald-300">{tenant.distanceKm.toFixed(1)} km de você</span>
+
+            {/* Prominent Arena Custom Logo if uploaded/active */}
+            <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
+              {tenant.logoUrl ? (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={tenant.logoUrl}
+                    alt={`Logo ${tenant.name}`}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain bg-white/15 backdrop-blur-md p-1.5 border-2 shadow-xl"
+                    style={{
+                      borderColor: tenant.brandPalette?.primary || '#FF6B00',
+                    }}
+                  />
+                  <div className="text-xs text-white">
+                    <span className="px-2 py-0.5 rounded bg-white/20 text-[10px] font-black uppercase block w-fit mb-1">
+                      Site Oficial da Arena
+                    </span>
+                    <span className="font-black text-amber-300">★ {tenant.rating.toFixed(1)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between w-full text-xs text-white">
+                  <span className="font-black text-orange-400">★ {tenant.rating.toFixed(1)} Oficial</span>
+                  <span className="font-mono font-bold text-emerald-300">
+                    {tenant.distanceKm.toFixed(1)} km de você
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Arena Info & Sub-Navigation */}
+          {/* Arena Info, White-Label Customizer Button & Sub-Navigation */}
           <div className="lg:col-span-8 p-6 flex flex-col justify-between space-y-5">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                  <span className="font-semibold">{tenant.city}, {tenant.state}</span>
-                  <span aria-hidden="true" className="text-slate-600">·</span>
-                  <span>Funcionamento: <strong className="text-white">{tenant.operatingHours.open} às {tenant.operatingHours.close}</strong></span>
-                  <span aria-hidden="true" className="text-slate-600">·</span>
-                  <span className="font-extrabold text-emerald-400">{tenant.courts.length} Quadras Disponíveis</span>
+                  <span className="font-semibold">
+                    {tenant.city}, {tenant.state}
+                  </span>
+                  <span aria-hidden="true" className="text-slate-600">
+                    ·
+                  </span>
+                  <span>
+                    Funcionamento:{' '}
+                    <strong className="text-white">
+                      {tenant.operatingHours.open} às {tenant.operatingHours.close}
+                    </strong>
+                  </span>
+                  <span aria-hidden="true" className="text-slate-600">
+                    ·
+                  </span>
+                  <span className="font-extrabold text-emerald-400">
+                    {tenant.courts.length} Quadras Disponíveis
+                  </span>
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                   {tenant.name}
                 </h1>
-                <p className="text-xs text-slate-400">{tenant.address} · {tenant.amenities.join(' · ')}</p>
+                <p className="text-xs text-slate-300">
+                  {tenant.tagline ? `${tenant.tagline} · ` : ''}
+                  {tenant.address} · {tenant.amenities.join(' · ')}
+                </p>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 text-xs space-y-1 shrink-0">
-                <span className="text-amber-400 font-bold uppercase tracking-wider block text-[10px]">
-                  Reserva sem Dúvidas (2 Cliques):
-                </span>
-                <span className="font-extrabold text-white text-xs block">
-                  1º Clique no Horário Livre · 2º Pague no PIX/Cartão
+              {/* White-Label Arena Logo & Palette Customizer Trigger */}
+              <div className="flex flex-col gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowWhiteLabelModal(true)}
+                  className="px-4 py-2.5 rounded-2xl text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all hover:brightness-110"
+                  style={{
+                    backgroundColor:
+                      tenant.whiteLabelEnabled && tenant.brandPalette
+                        ? tenant.brandPalette.primary
+                        : '#FF6B00',
+                  }}
+                >
+                  <Palette className="w-4 h-4" />
+                  {tenant.whiteLabelEnabled
+                    ? 'Personalizar Logo & Paleta da Arena'
+                    : 'Colocar Logo da Arena (Site Próprio)'}
+                </button>
+                <span className="text-[10px] text-slate-300 text-center font-semibold">
+                  A página fica toda na paleta da logo enviada · <strong className="text-white">DESENVOLVIDO POR SHARKSET</strong>
                 </span>
               </div>
             </div>
 
             {/* High-Visibility Sub-Navigation Inside the Arena */}
-            <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setArenaSubTab('agenda')}
-                className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-                  arenaSubTab === 'agenda'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm'
-                    : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                1. AGENDAR HORÁRIO & PAGAR ({tenant.courts.length} Quadras)
-              </button>
-
-              <button
-                onClick={() => setArenaSubTab('aulas')}
-                className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-                  arenaSubTab === 'aulas'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm'
-                    : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
-                }`}
-              >
-                <GraduationCap className="w-4 h-4" />
-                2. AULAS & MENSALIDADES ({arenaStudents.length} Alunos)
-              </button>
-
-              <button
-                onClick={() => setArenaSubTab('campeonatos')}
-                className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-                  arenaSubTab === 'campeonatos'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm'
-                    : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
-                }`}
-              >
-                <Trophy className="w-4 h-4" />
-                3. CAMPEONATOS DA ARENA ({arenaTournaments.length})
-              </button>
-
-              <button
-                onClick={() => setArenaSubTab('config_dono')}
-                className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-                  arenaSubTab === 'config_dono'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm'
-                    : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                4. CONFIGURAR VALORES & HORÁRIOS (DONO)
-              </button>
+            <div className="pt-3 border-t border-white/10 flex flex-wrap items-center gap-2">
+              {(
+                [
+                  {
+                    id: 'agenda',
+                    icon: Calendar,
+                    label: `1. AGENDAR HORÁRIO & TRANSMITIR (${tenant.courts.length} Quadras)`,
+                  },
+                  {
+                    id: 'aulas',
+                    icon: GraduationCap,
+                    label: `2. AULAS & MENSALIDADES (${arenaStudents.length} Alunos)`,
+                  },
+                  {
+                    id: 'campeonatos',
+                    icon: Trophy,
+                    label: `3. CAMPEONATOS DA ARENA (${arenaTournaments.length})`,
+                  },
+                  {
+                    id: 'config_dono',
+                    icon: Settings,
+                    label: '4. CONFIGURAR VALORES & HORÁRIOS (DONO)',
+                  },
+                ] as const
+              ).map((tab) => {
+                const Icon = tab.icon;
+                const isActive = arenaSubTab === tab.id;
+                const activeBg =
+                  tenant.whiteLabelEnabled && tenant.brandPalette
+                    ? tenant.brandPalette.primary
+                    : '#FF6B00';
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setArenaSubTab(tab.id)}
+                    className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                      isActive
+                        ? 'text-white shadow-sm'
+                        : 'bg-white/10 text-slate-200 hover:text-white hover:bg-white/15 border border-white/10'
+                    }`}
+                    style={isActive ? { backgroundColor: activeBg } : undefined}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
+
+      {/* ===================================================================== */}
+      {/* LIVE BROADCAST, INVITED MATCHES, 4 PLAYERS & REFEREE HUB IN ARENA     */}
+      {/* ===================================================================== */}
+      {arenaSubTab === 'agenda' && (
+        <div className="bg-white border-2 border-orange-200 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 text-xs font-black text-orange-600 uppercase tracking-wider">
+                <Radio className="w-4 h-4 animate-pulse" />
+                TRANSMISSÃO AO VIVO DIRETO PELO SITE · PROVA REAL 4 ATLETAS VALE RANKING
+              </div>
+              <h2 className="text-base sm:text-lg font-black text-slate-900">
+                Seus Agendamentos e Jogos Convidados para Transmitir Ao Vivo ou Arbitrar
+              </h2>
+              <p className="text-xs text-slate-600">
+                Marque um horário ou acesse um jogo em que você foi convidado no mesmo horário. Com os <strong>4 jogadores identificados</strong>, a transmissão conta para os status do Ranking e libera o convite de <strong>Árbitro da Partida</strong> (altera placar, comanda a live e tem comentário destacado).
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {bookings
+              .filter((b) => b.status === 'confirmed')
+              .slice(0, 3)
+              .map((bk) => {
+                const parts = bk.participants || [];
+                const confirmed4 = parts.filter((p) => p.confirmedPresent).length === 4;
+                const isOwner = bk.customerName.toLowerCase() === userProfile.name.toLowerCase();
+                const isInvited = parts.some(
+                  (p) => p.name.toLowerCase() === userProfile.name.toLowerCase()
+                );
+                return (
+                  <div
+                    key={bk.id}
+                    onClick={() => setActiveLiveBroadcastBookingId(bk.id)}
+                    className="p-4 rounded-2xl bg-slate-50 hover:bg-orange-50/40 border border-slate-200 hover:border-orange-400 transition-all cursor-pointer flex flex-col justify-between gap-3 group"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 ${
+                            bk.liveBroadcast?.isLive
+                              ? 'bg-red-600 text-white'
+                              : 'bg-slate-900 text-white'
+                          }`}
+                        >
+                          <Radio className="w-3 h-3 animate-pulse" />
+                          {bk.liveBroadcast?.isLive
+                            ? `AO VIVO · ${bk.liveBroadcast.spectatorsCount} assistindo`
+                            : `${bk.startTime} às ${bk.endTime}`}
+                        </span>
+                        <span className="text-[10px] font-extrabold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md">
+                          {isOwner
+                            ? '✓ Seu Agendamento'
+                            : isInvited
+                            ? '🤝 Você foi Convidado'
+                            : `Reserva: ${bk.customerName}`}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="text-sm font-black text-slate-900 group-hover:text-orange-600 transition-colors">
+                          {bk.courtName}
+                        </div>
+                        <div className="text-xs text-slate-600 mt-0.5">
+                          {parts.length >= 4
+                            ? `${parts[0].name.split(' ')[0]} & ${parts[1].name.split(' ')[0]} vs ${parts[2].name.split(' ')[0]} & ${parts[3].name.split(' ')[0]}`
+                            : `Titular: ${bk.customerName} — Clique para identificar os 4 atletas`}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold">
+                        <span
+                          className={`px-2 py-0.5 rounded-md ${
+                            confirmed4
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {confirmed4
+                            ? '✅ 4 Atletas (Vale Ranking)'
+                            : `👥 ${parts.filter((p) => p.confirmedPresent).length}/4 Atletas`}
+                        </span>
+                        {bk.referee ? (
+                          <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-900 flex items-center gap-1">
+                            <Crown className="w-3 h-3 text-orange-600" />
+                            Árbitro: {bk.referee.name}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700">
+                            + Convidar Árbitro
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveLiveBroadcastBookingId(bk.id);
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      {bk.liveBroadcast?.isLive
+                        ? 'Abrir Transmissão, Placar & Chat do Árbitro'
+                        : 'Transmitir Ao Vivo / Configurar 4 Atletas & Árbitro'}
+                    </button>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
 
       {/* ===================================================================== */}
       {/* SUB-TAB 1: AGENDA DA ARENA (UMA AGENDA PARA CADA QUADRA)              */}
@@ -1639,15 +1833,28 @@ export const CourtScheduler: React.FC = () => {
                     </div>
 
                     {currentBooking && (
-                      <button
-                        type="button"
-                        onClick={() => handleCancelCurrentSlotBooking(currentBooking.id)}
-                        className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-                        title="Cancela esta reserva e dispara notificação imediata para o 1º da Lista de Espera"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Cancelar Reserva & Notificar 1º da Fila
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setWaitlistSlot(null);
+                            setActiveLiveBroadcastBookingId(currentBooking.id);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-black text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          Ver/Alterar Partida & Transmitir Ao Vivo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelCurrentSlotBooking(currentBooking.id)}
+                          className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                          title="Cancela esta reserva e dispara notificação imediata para o 1º da Lista de Espera"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Cancelar Reserva
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -2287,6 +2494,10 @@ export const CourtScheduler: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {showWhiteLabelModal && (
+        <ArenaWhiteLabelCustomizerModal onClose={() => setShowWhiteLabelModal(false)} />
       )}
     </div>
   );

@@ -59,6 +59,7 @@ export const MyBookings: React.FC = () => {
     removeAthleteMedia,
     addAthleteAchievement,
     removeAthleteAchievement,
+    setActiveLiveBroadcastBookingId,
   } = useApp();
 
   const [cancelToast, setCancelToast] = useState<string | null>(null);
@@ -1060,11 +1061,38 @@ export const MyBookings: React.FC = () => {
                     </div>
                     <span className="text-slate-300">·</span>
                     <span className="font-mono font-bold text-slate-900">R$ {booking.price.toFixed(2)}</span>
+                    {booking.participants && booking.participants.length > 0 && (
+                      <>
+                        <span className="text-slate-300">·</span>
+                        <span className="font-bold text-emerald-700">
+                          ✅ {booking.participants.filter((p) => p.confirmedPresent).length}/4 Atletas (Vale Ranking)
+                        </span>
+                      </>
+                    )}
+                    {booking.referee && (
+                      <>
+                        <span className="text-slate-300">·</span>
+                        <span className="font-bold text-orange-700">
+                          👑 Árbitro: {booking.referee.name}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 {!isCancelled && (
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setActiveLiveBroadcastBookingId(booking.id)}
+                      className="px-3.5 py-1.5 text-xs font-black text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      {booking.liveBroadcast?.isLive
+                        ? `Ao Vivo (${booking.liveBroadcast.spectatorsCount}) · Abrir Estúdio`
+                        : 'Transmitir Ao Vivo / 4 Atletas & Árbitro'}
+                    </button>
+
                     <a
                       href={waLink}
                       target="_blank"

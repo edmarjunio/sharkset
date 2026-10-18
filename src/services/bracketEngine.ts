@@ -101,7 +101,7 @@ export function createFourPairsBracket(
         id: `${tournamentId}-m4`,
         tournamentId,
         matchNumber: 3,
-        stage: 'losers',
+        stage: 'third_place',
         round: 2,
         stageName: 'Disputa de 3º Lugar - Jogo 3',
         status: 'scheduled',
@@ -476,7 +476,7 @@ function createBuraco4BracketWithSlots(
         winnerDestinationSlot: 'team2',
       },
 
-      // SEMIFINAIS DIRETAS (MATA-MATA PURO: PERDEU TÁ FORA!)
+      // SEMIFINAIS DIRETAS (MATA-MATA PURO: VENCEU VAI PRA FINAL · PERDEU VAI PRA DISPUTA DE 3º LUGAR)
       {
         id: `${tournamentId}-m11`,
         tournamentId,
@@ -489,6 +489,8 @@ function createBuraco4BracketWithSlots(
         courtName: 'Quadra 1 - Central',
         nextMatchWinnerId: `${tournamentId}-m13`,
         winnerDestinationSlot: 'team1',
+        nextMatchLoserId: `${tournamentId}-m3rd`,
+        loserDestinationSlot: 'team1',
       },
       {
         id: `${tournamentId}-m12`,
@@ -502,18 +504,33 @@ function createBuraco4BracketWithSlots(
         courtName: 'Quadra 2',
         nextMatchWinnerId: `${tournamentId}-m13`,
         winnerDestinationSlot: 'team2',
+        nextMatchLoserId: `${tournamentId}-m3rd`,
+        loserDestinationSlot: 'team2',
+      },
+
+      // DISPUTA DE 3º LUGAR
+      {
+        id: `${tournamentId}-m3rd`,
+        tournamentId,
+        matchNumber: 13,
+        stage: 'third_place',
+        round: 4,
+        stageName: 'Disputa de 3º Lugar - J13',
+        status: 'scheduled',
+        scheduledTime: '17:30',
+        courtName: 'Quadra 2',
       },
 
       // GRANDE FINAL
       {
         id: `${tournamentId}-m13`,
         tournamentId,
-        matchNumber: 13,
+        matchNumber: 14,
         stage: 'grand_final',
         round: 4,
-        stageName: 'Grande Final - J13',
+        stageName: 'Grande Final - J14',
         status: 'scheduled',
-        scheduledTime: '18:00',
+        scheduledTime: '18:15',
         courtName: 'Quadra 1 - Central',
       },
     ];
@@ -868,16 +885,27 @@ export function getPodium(matches: BracketMatch[]): {
   const champion = grandFinal.winnerId === grandFinal.team1?.id ? grandFinal.team1 : grandFinal.team2;
   const runnerUp = grandFinal.winnerId === grandFinal.team1?.id ? grandFinal.team2 : grandFinal.team1;
 
-  const semiOrRepescagem =
-    matches.find((m) => m.stage === 'semifinals' && m.status === 'completed') ||
-    matches.find((m) => m.matchNumber === 13 && m.stage === 'losers' && m.status === 'completed');
+  const thirdPlaceMatch = matches.find(
+    (m) => (m.stage === 'third_place' || m.stageName.toLowerCase().includes('3º lugar')) && m.status === 'completed'
+  );
 
   let thirdPlace: TeamPair | undefined;
-  if (semiOrRepescagem && semiOrRepescagem.loserId) {
+  if (thirdPlaceMatch && thirdPlaceMatch.winnerId) {
     thirdPlace =
-      semiOrRepescagem.loserId === semiOrRepescagem.team1?.id
-        ? semiOrRepescagem.team1
-        : semiOrRepescagem.team2;
+      thirdPlaceMatch.winnerId === thirdPlaceMatch.team1?.id
+        ? thirdPlaceMatch.team1
+        : thirdPlaceMatch.team2;
+  } else {
+    const semiOrRepescagem =
+      matches.find((m) => m.stage === 'semifinals' && m.status === 'completed') ||
+      matches.find((m) => m.matchNumber === 13 && m.stage === 'losers' && m.status === 'completed');
+
+    if (semiOrRepescagem && semiOrRepescagem.loserId) {
+      thirdPlace =
+        semiOrRepescagem.loserId === semiOrRepescagem.team1?.id
+          ? semiOrRepescagem.team1
+          : semiOrRepescagem.team2;
+    }
   }
 
   return { champion, runnerUp, thirdPlace };

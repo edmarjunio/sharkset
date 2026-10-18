@@ -651,6 +651,7 @@ export function getInitialTournamentMatches(): BracketMatch[] {
         status: 'in_progress',
         score1: 11,
         score2: 9,
+        spectatorsCount: 248,
         liveReferee: {
           refereeName: 'Árbitro Oficial Tavinho',
           targetPoints: 18,
@@ -719,6 +720,7 @@ export function getInitialTournamentMatches(): BracketMatch[] {
         status: 'in_progress',
         score1: 15,
         score2: 14,
+        spectatorsCount: 184,
         liveReferee: {
           refereeName: 'Árbitro Oficial Guga',
           targetPoints: 18,
@@ -754,7 +756,10 @@ export function getInitialTournamentMatches(): BracketMatch[] {
         },
       };
     }
-    return m;
+    return {
+      ...m,
+      spectatorsCount: m.status === 'completed' ? 96 : 54,
+    };
   });
   return matches;
 }
@@ -1077,6 +1082,109 @@ export const INITIAL_BOOKINGS: Booking[] = [
     status: 'confirmed',
     bookingKind: 'locacao',
     createdAt: new Date().toISOString(),
+    participants: [
+      {
+        athleteId: 'ath-1',
+        name: 'Edmar Júnio',
+        level: 'serie_c',
+        teamSlot: 1,
+        confirmedPresent: true,
+        invitedBy: 'Titular da Reserva',
+      },
+      {
+        athleteId: 'ath-2',
+        name: 'Lucas Mendes',
+        level: 'iniciante',
+        teamSlot: 1,
+        confirmedPresent: true,
+        invitedBy: 'Edmar Júnio',
+      },
+      {
+        athleteId: 'ath-3',
+        name: 'Rafael Costa',
+        level: 'serie_c',
+        teamSlot: 2,
+        confirmedPresent: true,
+        invitedBy: 'Edmar Júnio',
+      },
+      {
+        athleteId: 'ath-4',
+        name: 'Bruno Oliveira',
+        level: 'iniciante',
+        teamSlot: 2,
+        confirmedPresent: true,
+        invitedBy: 'Edmar Júnio',
+      },
+    ],
+    referee: {
+      athleteId: 'ath-5',
+      name: 'Caio Martins',
+      phone: '(64) 99955-6677',
+      status: 'accepted',
+      isBroadcastOwner: true,
+    },
+    liveBroadcast: {
+      isLive: true,
+      streamTitle: 'Desafio Ao Vivo Vale Ranking: Edmar & Lucas vs Rafael & Bruno',
+      videoUrl:
+        'https://assets.mixkit.co/videos/preview/mixkit-men-playing-volleyball-on-the-beach-at-sunset-40246-large.mp4',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=900&q=80',
+      spectatorsCount: 162,
+      score1: 14,
+      score2: 12,
+      targetPoints: 18,
+      servingTeam: 1,
+      serverName: 'Edmar Júnio (Dupla 1)',
+      startedAt: '18:04',
+      rankingPointsCredited: false,
+      pointHistory: [
+        {
+          id: 'bpt-1',
+          timestamp: '18:22',
+          scoringTeam: 1,
+          scorerName: 'Edmar Júnio & Lucas Mendes',
+          serverName: 'Edmar Júnio',
+          skill: 'shark_attack',
+          scoreAfter: '14 x 12',
+        },
+        {
+          id: 'bpt-2',
+          timestamp: '18:20',
+          scoringTeam: 2,
+          scorerName: 'Rafael Costa & Bruno Oliveira',
+          serverName: 'Rafael Costa',
+          skill: 'pingo',
+          scoreAfter: '13 x 12',
+        },
+      ],
+      chatMessages: [
+        {
+          id: 'bchat-1',
+          author: 'Caio Martins',
+          role: 'referee_broadcaster',
+          roleLabel: 'ÁRBITRO & DONO DA TRANSMISSÃO',
+          text: '🎙️ Transmissão oficial iniciada! 4 jogadores identificados na Quadra 1 — partida valendo pontos reais pro Ranking SHARKSET!',
+          timestamp: '18:05',
+        },
+        {
+          id: 'bchat-2',
+          author: 'Matheus Silva',
+          role: 'spectator',
+          roleLabel: 'Acompanhando Ao Vivo',
+          text: 'Que Shark Attack absurdo do Edmar no 14x12! Transmissão limpinha!',
+          timestamp: '18:22',
+        },
+        {
+          id: 'bchat-3',
+          author: 'Caio Martins',
+          role: 'referee_broadcaster',
+          roleLabel: 'ÁRBITRO & DONO DA TRANSMISSÃO',
+          text: '⚡ Troca de quadra confirmada! Saque com Edmar Júnio no 14 a 12.',
+          timestamp: '18:23',
+        },
+      ],
+    },
   },
   {
     id: 'bk-102',
@@ -1094,6 +1202,41 @@ export const INITIAL_BOOKINGS: Booking[] = [
     status: 'confirmed',
     bookingKind: 'locacao',
     createdAt: new Date().toISOString(),
+    participants: [
+      {
+        athleteId: 'ath-1',
+        name: 'Edmar Júnio',
+        level: 'serie_c',
+        teamSlot: 1,
+        confirmedPresent: true,
+        invitedBy: 'Titular da Reserva',
+      },
+      {
+        athleteId: 'ath-6',
+        name: 'Pedro Henrique',
+        level: 'iniciante',
+        teamSlot: 1,
+        confirmedPresent: true,
+        invitedBy: 'Edmar Júnio',
+      },
+      {
+        athleteId: 'ath-5',
+        name: 'Caio Martins',
+        level: 'serie_b',
+        teamSlot: 2,
+        confirmedPresent: true,
+        invitedBy: 'Edmar Júnio',
+      },
+      {
+        athleteId: 'ath-7',
+        name: 'Gabriel Alves',
+        level: 'iniciante',
+        teamSlot: 2,
+        confirmedPresent: true,
+        invitedBy: 'Edmar Júnio',
+      },
+    ],
+    referee: null,
   },
   {
     id: 'bk-103',
@@ -1118,7 +1261,7 @@ export const INITIAL_BOOKINGS: Booking[] = [
     arenaName: 'SHARK SET Arena Matriz',
     courtId: 'conf-q1',
     courtName: 'Quadra 1 - Central SHARK SET',
-    sport: 'beach_tennis',
+    sport: 'futevolei',
     date: todayDateStr,
     startTime: '20:00',
     endTime: '21:00',
@@ -1128,6 +1271,84 @@ export const INITIAL_BOOKINGS: Booking[] = [
     status: 'confirmed',
     bookingKind: 'locacao',
     createdAt: new Date().toISOString(),
+    participants: [
+      {
+        athleteId: 'ath-3',
+        name: 'Rafael Costa',
+        level: 'serie_c',
+        teamSlot: 1,
+        confirmedPresent: true,
+        invitedBy: 'Titular da Reserva',
+      },
+      {
+        athleteId: 'ath-4',
+        name: 'Bruno Oliveira',
+        level: 'iniciante',
+        teamSlot: 1,
+        confirmedPresent: true,
+        invitedBy: 'Rafael Costa',
+      },
+      {
+        athleteId: 'ath-1',
+        name: 'Edmar Júnio',
+        level: 'serie_c',
+        teamSlot: 2,
+        confirmedPresent: true,
+        invitedBy: 'Rafael Costa',
+      },
+      {
+        athleteId: 'ath-2',
+        name: 'Lucas Mendes',
+        level: 'iniciante',
+        teamSlot: 2,
+        confirmedPresent: true,
+        invitedBy: 'Rafael Costa',
+      },
+    ],
+    referee: {
+      athleteId: 'ath-8',
+      name: 'Thiago Nunes',
+      phone: '(62) 99811-2233',
+      status: 'accepted',
+      isBroadcastOwner: true,
+    },
+    liveBroadcast: {
+      isLive: true,
+      streamTitle: 'Super Jogo Noturno 20h: Rafael & Bruno vs Edmar & Lucas (Vale Ranking)',
+      videoUrl:
+        'https://assets.mixkit.co/videos/preview/mixkit-men-playing-volleyball-on-the-beach-at-sunset-40246-large.mp4',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1526676037777-05a232554f77?auto=format&fit=crop&w=900&q=80',
+      spectatorsCount: 119,
+      score1: 9,
+      score2: 11,
+      targetPoints: 18,
+      servingTeam: 2,
+      serverName: 'Edmar Júnio (Dupla 2)',
+      startedAt: '20:02',
+      rankingPointsCredited: false,
+      pointHistory: [
+        {
+          id: 'bpt-201',
+          timestamp: '20:14',
+          scoringTeam: 2,
+          scorerName: 'Edmar Júnio & Lucas Mendes',
+          serverName: 'Edmar Júnio',
+          skill: 'ace',
+          scoreAfter: '9 x 11',
+        },
+      ],
+      chatMessages: [
+        {
+          id: 'bchat-201',
+          author: 'Thiago Nunes',
+          role: 'referee_broadcaster',
+          roleLabel: 'ÁRBITRO & DONO DA TRANSMISSÃO',
+          text: '📢 Edmar Júnio foi convidado pelo Rafael Costa para este horário! 4 atletas presentes em quadra, valendo pontos oficiais pro Ranking!',
+          timestamp: '20:03',
+        },
+      ],
+    },
   },
 ];
 

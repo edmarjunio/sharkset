@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import gsap from 'gsap';
 import { useApp } from '../context/AppContext';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../services/rankingValidator';
 import { evaluateMatchNearCompletion } from '../services/smartAlertEngine';
 import { RefereeConsoleModal } from './RefereeConsoleModal';
+import { MatchLiveDetailsModal } from './MatchLiveDetailsModal';
 import { FutevoleiVisualBracketCanvas } from './FutevoleiVisualBracketCanvas';
 import {
   exportBracketToCSV,
@@ -27,19 +28,17 @@ import {
 import { ShareBracketModal } from './ShareBracketModal';
 import { MatchHistoryModal } from './MatchHistoryModal';
 import { SharksetLogo } from './SharksetLogo';
+import { MostWatchedGamesMiniRail } from './MostWatchedGamesMiniRail';
 import {
   Trophy,
   MessageSquare,
   RotateCcw,
   Check,
   Sparkles,
-  UserCheck,
   Sliders,
   Plus,
   MapPin,
   Calendar,
-  Users,
-  FileText,
   Award,
   AlertCircle,
   BellRing,
@@ -55,6 +54,10 @@ import {
   Printer,
   Share2,
   Swords,
+  Maximize2,
+  Minimize2,
+  Eye,
+  Zap,
 } from 'lucide-react';
 
 export const DoubleEliminationBracket: React.FC = () => {
@@ -75,7 +78,6 @@ export const DoubleEliminationBracket: React.FC = () => {
     notifyLiveMatchProgress,
     handleResetMatch,
     handleOverrideMatch,
-    regenerateBracket,
     updateTournamentConfig,
     athletes,
     userProfile,
@@ -90,6 +92,11 @@ export const DoubleEliminationBracket: React.FC = () => {
   const [bracketViewMode, setBracketViewMode] = useState<'chaveamento' | 'lista'>('chaveamento');
   const [editingMatch, setEditingMatch] = useState<BracketMatch | null>(null);
   const [refereeModalMatchId, setRefereeModalMatchId] = useState<string | null>(null);
+  const [selectedLiveMatchId, setSelectedLiveMatchId] = useState<string | null>(null);
+
+  // Fullscreen & Semifinals Knockout Focus Mode
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [manualKnockoutToggle, setManualKnockoutToggle] = useState<boolean | null>(null);
 
   // Share & Match History / MVP Voting Modal States
   const [showShareModal, setShowShareModal] = useState(false);
@@ -110,6 +117,16 @@ export const DoubleEliminationBracket: React.FC = () => {
     }>;
     completedMatch: BracketMatch;
   } | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
 
   const handleOpenShare = (match?: BracketMatch) => {
     setShareMatch(match || null);
@@ -187,6 +204,52 @@ export const DoubleEliminationBracket: React.FC = () => {
     return currentMatches.find((m) => m.id === refereeModalMatchId) || null;
   }, [currentMatches, refereeModalMatchId]);
 
+  const selectedLiveMatch = useMemo(() => {
+    if (!selectedLiveMatchId) return null;
+    return currentMatches.find((m) => m.id === selectedLiveMatchId) || null;
+  }, [currentMatches, selectedLiveMatchId]);
+
+  // Automatic detection when tournament reaches Semifinals:
+  // If all qualifying matches (winners & losers before semifinals) are completed OR any semifinal has both teams ready
+  const hasReachedSemifinalsAutomatically = useMemo(() => {
+    const semiMatchesList = currentMatches.filter((m) => m.stage === 'semifinals');
+    const qualifyingMatches = currentMatches.filter(
+      (m) =>
+        (m.stage === 'winners' || m.stage === 'losers') &&
+        !m.stageName.toLowerCase().includes('3º lugar')
+    );
+    if (semiMatchesList.length === 0) return false;
+    const allQualifyingDone =
+      qualifyingMatches.length > 0 && qualifyingMatches.every((m) => m.status === 'completed');
+    const anySemiReady = semiMatchesList.some((m) => !!m.team1 && !!m.team2);
+    return allQualifyingDone || anySemiReady;
+  }, [currentMatches]);
+
+  const knockoutOnlyMode =
+    manualKnockoutToggle !== null ? manualKnockoutToggle : hasReachedSemifinalsAutomatically;
+
+  // 1-Click Helper to simulate advancing all qualifying matches to Semifinals so user can immediately see Knockout Mode
+  const handleSimulateAdvanceToSemifinals = () => {
+    const qualifying = currentMatches
+      .filter(
+        (m) =>
+          (m.stage === 'winners' || m.stage === 'losers') &&
+          !m.stageName.toLowerCase().includes('3º lugar')
+      )
+      .sort((a, b) => a.matchNumber - b.matchNumber);
+
+    qualifying.forEach((m) => {
+      if (m.status !== 'completed' && m.team1 && m.team2) {
+        handleAdvanceMatch(m.id, 1, 18, 14);
+      }
+    });
+    setManualKnockoutToggle(true);
+    setBracketViewMode('chaveamento');
+    triggerToast(
+      '⚡ Fase Semifinal ativada! Jogos classificatórios passados foram minimizados e a tabela exibe o Mata-Mata (Semifinais, Grande Final e Disputa de 3º Lugar).'
+    );
+  };
+
   const openStartDrawModal = () => {
     const initialIds = presentPairsInTourn.map((p) => p.id);
     setManualSlotOrder(initialIds);
@@ -220,6 +283,7 @@ export const DoubleEliminationBracket: React.FC = () => {
         : presentIds;
 
     startTournamentWithDraw(activeTournament.id, drawMode, orderedIds);
+    setManualKnockoutToggle(null);
     setShowStartDrawModal(false);
     triggerToast(
       drawMode === 'random'
@@ -234,8 +298,13 @@ export const DoubleEliminationBracket: React.FC = () => {
   }, [currentMatches, activePairsInTourn]);
 
   const winnersMatches = currentMatches.filter((m) => m.stage === 'winners');
-  const losersMatches = currentMatches.filter((m) => m.stage === 'losers');
+  const losersMatches = currentMatches.filter(
+    (m) => m.stage === 'losers' && !m.stageName.toLowerCase().includes('3º lugar')
+  );
   const semiMatches = currentMatches.filter((m) => m.stage === 'semifinals');
+  const thirdPlaceMatches = currentMatches.filter(
+    (m) => m.stage === 'third_place' || m.stageName.toLowerCase().includes('3º lugar')
+  );
   const grandFinalMatches = currentMatches.filter(
     (m) => m.stage === 'grand_final' || m.stage === 'super_final'
   );
@@ -288,7 +357,7 @@ export const DoubleEliminationBracket: React.FC = () => {
     setFormMaxParticipants(8);
     setFormFee(120);
     setFormRules(
-      'Sets de 18 pontos (diferença mínima de 2 pontos, teto em 21). Semifinal direta sem repescagem. Pontuação automática para o Ranking Oficial de Futevôlei.'
+      'Sets de 18 pontos (diferença mínima de 2 pontos, teto em 21). Semifinal direta com disputa de 3º lugar. Pontuação automática para o Ranking Oficial de Futevôlei.'
     );
     setFormResponsible(userProfile.name);
     setShowTournamentModal('create');
@@ -305,7 +374,7 @@ export const DoubleEliminationBracket: React.FC = () => {
     setFormFee(activeTournament.registrationFee);
     setFormRules(
       activeTournament.specificRules ||
-        'Sets de 18 pontos (diferença de 2 pontos). Semifinal direta sem repescagem.'
+        'Sets de 18 pontos (diferença de 2 pontos). Semifinal direta com disputa de 3º lugar.'
     );
     setFormResponsible(activeTournament.responsibleName);
     setShowTournamentModal('edit');
@@ -461,7 +530,6 @@ export const DoubleEliminationBracket: React.FC = () => {
       completedMatch,
     });
 
-    // Run GSAP timeline after React commits DOM update
     requestAnimationFrame(() => {
       setTimeout(() => {
         const allNodes = document.querySelectorAll('.bracket-match-node');
@@ -595,7 +663,7 @@ export const DoubleEliminationBracket: React.FC = () => {
     updateTournamentConfig(activeTournament.id, { semiFormat: newFormat });
     triggerToast(
       newFormat === 'semi_direta'
-        ? 'Formato alterado para Semifinal Direta (Padrão Futevôlei: a partir da semi ninguém pode perder mais)!'
+        ? 'Formato alterado para Semifinal Direta (Padrão Futevôlei: Semifinais + Grande Final + Disputa de 3º Lugar)!'
         : 'Formato alterado para Semi com Chance (Padrão Challonge: perdedor da semi cai pra repescagem)!'
     );
   };
@@ -608,7 +676,6 @@ export const DoubleEliminationBracket: React.FC = () => {
     const team1Won = isCompleted && match.winnerId === match.team1?.id;
     const team2Won = isCompleted && match.winnerId === match.team2?.id;
 
-    // Live check if match is within 10 points of finishing (e.g. score >= 8 in an 18-point set)
     const liveS1 = parseInt(getInlineScore(match, 's1'), 10) || (match.score1 ?? 0);
     const liveS2 = parseInt(getInlineScore(match, 's2'), 10) || (match.score2 ?? 0);
     const nearEndEval = evaluateMatchNearCompletion(match, currentMatches, liveS1, liveS2, 18);
@@ -622,37 +689,67 @@ export const DoubleEliminationBracket: React.FC = () => {
     } else if (match.stage === 'losers') {
       routingNote = 'Perdedor eliminado (2ª derrota)';
     } else if (match.stage === 'semifinals') {
-      routingNote = 'Mata-Mata Direto (Perdeu, sai)';
+      routingNote = 'Vencedor vai à Final · Perdedor disputa 3º Lugar';
+    } else if (match.stage === 'third_place') {
+      routingNote = 'Valendo o 3º Lugar do Pódio';
     } else {
       routingNote = 'Valendo o Título Geral';
     }
+
+    // Soft Green for Winners Bracket, Soft Red for Losers Bracket, Sharkset Blue for Semis/Final/3rd Place
+    const isWinnersStage = match.stage === 'winners';
+    const isLosersStage =
+      match.stage === 'losers' && !match.stageName.toLowerCase().includes('3º lugar');
+
+    const cardToneClasses = isLive
+      ? 'bg-[#071D3D] border-rose-500 ring-2 ring-rose-500/30'
+      : isWinnersStage
+      ? 'bg-emerald-950/35 border-emerald-500/40 hover:border-emerald-400/80'
+      : isLosersStage
+      ? 'bg-rose-950/35 border-rose-500/40 hover:border-rose-400/80'
+      : 'bg-[#071D3D] border-[#0987CE]/60 hover:border-[#12C7BB]';
 
     return (
       <div
         key={match.id}
         data-match-id={match.id}
         data-winner-id={match.winnerId || ''}
-        className={`bracket-match-node bg-[#071D3D] border rounded-2xl p-3.5 transition-all shadow-md text-[#F7FAFD] ${
-          isLive
-            ? 'border-rose-500 ring-2 ring-rose-500/30'
-            : isCompleted
-            ? 'border-[#0987CE] ring-1 ring-[#0987CE]/30'
-            : 'border-[#145A9B] hover:border-[#0987CE]'
-        }`}
+        onClick={() => setSelectedLiveMatchId(match.id)}
+        className={`bracket-match-node border-2 rounded-2xl p-3.5 transition-all shadow-md text-[#F7FAFD] cursor-pointer group ${cardToneClasses}`}
       >
-        <div className="flex items-center justify-between text-xs text-slate-300 pb-2 mb-2 border-b border-[#145A9B]/60">
-          <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-white">Jogo {match.matchNumber}</span>
+        <div className="flex items-center justify-between text-xs text-slate-300 pb-2 mb-2 border-b border-white/10">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              className={`px-2 py-0.5 rounded font-black text-[10px] uppercase shrink-0 ${
+                isWinnersStage
+                  ? 'bg-emerald-600/80 text-white'
+                  : isLosersStage
+                  ? 'bg-rose-600/80 text-white'
+                  : 'bg-[#0987CE] text-white'
+              }`}
+            >
+              Jogo {match.matchNumber}
+            </span>
             {isLive && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-black uppercase animate-pulse">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-black uppercase animate-pulse shrink-0">
                 AO VIVO
               </span>
             )}
-            <span aria-hidden="true" className="text-slate-500">·</span>
-            <span className="text-[11px] font-mono text-slate-300">{match.courtName || 'Quadra 1'}</span>
+            <span className="text-[11px] font-mono text-slate-300 truncate">
+              {match.courtName || 'Quadra 1'}
+            </span>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setSelectedLiveMatchId(match.id)}
+              className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+              title="Abrir página da partida em tempo real (Chat, Saque, Juiz, Histórico de Pontos)"
+            >
+              <Eye className="w-3 h-3 text-[#12C7BB]" />
+              {match.spectatorsCount || (isLive ? 186 : 64)} assistindo
+            </button>
             {isReady && (
               <button
                 type="button"
@@ -661,7 +758,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                 title="Abrir Tela do Árbitro (computar pontos, ordem de saque, pedidos de tempo)"
               >
                 <ShieldAlert className="w-3 h-3" />
-                Árbitro
+                Juiz
               </button>
             )}
             <button
@@ -675,19 +772,23 @@ export const DoubleEliminationBracket: React.FC = () => {
           </div>
         </div>
 
-        {/* Real-time Referee Info Bar inside Match Card (Service Order & Timeouts) */}
-        {match.liveReferee && !isCompleted && isReady && (
-          <div className="mb-2 px-2.5 py-1.5 rounded-xl bg-[#030B17] border border-[#145A9B] text-white text-[10px] flex items-center justify-between gap-2">
-            <span className="truncate font-bold text-[#12C7BB]">
-              🏐 Sacando: {currentServerName || '1º Sacador'}
-            </span>
-            <span className="font-mono text-slate-300 shrink-0">
-              Tempos: {match.liveReferee.team1TimeoutsUsed}/1 · {match.liveReferee.team2TimeoutsUsed}/1
-            </span>
-          </div>
-        )}
+        {/* Real-time Referee & Server Info Bar inside Match Card */}
+        <div className="mb-2 px-2.5 py-1.5 rounded-xl bg-[#030B17]/90 border border-[#145A9B]/60 text-white text-[10px] flex items-center justify-between gap-2">
+          <span className="truncate font-bold text-[#12C7BB]">
+            🏐 {currentServerName ? `Sacando: ${currentServerName}` : `Juiz: ${match.liveReferee?.refereeName || 'Oficial SHARK SET'}`}
+          </span>
+          <span className="text-[10px] text-[#5BC3FA] font-bold shrink-0">
+            Chat & Lances →
+          </span>
+        </div>
 
-        <form onSubmit={(e) => handleInlineSubmit(match, e)} className="space-y-1.5">
+        <form
+          onSubmit={(e) => {
+            e.stopPropagation();
+            handleInlineSubmit(match, e);
+          }}
+          className="space-y-1.5"
+        >
           {/* Team 1 */}
           <div
             data-slot-winner={team1Won ? 'true' : 'false'}
@@ -697,19 +798,16 @@ export const DoubleEliminationBracket: React.FC = () => {
                 : 'bg-[#030B17] text-slate-200 border border-[#145A9B]/60'
             }`}
           >
-            <div
-              onClick={() => handleOpenMatchEditor(match)}
-              className="flex items-center gap-1.5 truncate pr-2 flex-1 cursor-pointer"
-            >
-              <span className="text-[10px] text-[#0987CE] font-mono shrink-0">
+            <div className="flex items-center gap-1.5 truncate pr-2 flex-1">
+              <span className="text-[10px] text-[#5BC3FA] font-mono shrink-0">
                 {match.team1 ? `#${match.team1.seed}` : '—'}
               </span>
-              <span className="truncate font-medium">
+              <span className="truncate font-bold">
                 {formatParticipantName(match.team1)}
               </span>
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
               {team1Won && <Trophy className="w-3 h-3 text-[#12C7BB] shrink-0" />}
               <input
                 type="number"
@@ -733,19 +831,16 @@ export const DoubleEliminationBracket: React.FC = () => {
                 : 'bg-[#030B17] text-slate-200 border border-[#145A9B]/60'
             }`}
           >
-            <div
-              onClick={() => handleOpenMatchEditor(match)}
-              className="flex items-center gap-1.5 truncate pr-2 flex-1 cursor-pointer"
-            >
-              <span className="text-[10px] text-[#0987CE] font-mono shrink-0">
+            <div className="flex items-center gap-1.5 truncate pr-2 flex-1">
+              <span className="text-[10px] text-[#5BC3FA] font-mono shrink-0">
                 {match.team2 ? `#${match.team2.seed}` : '—'}
               </span>
-              <span className="truncate font-medium">
+              <span className="truncate font-bold">
                 {formatParticipantName(match.team2)}
               </span>
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
               {team2Won && <Trophy className="w-3 h-3 text-[#12C7BB] shrink-0" />}
               <input
                 type="number"
@@ -764,7 +859,8 @@ export const DoubleEliminationBracket: React.FC = () => {
           {!isCompleted && isReady && (
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 const msg = notifyLiveMatchProgress(match.id, liveS1 || 10, liveS2 || 8);
                 if (msg) triggerToast(`🔔 Push enviado! ${msg}`);
               }}
@@ -779,8 +875,11 @@ export const DoubleEliminationBracket: React.FC = () => {
             </button>
           )}
 
-          <div className="pt-2 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400 truncate max-w-[140px]" title={routingNote}>
+          <div
+            className="pt-2 flex items-center justify-between text-[11px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-slate-300 truncate max-w-[140px]" title={routingNote}>
               {routingNote}
             </span>
 
@@ -840,12 +939,18 @@ export const DoubleEliminationBracket: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div
+      className={
+        isFullscreen
+          ? 'fixed inset-0 z-50 bg-[#030B17] overflow-y-auto p-3 sm:p-6 space-y-5'
+          : 'max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6'
+      }
+    >
       {/* Toast Feedback */}
       {feedbackToast && (
-        <div className="p-3.5 bg-slate-900 text-white border border-slate-800 rounded-xl text-xs flex items-center justify-between shadow-lg animate-in fade-in">
+        <div className="p-3.5 bg-[#071D3D] text-white border border-[#0987CE] rounded-xl text-xs flex items-center justify-between shadow-lg animate-in fade-in">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+            <Sparkles className="w-4 h-4 text-[#12C7BB] shrink-0" />
             <span>{feedbackToast}</span>
           </div>
           <button
@@ -857,225 +962,327 @@ export const DoubleEliminationBracket: React.FC = () => {
         </div>
       )}
 
-      {/* Ultra-Intuitive 3-Step Visual Guide + R$ 20 / Table & R$ 99 / Month Conversion Strip */}
-      <div className="bg-white border-2 border-slate-900 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="px-2.5 py-0.5 rounded bg-slate-950 text-amber-400 font-black uppercase text-[10px]">
-              TABELA OFICIAL SHARK SET · FÁCIL DE USAR POR QUALQUER PESSOA
-            </span>
-            <span className="font-bold text-emerald-700">
-              {tournaments.length} campeonatos ativos em {availableTenants.length} arenas simultâneas
-            </span>
-          </div>
+      {/* Miniature Most-Watched Live Games Rail */}
+      {!isFullscreen && (
+        <MostWatchedGamesMiniRail
+          onSelectTournamentMatch={(m) => setSelectedLiveMatchId(m.id)}
+        />
+      )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
-            <button
-              type="button"
-              onClick={() => setShowQuickEnrollModal(true)}
-              className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-left transition-all cursor-pointer"
-            >
-              <span className="font-black text-emerald-950 block">PASSO 1 · Inscrever Dupla</span>
-              <span className="text-[11px] text-emerald-800">
-                Garanta a vaga na hora (confirma com pagamento dos 2 atletas)
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={openStartDrawModal}
-              className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-left transition-all cursor-pointer"
-            >
-              <span className="font-black text-amber-950 block">PASSO 2 · Sortear ou Posicionar</span>
-              <span className="text-[11px] text-amber-900">
-                Sorteio aleatório ou escolha manual das duplas presentes
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                const target = liveMatches[0] || currentMatches[0];
-                if (target) setRefereeModalMatchId(target.id);
-              }}
-              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-left transition-all cursor-pointer"
-            >
-              <span className="font-black text-slate-950 block">PASSO 3 · Placar & Súmula Ao Vivo</span>
-              <span className="text-[11px] text-slate-700">
-                Toque em qualquer jogo para somar pontos, saque e tempo ao vivo
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row xl:flex-col gap-2 shrink-0 border-t xl:border-t-0 xl:border-l border-slate-200 pt-3 xl:pt-0 xl:pl-4">
-          <button
-            type="button"
-            onClick={() => setActiveTab('saas_hub')}
-            className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-amber-400 font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Comprar Tabela (R$ 20) ou Plano Arena (R$ 99/mês)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setArenaSubTab('aulas');
-              setActiveTab('scheduler');
-            }}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-xs transition-all cursor-pointer text-center"
-          >
-            Ir para Aulas, Alunos & Mensalidades →
-          </button>
-        </div>
-      </div>
-
-      {/* Tournament Management Header — High-Contrast SHARK SET Visual Hierarchy */}
-      <div className="bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-6 shadow-xl space-y-5">
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-              <span className="px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-black uppercase text-[10px] shadow-xs">
-                SHARK SET · {isSingles ? 'SIMPLES (1x1)' : 'DUPLAS (2x2)'}
-              </span>
-              <span aria-hidden="true" className="text-slate-500">·</span>
-              <span className="font-extrabold text-[#12C7BB]">
-                {TOURNAMENT_CATEGORY_LABELS[activeTournament.category]}
-              </span>
-              <span aria-hidden="true" className="text-slate-500">·</span>
-              <span className="inline-flex items-center gap-1 text-slate-300">
-                <Calendar className="w-3.5 h-3.5 text-[#0987CE]" />
-                {activeTournament.date}
-              </span>
-              <span aria-hidden="true" className="text-slate-500">·</span>
-              <span className="inline-flex items-center gap-1 text-slate-300">
-                <MapPin className="w-3.5 h-3.5 text-[#0987CE]" />
-                {activeTournament.location || `${tenant.name} (${tenant.city})`}
-              </span>
-              <span aria-hidden="true" className="text-slate-500">·</span>
-              <span className="font-extrabold text-[#12C7BB]">
-                Vagas: {activePairsInTourn.length} / {activeTournament.maxPairs} ({confirmedPairsCount} confirmadas · {presentPairsInTourn.length} presentes)
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <SharksetLogo size="sm" />
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+      {/* Coastal Beach Stadium Hero Banner matching the User's Print */}
+      {!isFullscreen && (
+        <div className="relative rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-slate-900">
+          <img
+            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=85"
+            alt={activeTournament.name}
+            className="w-full h-56 sm:h-64 object-cover opacity-65"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent" />
+          <div className="absolute bottom-5 left-5 right-5 sm:left-8 sm:right-8 flex flex-col md:flex-row md:items-end justify-between gap-4 text-white">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                <span className="px-3 py-1 rounded-full bg-emerald-500 text-slate-950 font-black uppercase tracking-wider text-[11px]">
+                  {activeTournament.isOpenForRegistration ? 'INSCRIÇÕES ABERTAS' : 'EM ANDAMENTO'}
+                </span>
+                <span className="flex items-center gap-1 text-slate-200 font-semibold">
+                  <MapPin className="w-3.5 h-3.5 text-orange-400" />
+                  {activeTournament.location || `${tenant.name} · ${tenant.city}/${tenant.state}`}
+                </span>
+                <span className="flex items-center gap-1 text-slate-200 font-semibold">
+                  <Calendar className="w-3.5 h-3.5 text-orange-400" />
+                  {activeTournament.date}
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
                 {activeTournament.name}
               </h1>
             </div>
 
-            {activeTournament.specificRules && (
-              <p className="text-xs text-slate-300 bg-[#030B17] border border-[#145A9B] rounded-xl p-3 max-w-3xl">
-                <strong className="text-[#0987CE]">Regras Específicas:</strong> {activeTournament.specificRules}
-              </p>
-            )}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowQuickEnrollModal(true)}
+                className="px-5 py-2.5 rounded-full bg-[#FF6B00] hover:bg-[#EA580C] text-white font-black text-xs cursor-pointer shadow-md transition-all"
+              >
+                + Inscrever Dupla Agora
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(true)}
+                className="px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white font-extrabold text-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                Tela Cheia
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ultra-Intuitive 3-Step Visual Guide (Hidden in Fullscreen Mode for maximum bracket space) */}
+      {!isFullscreen && (
+        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-white">
+          <div className="space-y-2.5 flex-1">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="px-2.5 py-0.5 rounded bg-[#0987CE] text-white font-black uppercase text-[10px]">
+                FLUXO INTUITIVO SHARK SET · INSCRIÇÃO, SORTEIO E TRANSMISSÃO AO VIVO
+              </span>
+              <span className="font-bold text-[#12C7BB]">
+                {tournaments.length} campeonatos ativos em {availableTenants.length} arenas simultâneas
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setShowQuickEnrollModal(true)}
+                className="p-3 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-left transition-all cursor-pointer"
+              >
+                <span className="font-black text-[#12C7BB] block">PASSO 1 · Inscrever Dupla</span>
+                <span className="text-[11px] text-slate-300">
+                  Garanta a vaga na hora com validação de categoria do Ranking
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openStartDrawModal}
+                className="p-3 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-left transition-all cursor-pointer"
+              >
+                <span className="font-black text-[#5BC3FA] block">PASSO 2 · Sortear ou Posicionar</span>
+                <span className="text-[11px] text-slate-300">
+                  Sorteio aleatório ou escolha manual das duplas presentes
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const target = liveMatches[0] || currentMatches[0];
+                  if (target) setSelectedLiveMatchId(target.id);
+                }}
+                className="p-3 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#0987CE] text-left transition-all cursor-pointer"
+              >
+                <span className="font-black text-white block">PASSO 3 · Jogo em Tempo Real & Chat</span>
+                <span className="text-[11px] text-slate-300">
+                  Clique em qualquer cartão de jogo para ver placar, saque, juiz e chat
+                </span>
+              </button>
+            </div>
           </div>
 
-          {/* Action Buttons: Start Draw, Switch Tournament, Quick Enroll, Share, H2H, Export PDF/CSV */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <select
-              value={activeTournamentId}
-              onChange={(e) => setActiveTournamentId(e.target.value)}
-              className="px-3.5 py-2.5 text-xs font-extrabold bg-[#030B17] text-white border border-[#145A9B] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0987CE]"
+          <div className="flex flex-col sm:flex-row xl:flex-col gap-2 shrink-0 border-t xl:border-t-0 xl:border-l border-[#145A9B] pt-3 xl:pt-0 xl:pl-4">
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(true)}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
             >
-              {tournaments.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+              <Maximize2 className="w-3.5 h-3.5" />
+              Expandir Tabela em Tela Cheia
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setArenaSubTab('aulas');
+                setActiveTab('scheduler');
+              }}
+              className="px-4 py-2 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-[#5BC3FA] font-bold text-xs transition-all cursor-pointer text-center"
+            >
+              Ir para Agendamento, Aulas & Matrículas →
+            </button>
+          </div>
+        </div>
+      )}
 
+      {/* Tournament Management Header — Clean Responsive Hierarchy (Never overflows horizontally) */}
+      <div className="bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                <span className="px-2.5 py-0.5 rounded-lg bg-[#0987CE] text-white font-black uppercase text-[10px]">
+                  SHARK SET · {isSingles ? 'SIMPLES (1x1)' : 'DUPLAS (2x2)'}
+                </span>
+                <span className="font-extrabold text-[#12C7BB]">
+                  {TOURNAMENT_CATEGORY_LABELS[activeTournament.category]}
+                </span>
+                <span className="inline-flex items-center gap-1 text-slate-300">
+                  <Calendar className="w-3.5 h-3.5 text-[#0987CE]" />
+                  {activeTournament.date}
+                </span>
+                <span className="inline-flex items-center gap-1 text-slate-300">
+                  <MapPin className="w-3.5 h-3.5 text-[#0987CE]" />
+                  {activeTournament.location || `${tenant.name} (${tenant.city})`}
+                </span>
+                <span className="font-extrabold text-[#12C7BB]">
+                  Vagas: {activePairsInTourn.length}/{activeTournament.maxPairs} ({confirmedPairsCount} confirmadas)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 min-w-0">
+                <SharksetLogo size="sm" />
+                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate">
+                  {activeTournament.name}
+                </h1>
+              </div>
+            </div>
+
+            {/* Primary Tournament Selector & Fullscreen Toggle */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <select
+                value={activeTournamentId}
+                onChange={(e) => {
+                  setActiveTournamentId(e.target.value);
+                  setManualKnockoutToggle(null);
+                }}
+                className="px-3 py-2 text-xs font-extrabold bg-[#030B17] text-white border border-[#145A9B] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0987CE] max-w-full sm:max-w-[280px]"
+              >
+                {tournaments.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={() => setIsFullscreen((f) => !f)}
+                className="px-3.5 py-2 text-xs font-black text-slate-950 bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                {isFullscreen ? (
+                  <>
+                    <Minimize2 className="w-3.5 h-3.5" />
+                    Sair da Tela Cheia
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    Tela Cheia
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Responsive Action Bar — Wraps cleanly on all screens */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#145A9B]/60">
             <button
               onClick={openStartDrawModal}
-              className="px-4 py-2.5 text-xs font-black text-slate-950 bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
+              className="px-3.5 py-2 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
             >
-              <Play className="w-3.5 h-3.5 fill-slate-950" />
-              INICIAR TABELA ({presentPairsInTourn.length} PRESENTES)
-            </button>
-
-            <button
-              onClick={() => handleOpenShare()}
-              className="px-3.5 py-2.5 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
-              title="Compartilhar deep link ou resumo do chaveamento"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              COMPARTILHAR CHAVE
-            </button>
-
-            <button
-              onClick={() => handleOpenMatchHistory()}
-              className="px-3.5 py-2.5 text-xs font-bold text-[#12C7BB] bg-[#030B17] hover:bg-[#0B254E] border border-[#12C7BB]/50 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-              title="Ver histórico de confrontos direto e tendências (Head-to-Head)"
-            >
-              <Swords className="w-3.5 h-3.5 text-[#12C7BB]" />
-              HISTÓRICO H2H
+              <Play className="w-3.5 h-3.5 fill-white" />
+              Iniciar / Sortear ({presentPairsInTourn.length} Presentes)
             </button>
 
             <button
               onClick={() => setShowQuickEnrollModal(true)}
-              className="px-4 py-2.5 text-xs font-black text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+              className="px-3.5 py-2 text-xs font-black text-slate-950 bg-[#12C7BB] hover:brightness-110 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              INSCREVER {isSingles ? 'JOGADOR (1x1)' : 'DUPLA (2x2)'}
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              Inscrever {isSingles ? 'Jogador' : 'Dupla'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setManualKnockoutToggle((prev) =>
+                  prev !== null ? !prev : !hasReachedSemifinalsAutomatically
+                )
+              }
+              className={`px-3.5 py-2 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border ${
+                knockoutOnlyMode
+                  ? 'bg-[#12C7BB] text-slate-950 border-[#12C7BB]'
+                  : 'bg-[#030B17] text-[#12C7BB] border-[#12C7BB]/50 hover:bg-[#0B254E]'
+              }`}
+              title="Minimiza os jogos passados e mostra somente a tabela comum de mata-mata (Semifinais, Final e 3º Lugar)"
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              {knockoutOnlyMode
+                ? 'Modo Mata-Mata Ativo (Ver Chave Completa)'
+                : 'Fase Semifinal (Minimizar Jogos Passados)'}
+            </button>
+
+            {!knockoutOnlyMode && (
+              <button
+                type="button"
+                onClick={handleSimulateAdvanceToSemifinals}
+                className="px-3 py-2 text-xs font-bold text-[#5BC3FA] bg-[#030B17] hover:bg-[#0B254E] border border-[#0987CE]/50 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Avança automaticamente os jogos classificatórios para demonstrar a tabela na Semifinal com jogos passados minimizados"
+              >
+                <Zap className="w-3.5 h-3.5 text-[#12C7BB]" />
+                Simular Ida p/ Semifinal
+              </button>
+            )}
+
+            <button
+              onClick={() => handleOpenShare()}
+              className="px-3 py-2 text-xs font-bold text-white bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <Share2 className="w-3.5 h-3.5 text-[#0987CE]" />
+              Compartilhar
+            </button>
+
+            <button
+              onClick={() => handleOpenMatchHistory()}
+              className="px-3 py-2 text-xs font-bold text-[#12C7BB] bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Swords className="w-3.5 h-3.5 text-[#12C7BB]" />
+              Histórico & MVP
             </button>
 
             <button
               onClick={openEditModal}
-              className="px-3.5 py-2.5 text-xs font-extrabold text-white bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+              className="px-3 py-2 text-xs font-bold text-slate-200 bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
             >
               <Sliders className="w-3.5 h-3.5 text-[#0987CE]" />
-              Regras & Config
+              Regras
             </button>
 
             <button
               onClick={handleExportPDF}
-              className="px-3.5 py-2.5 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-              title="Baixar relatório completo e chaveamento em PDF oficial"
+              className="px-3 py-2 text-xs font-bold text-white bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <Download className="w-3.5 h-3.5" />
-              EXPORTAR PDF
+              <Download className="w-3.5 h-3.5 text-[#0987CE]" />
+              PDF
             </button>
 
             <button
               onClick={handleExportCSV}
-              className="px-3.5 py-2.5 text-xs font-extrabold text-white bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-              title="Baixar planilha CSV com resultados e classificação"
+              className="px-3 py-2 text-xs font-bold text-white bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-[#12C7BB]" />
-              EXPORTAR CSV
+              CSV
             </button>
 
             <button
               onClick={handlePrintBracket}
-              className="px-3.5 py-2.5 text-xs font-extrabold text-slate-300 hover:text-white bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-              title="Visualizar para impressão ou salvar em PDF"
+              className="px-3 py-2 text-xs font-bold text-slate-300 hover:text-white bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
             >
               <Printer className="w-3.5 h-3.5 text-slate-400" />
-              IMPRIMIR
+              Imprimir
             </button>
 
             <button
               onClick={openCreateModal}
-              className="px-4 py-2.5 text-xs font-black text-slate-950 bg-white hover:bg-slate-100 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+              className="px-3 py-2 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              CRIAR NOVO TORNEIO
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              Novo Torneio
             </button>
           </div>
         </div>
 
-        {/* Real-Time Live Match Scoreboard Banner (Visible to all spectators & players on the bracket page) */}
+        {/* Real-Time Live Match Scoreboard Banner (Clickable to open MatchLiveDetailsModal) */}
         {liveMatches.length > 0 && (
-          <div className="bg-[#071D3D] border-2 border-[#0987CE]/80 rounded-2xl p-4 space-y-3">
+          <div className="bg-[#030B17] border-2 border-[#0987CE]/80 rounded-2xl p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#145A9B]/60 pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-black uppercase animate-pulse">
                   <Radio className="w-3.5 h-3.5" />
-                  PLACAR AO VIVO EM TEMPO REAL
+                  JOGOS AO VIVO AGORA ({liveMatches.length})
                 </span>
                 <span className="text-xs text-slate-300 font-medium">
-                  Qualquer jogador nesta página acompanha os pontos, ordem de saque e pedidos de tempo ao vivo.
+                  Clique no jogo para acompanhar em tempo real com chat da torcida, histórico de pontos, quem está sacando e juiz.
                 </span>
               </div>
               <span className="text-[11px] font-mono text-[#12C7BB] font-bold">
@@ -1092,23 +1299,34 @@ export const DoubleEliminationBracket: React.FC = () => {
                 return (
                   <div
                     key={lm.id}
-                    className="bg-[#030B17] border border-[#145A9B] rounded-xl p-3.5 flex flex-col justify-between gap-3"
+                    onClick={() => setSelectedLiveMatchId(lm.id)}
+                    className="bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] hover:border-[#12C7BB] rounded-xl p-3.5 flex flex-col justify-between gap-3 cursor-pointer transition-all"
                   >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-black text-[#0987CE]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="font-black text-[#5BC3FA]">
                         Jogo {lm.matchNumber} · {lm.stageName} ({lm.courtName || 'Quadra Central'})
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setRefereeModalMatchId(lm.id)}
-                        className="px-2.5 py-1 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        <ShieldAlert className="w-3.5 h-3.5" />
-                        Abrir Súmula do Árbitro
-                      </button>
+                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedLiveMatchId(lm.id)}
+                          className="px-2.5 py-1 rounded-lg bg-[#12C7BB] text-slate-950 font-black text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Ver Jogo & Chat
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRefereeModalMatchId(lm.id)}
+                          className="px-2.5 py-1 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          Súmula Juiz
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-7 items-center gap-2 bg-[#071D3D] rounded-xl p-3 border border-[#145A9B]">
+                    <div className="grid grid-cols-7 items-center gap-2 bg-[#030B17] rounded-xl p-3 border border-[#145A9B]">
                       <div className="col-span-3">
                         <div className="text-xs font-extrabold text-white truncate">
                           {formatParticipantName(lm.team1)}
@@ -1136,7 +1354,7 @@ export const DoubleEliminationBracket: React.FC = () => {
 
                     <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
                       <span className="font-bold text-[#12C7BB]">
-                        🏐 Sacando agora: {currentServer}
+                        🏐 Sacando: {currentServer} · Juiz: {refState?.refereeName || 'Oficial SHARK SET'}
                       </span>
                       {refState?.activeTimeout ? (
                         <span className="px-2 py-0.5 rounded bg-[#0987CE]/20 text-[#0987CE] font-bold flex items-center gap-1">
@@ -1145,7 +1363,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                         </span>
                       ) : lastPoint ? (
                         <span className="text-slate-400 truncate">
-                          Último lance ({lastPoint.scoreAfter}): <strong className="text-white">{lastPoint.scorerName}</strong> ({lastPoint.skill})
+                          Último ponto ({lastPoint.scoreAfter}): <strong className="text-white">{lastPoint.scorerName}</strong> ({lastPoint.skill})
                         </span>
                       ) : (
                         <span className="text-slate-400">
@@ -1161,32 +1379,32 @@ export const DoubleEliminationBracket: React.FC = () => {
         )}
 
         {/* Format Switcher: Semi Direta (Futevôlei) vs Semi com Chance (Challonge) */}
-        <div className="pt-4 border-t border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="pt-3 border-t border-[#145A9B]/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-0.5 text-xs">
-            <span className="font-extrabold text-amber-400 uppercase tracking-wider block text-[11px]">
+            <span className="font-extrabold text-[#12C7BB] uppercase tracking-wider block text-[11px]">
               Formato da Semifinal & Pontuação Automática no Ranking SHARK SET:
             </span>
             <span className="text-slate-300">
-              Clique em qualquer partida para lançar ou editar o placar. A <strong>Classificação do Torneio</strong> e o <strong>Ranking Oficial</strong> atualizam instantaneamente.
+              Clique em qualquer cartão de jogo para abrir a <strong>Transmissão em Tempo Real + Chat + Histórico de Pontos</strong>.
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800 shrink-0">
+          <div className="flex items-center gap-1.5 bg-[#030B17] p-1.5 rounded-xl border border-[#145A9B] shrink-0">
             <button
               onClick={() => handleSwitchSemiFormat('semi_direta')}
               className={`px-3.5 py-2 text-xs font-black rounded-lg transition-all cursor-pointer ${
                 activeTournament.semiFormat === 'semi_direta'
-                  ? 'bg-amber-400 text-slate-950 shadow-xs'
+                  ? 'bg-[#0987CE] text-white shadow-xs'
                   : 'text-slate-300 hover:text-white'
               }`}
             >
-              ⚽ Semi Direta (Futevôlei)
+              ⚽ Semi Direta + 3º Lugar (Futevôlei)
             </button>
             <button
               onClick={() => handleSwitchSemiFormat('semi_com_chance')}
               className={`px-3.5 py-2 text-xs font-black rounded-lg transition-all cursor-pointer ${
                 activeTournament.semiFormat === 'semi_com_chance'
-                  ? 'bg-amber-400 text-slate-950 shadow-xs'
+                  ? 'bg-[#0987CE] text-white shadow-xs'
                   : 'text-slate-300 hover:text-white'
               }`}
             >
@@ -1197,26 +1415,26 @@ export const DoubleEliminationBracket: React.FC = () => {
 
         {/* Podium Highlight */}
         {podium.champion && (
-          <div className="pt-4 border-t border-slate-100 bg-gradient-to-r from-amber-50/80 via-white to-amber-50/50 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 border border-amber-200">
+          <div className="pt-4 border-t border-[#145A9B] bg-gradient-to-r from-[#030B17] via-[#0B254E] to-[#030B17] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 border border-[#12C7BB]/60">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-amber-400 text-amber-950 flex items-center justify-center font-bold">
+              <div className="w-11 h-11 rounded-2xl bg-[#12C7BB] text-slate-950 flex items-center justify-center font-bold">
                 <Trophy className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
+                <span className="text-[11px] font-bold text-[#12C7BB] uppercase tracking-wider block">
                   Pódio Oficial Homologado
                 </span>
-                <span className="text-base font-extrabold text-slate-900">
+                <span className="text-base font-extrabold text-white">
                   🥇 1º Lugar: {formatParticipantName(podium.champion)}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-6 text-xs text-slate-600">
+            <div className="flex flex-wrap items-center gap-6 text-xs text-slate-300">
               {podium.runnerUp && (
                 <div>
                   <span className="text-slate-400 block">🥈 2º Lugar (Vice):</span>
-                  <span className="font-bold text-slate-800">
+                  <span className="font-bold text-white">
                     {formatParticipantName(podium.runnerUp)}
                   </span>
                 </div>
@@ -1224,7 +1442,7 @@ export const DoubleEliminationBracket: React.FC = () => {
               {podium.thirdPlace && (
                 <div>
                   <span className="text-slate-400 block">🥉 3º Lugar:</span>
-                  <span className="font-bold text-slate-800">
+                  <span className="font-bold text-[#12C7BB]">
                     {formatParticipantName(podium.thirdPlace)}
                   </span>
                 </div>
@@ -1234,28 +1452,28 @@ export const DoubleEliminationBracket: React.FC = () => {
         )}
       </div>
 
-      {/* Dual View Mode Switcher (Chaveamento Oficial c/ Infinity Scroll vs Visualização em Lista) + Stage Filter */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      {/* Dual View Mode Switcher + Stage Filter */}
+      <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-black text-slate-300 uppercase tracking-wider px-2">
-            Modo de Visualização da Tabela:
+            Modo de Visualização:
           </span>
           <div className="flex items-center gap-1.5 bg-[#030B17] p-1.5 rounded-xl border border-[#145A9B]">
             <button
               type="button"
               onClick={() => setBracketViewMode('chaveamento')}
-              className={`px-4 py-2 text-xs font-black rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 text-xs font-black rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 bracketViewMode === 'chaveamento'
                   ? 'bg-[#0987CE] text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-[#071D3D]'
               }`}
             >
-              🏆 1. Em Chaveamento (Tabela Oficial c/ Pan & Zoom)
+              🏆 1. Em Chaveamento (Pan, Zoom & Tela Cheia)
             </button>
             <button
               type="button"
               onClick={() => setBracketViewMode('lista')}
-              className={`px-4 py-2 text-xs font-black rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 text-xs font-black rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 bracketViewMode === 'lista'
                   ? 'bg-[#0987CE] text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-[#071D3D]'
@@ -1270,7 +1488,7 @@ export const DoubleEliminationBracket: React.FC = () => {
         <div className="flex flex-wrap items-center gap-1 bg-[#030B17] p-1 rounded-xl border border-[#145A9B] w-fit">
           <button
             onClick={() => setActiveStageTab('all')}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
               activeStageTab === 'all'
                 ? 'bg-[#0987CE] text-white shadow-xs'
                 : 'text-slate-300 hover:text-white hover:bg-[#071D3D]'
@@ -1280,7 +1498,7 @@ export const DoubleEliminationBracket: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveStageTab('standings')}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
               activeStageTab === 'standings'
                 ? 'bg-[#0987CE] text-white shadow-xs'
                 : 'text-slate-300 hover:text-white hover:bg-[#071D3D]'
@@ -1295,8 +1513,8 @@ export const DoubleEliminationBracket: React.FC = () => {
             }}
             className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
               activeStageTab === 'winners'
-                ? 'bg-[#0987CE] text-white shadow-xs'
-                : 'text-slate-300 hover:text-white hover:bg-[#071D3D]'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-emerald-300 hover:text-white hover:bg-emerald-950/60'
             }`}
           >
             Vencedores ({winnersMatches.length})
@@ -1308,11 +1526,11 @@ export const DoubleEliminationBracket: React.FC = () => {
             }}
             className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
               activeStageTab === 'losers'
-                ? 'bg-[#0987CE] text-white shadow-xs'
-                : 'text-slate-300 hover:text-white hover:bg-[#071D3D]'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'text-rose-300 hover:text-white hover:bg-rose-950/60'
             }`}
           >
-            Repescagem ({losersMatches.length})
+            Perdedores ({losersMatches.length})
           </button>
           <button
             onClick={() => {
@@ -1325,7 +1543,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                 : 'text-slate-300 hover:text-white hover:bg-[#071D3D]'
             }`}
           >
-            Semis & Final
+            Semis, 3º & Final
           </button>
 
           <button
@@ -1439,8 +1657,17 @@ export const DoubleEliminationBracket: React.FC = () => {
           onInlineSubmit={handleInlineSubmit}
           onOpenRefereeModal={(mId) => setRefereeModalMatchId(mId)}
           onOpenMatchEditor={handleOpenMatchEditor}
+          onSelectMatchCard={(m) => setSelectedLiveMatchId(m.id)}
           onShareMatch={(m) => handleOpenShare(m)}
           onHistoryMatch={(m) => handleOpenMatchHistory(m.team1, m.team2, m.id)}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen((f) => !f)}
+          knockoutOnlyMode={knockoutOnlyMode}
+          onToggleKnockoutOnlyMode={() =>
+            setManualKnockoutToggle((prev) =>
+              prev !== null ? !prev : !hasReachedSemifinalsAutomatically
+            )
+          }
         />
       )}
 
@@ -1456,7 +1683,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                 Classificação Automática do Torneio (Tempo Real)
               </h2>
               <p className="text-xs text-slate-300">
-                Gerada automaticamente conforme os resultados dos jogos são inseridos nas partidas abaixo.
+                Gerada automaticamente conforme os resultados dos jogos são inseridos nas partidas.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1467,7 +1694,6 @@ export const DoubleEliminationBracket: React.FC = () => {
                 type="button"
                 onClick={handleExportPDF}
                 className="px-3 py-1.5 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-                title="Baixar Relatório Oficial e Chaveamento em PDF"
               >
                 <Download className="w-3.5 h-3.5" />
                 Exportar PDF
@@ -1476,7 +1702,6 @@ export const DoubleEliminationBracket: React.FC = () => {
                 type="button"
                 onClick={handleExportCSV}
                 className="px-3 py-1.5 rounded-lg bg-[#030B17] hover:bg-[#0B254E] text-slate-200 font-bold text-xs border border-[#145A9B] transition-colors cursor-pointer flex items-center gap-1.5"
-                title="Baixar Resultados em Planilha CSV"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-[#12C7BB]" />
                 Exportar CSV
@@ -1485,7 +1710,6 @@ export const DoubleEliminationBracket: React.FC = () => {
                 type="button"
                 onClick={handlePrintBracket}
                 className="px-3 py-1.5 rounded-lg bg-[#030B17] hover:bg-[#0B254E] text-slate-300 hover:text-white font-bold text-xs border border-[#145A9B] transition-colors cursor-pointer flex items-center gap-1.5"
-                title="Imprimir ou Salvar em PDF"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Imprimir
@@ -1563,16 +1787,16 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* VISUALIZAÇÃO 2: EM LISTA (CARDS POR FASE / RODADA) */}
       {activeStageTab !== 'standings' && bracketViewMode === 'lista' && (
         <div className="space-y-8">
-          {/* SECTION 1: CHAVE DOS VENCEDORES */}
+          {/* SECTION 1: CHAVE DOS VENCEDORES (VERDE SUAVE) */}
           {(activeStageTab === 'all' || activeStageTab === 'winners') && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                  Chave dos Vencedores (Principal)
+                <h2 className="text-base font-bold text-emerald-400 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  Chave dos Vencedores (Verde Suave)
                 </h2>
                 <span className="text-xs text-slate-400">
-                  Insira os placares para avançar vencedores e gerar a classificação
+                  Clique em qualquer cartão para abrir o jogo em tempo real com chat e histórico de pontos
                 </span>
               </div>
 
@@ -1582,14 +1806,14 @@ export const DoubleEliminationBracket: React.FC = () => {
                 } gap-4`}
               >
                 <div className="space-y-3">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
+                  <div className="text-xs font-bold text-emerald-300 uppercase tracking-wide px-1">
                     Rodada 1: Quartas de Final (J1 a J4)
                   </div>
                   {winnersMatches.filter((m) => m.round === 1).map((m) => renderMatchCard(m))}
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
+                  <div className="text-xs font-bold text-emerald-300 uppercase tracking-wide px-1">
                     {activeTournament.semiFormat === 'semi_direta'
                       ? 'Rodada 2: Vale Vaga Direta na Semifinal (J7 e J8)'
                       : 'Rodada 2: Semifinal Vencedores (J7 e J8)'}
@@ -1599,7 +1823,7 @@ export const DoubleEliminationBracket: React.FC = () => {
 
                 {activeTournament.semiFormat === 'semi_com_chance' && (
                   <div className="space-y-3">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
+                    <div className="text-xs font-bold text-emerald-300 uppercase tracking-wide px-1">
                       Rodada 3: Final dos Vencedores (J11)
                     </div>
                     {winnersMatches.filter((m) => m.round === 3).map((m) => renderMatchCard(m))}
@@ -1609,13 +1833,13 @@ export const DoubleEliminationBracket: React.FC = () => {
             </div>
           )}
 
-          {/* SECTION 2: CHAVE DOS PERDEDORES (REPESCAGEM / BURACO) */}
+          {/* SECTION 2: CHAVE DOS PERDEDORES (VERMELHO SUAVE) */}
           {(activeStageTab === 'all' || activeStageTab === 'losers') && (
-            <div className="space-y-3 pt-4 border-t border-slate-200">
+            <div className="space-y-3 pt-4 border-t border-[#145A9B]/60">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
-                  Chave dos Perdedores (Repescagem / Buraco)
+                <h2 className="text-base font-bold text-rose-400 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                  Chave dos Perdedores / Repescagem (Vermelho Suave)
                 </h2>
                 <span className="text-xs text-slate-400">Quem perde 2 vezes está eliminado</span>
               </div>
@@ -1626,14 +1850,14 @@ export const DoubleEliminationBracket: React.FC = () => {
                 } gap-4`}
               >
                 <div className="space-y-3">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
+                  <div className="text-xs font-bold text-rose-300 uppercase tracking-wide px-1">
                     Repescagem R1 (Perdedores da R1 - J5 e J6)
                   </div>
                   {losersMatches.filter((m) => m.round === 1).map((m) => renderMatchCard(m))}
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
+                  <div className="text-xs font-bold text-rose-300 uppercase tracking-wide px-1">
                     {activeTournament.semiFormat === 'semi_direta'
                       ? 'Repescagem R2: Vale Vaga na Semifinal Direta (J9 e J10)'
                       : 'Repescagem R2: Cruzamento c/ Perdedores da Semi (J9 e J10)'}
@@ -1644,14 +1868,14 @@ export const DoubleEliminationBracket: React.FC = () => {
                 {activeTournament.semiFormat === 'semi_com_chance' && (
                   <>
                     <div className="space-y-3">
-                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
+                      <div className="text-xs font-bold text-rose-300 uppercase tracking-wide px-1">
                         Repescagem R3: Semifinal Perdedores (J12)
                       </div>
                       {losersMatches.filter((m) => m.round === 3).map((m) => renderMatchCard(m))}
                     </div>
 
                     <div className="space-y-3">
-                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
+                      <div className="text-xs font-bold text-rose-300 uppercase tracking-wide px-1">
                         Repescagem R4: Final Perdedores (J13)
                       </div>
                       {losersMatches.filter((m) => m.round === 4).map((m) => renderMatchCard(m))}
@@ -1662,31 +1886,37 @@ export const DoubleEliminationBracket: React.FC = () => {
             </div>
           )}
 
-          {/* SECTION 3: FASE FINAL */}
+          {/* SECTION 3: FASE FINAL (SEMIFINAIS, GRANDE FINAL E DISPUTA DE 3º LUGAR) */}
           {(activeStageTab === 'all' || activeStageTab === 'final') && (
-            <div className="space-y-4 pt-4 border-t border-slate-200">
+            <div className="space-y-4 pt-4 border-t border-[#145A9B]/60">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-amber-500" />
+                <h2 className="text-base font-bold text-[#5BC3FA] flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-[#12C7BB]" />
                   {activeTournament.semiFormat === 'semi_direta'
-                    ? 'Semifinais Diretas (Mata-Mata) & Grande Final'
+                    ? 'Mata-Mata Final: Semifinais, Grande Final & Disputa de 3º Lugar'
                     : 'Grande Final (Campeão Vencedores vs Campeão Repescagem)'}
                 </h2>
               </div>
 
               {activeTournament.semiFormat === 'semi_direta' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-3">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
-                      Semifinais Diretas (2 Invictos vs 2 da Repescagem)
+                    <div className="text-xs font-bold text-[#5BC3FA] uppercase tracking-wide px-1">
+                      Semifinais Diretas (Mata-Mata)
                     </div>
                     {semiMatches.map((m) => renderMatchCard(m))}
                   </div>
                   <div className="space-y-3">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
-                      Grande Final (Jogo Único pelo Título)
+                    <div className="text-xs font-bold text-[#12C7BB] uppercase tracking-wide px-1">
+                      🏆 Grande Final (1º e 2º Lugar)
                     </div>
                     {grandFinalMatches.map((m) => renderMatchCard(m))}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold text-slate-300 uppercase tracking-wide px-1">
+                      🥉 Disputa de 3º Lugar
+                    </div>
+                    {thirdPlaceMatches.map((m) => renderMatchCard(m))}
                   </div>
                 </div>
               ) : (
@@ -1700,18 +1930,18 @@ export const DoubleEliminationBracket: React.FC = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* MODAL A: CREATE OR EDIT TOURNAMENT (NOME, DATA, LOCAL, SIMPLES/DUPLAS, REGRAS, LIMITE) */}
+      {/* MODAL A: CREATE OR EDIT TOURNAMENT                                    */}
       {/* ===================================================================== */}
       {showTournamentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleSaveTournamentModal} className="space-y-4 text-xs">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-amber-700">
+                  <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
                     Gestão de Torneios de Futevôlei
                   </span>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="text-base font-bold text-white">
                     {showTournamentModal === 'create'
                       ? 'Criar Novo Torneio de Futevôlei'
                       : 'Gerenciar & Editar Configurações do Torneio'}
@@ -1720,51 +1950,50 @@ export const DoubleEliminationBracket: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowTournamentModal(null)}
-                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer font-bold"
+                  className="text-slate-400 hover:text-white p-1 cursor-pointer font-bold"
                 >
                   ✕
                 </button>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Nome do Torneio:</label>
+                <label className="block font-semibold text-slate-300 mb-1">Nome do Torneio:</label>
                 <input
                   type="text"
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="Ex: Copa Regional de Futevôlei Mineiros"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                  className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-sm text-white"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Data do Torneio:</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Data do Torneio:</label>
                   <input
                     type="date"
                     required
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono"
+                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono text-white"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Local / Arena:</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Local / Arena:</label>
                   <input
                     type="text"
                     required
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                     placeholder="Ex: SHARK SET Arena Matriz - Mineiros/GO"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
                   />
                 </div>
               </div>
 
-              {/* Formato: Simples (1x1) vs Duplas (2x2) */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-1.5">
+                <label className="block font-semibold text-slate-300 mb-1.5">
                   Formato de Participação (Simples vs Duplas):
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
@@ -1773,8 +2002,8 @@ export const DoubleEliminationBracket: React.FC = () => {
                     onClick={() => setFormModality('duplas')}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       formModality === 'duplas'
-                        ? 'border-slate-900 bg-slate-900 text-white'
-                        : 'border-slate-200 bg-slate-50 text-slate-700'
+                        ? 'border-[#0987CE] bg-[#0987CE]/25 text-white'
+                        : 'border-[#145A9B] bg-[#030B17] text-slate-300'
                     }`}
                   >
                     <span className="font-bold block">Duplas (2x2 Tradicional)</span>
@@ -1788,8 +2017,8 @@ export const DoubleEliminationBracket: React.FC = () => {
                     onClick={() => setFormModality('simples')}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       formModality === 'simples'
-                        ? 'border-slate-900 bg-slate-900 text-white'
-                        : 'border-slate-200 bg-slate-50 text-slate-700'
+                        ? 'border-[#0987CE] bg-[#0987CE]/25 text-white'
+                        : 'border-[#145A9B] bg-[#030B17] text-slate-300'
                     }`}
                   >
                     <span className="font-bold block">Simples (1x1 / Desafio Individual)</span>
@@ -1802,11 +2031,11 @@ export const DoubleEliminationBracket: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Categoria / Série:</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Categoria / Série:</label>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as TournamentCategory)}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
+                    className="w-full px-2.5 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-semibold text-white"
                   >
                     {Object.entries(TOURNAMENT_CATEGORY_LABELS).map(([k, label]) => (
                       <option key={k} value={k}>
@@ -1817,11 +2046,11 @@ export const DoubleEliminationBracket: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Limite de Participantes:</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Limite de Participantes:</label>
                   <select
                     value={formMaxParticipants}
                     onChange={(e) => setFormMaxParticipants(parseInt(e.target.value, 10))}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold"
+                    className="w-full px-2.5 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono font-bold text-white"
                   >
                     <option value={4}>4 Vagas</option>
                     <option value={8}>8 Vagas (Padrão Buraco 4)</option>
@@ -1831,18 +2060,18 @@ export const DoubleEliminationBracket: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Taxa de Inscrição (R$):</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Taxa de Inscrição (R$):</label>
                   <input
                     type="number"
                     value={formFee}
                     onChange={(e) => setFormFee(parseInt(e.target.value, 10) || 0)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono"
+                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-300 mb-1">
                   Regras Específicas do Torneio:
                 </label>
                 <textarea
@@ -1850,7 +2079,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                   value={formRules}
                   onChange={(e) => setFormRules(e.target.value)}
                   placeholder="Defina pontuação dos sets (ex: 18 pts), regras de saque, tempo técnico, critério de desempate..."
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg"
+                  className="w-full p-3 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
                 />
               </div>
 
@@ -1858,13 +2087,13 @@ export const DoubleEliminationBracket: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowTournamentModal(null)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 cursor-pointer"
+                  className="px-4 py-2 text-xs font-medium text-slate-300 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl cursor-pointer"
+                  className="px-5 py-2.5 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl cursor-pointer"
                 >
                   {showTournamentModal === 'create' ? 'Criar Torneio Oficial' : 'Salvar Alterações'}
                 </button>
@@ -1878,22 +2107,22 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* MODAL B: SISTEMA DE INSCRIÇÃO RÁPIDA NO TORNEIO (SIMPLES OU DUPLAS)   */}
       {/* ===================================================================== */}
       {showQuickEnrollModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
             <form onSubmit={handleQuickEnrollSubmit} className="space-y-4 text-xs">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-emerald-700">
+                  <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
                     Sistema de Inscrição ({pairsInTourn.length}/{activeTournament.maxPairs} Vagas)
                   </span>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="text-base font-bold text-white">
                     Inscrever {isSingles ? 'Jogador (Simples 1x1)' : 'Dupla (2x2)'} em {activeTournament.name}
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowQuickEnrollModal(false)}
-                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer font-bold"
+                  className="text-slate-400 hover:text-white p-1 cursor-pointer font-bold"
                 >
                   ✕
                 </button>
@@ -1901,7 +2130,7 @@ export const DoubleEliminationBracket: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div className="sm:col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-300 mb-1">
                     {isSingles ? 'Nome do Jogador:' : 'Atleta 1:'}
                   </label>
                   <input
@@ -1915,15 +2144,15 @@ export const DoubleEliminationBracket: React.FC = () => {
                       if (found) setEnrollLvl1(found.level);
                     }}
                     placeholder="Ex: Edmar Júnio"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Nível Ranking:</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Nível Ranking:</label>
                   <select
                     value={enrollLvl1}
                     onChange={(e) => setEnrollLvl1(e.target.value as AthleteLevel)}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
+                    className="w-full px-2.5 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-semibold text-white"
                   >
                     {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
                       <option key={k} value={k}>
@@ -1937,7 +2166,7 @@ export const DoubleEliminationBracket: React.FC = () => {
               {!isSingles && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div className="sm:col-span-2">
-                    <label className="block font-semibold text-slate-700 mb-1">Atleta 2 (Parceiro):</label>
+                    <label className="block font-semibold text-slate-300 mb-1">Atleta 2 (Parceiro):</label>
                     <input
                       type="text"
                       required
@@ -1949,15 +2178,15 @@ export const DoubleEliminationBracket: React.FC = () => {
                         if (found) setEnrollLvl2(found.level);
                       }}
                       placeholder="Ex: Juninho Silva"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                      className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Nível Parceiro:</label>
+                    <label className="block font-semibold text-slate-300 mb-1">Nível Parceiro:</label>
                     <select
                       value={enrollLvl2}
                       onChange={(e) => setEnrollLvl2(e.target.value as AthleteLevel)}
-                      className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
+                      className="w-full px-2.5 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-semibold text-white"
                     >
                       {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
                         <option key={k} value={k}>
@@ -1972,8 +2201,8 @@ export const DoubleEliminationBracket: React.FC = () => {
               <div
                 className={`p-3 rounded-xl border flex items-start gap-2 ${
                   enrollValidation.isValid
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                    : 'bg-rose-50 border-rose-200 text-rose-900'
+                    ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-200'
+                    : 'bg-rose-950/50 border-rose-500/40 text-rose-200'
                 }`}
               >
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -1984,13 +2213,13 @@ export const DoubleEliminationBracket: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">WhatsApp de Contato:</label>
+                <label className="block font-semibold text-slate-300 mb-1">WhatsApp de Contato:</label>
                 <input
                   type="tel"
                   value={enrollPhone}
                   onChange={(e) => setEnrollPhone(e.target.value)}
                   placeholder="(64) 99988-1122"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono"
+                  className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono text-white"
                 />
               </div>
 
@@ -1998,17 +2227,17 @@ export const DoubleEliminationBracket: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowQuickEnrollModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 cursor-pointer"
+                  className="px-4 py-2 text-xs font-medium text-slate-300 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={!enrollValidation.isValid || pairsInTourn.length >= activeTournament.maxPairs}
-                  className={`px-5 py-2.5 text-xs font-semibold rounded-xl ${
+                  className={`px-5 py-2.5 text-xs font-black rounded-xl ${
                     enrollValidation.isValid && pairsInTourn.length < activeTournament.maxPairs
-                      ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      ? 'bg-[#0987CE] hover:bg-[#0772b0] text-white cursor-pointer'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   Confirmar Inscrição na Chave
@@ -2021,34 +2250,34 @@ export const DoubleEliminationBracket: React.FC = () => {
 
       {/* Full Unfrozen Match Editor Modal */}
       {editingMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
               <div>
-                <span className="text-[10px] font-bold uppercase text-amber-700">
+                <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
                   Edição Livre de Partida (Nada Congelado)
                 </span>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-bold text-white">
                   Jogo {editingMatch.matchNumber} · {editingMatch.stageName}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingMatch(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer font-bold"
+                className="text-slate-400 hover:text-white p-1 cursor-pointer font-bold"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSaveFullEditor} className="py-4 space-y-4 text-xs">
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                <label className="block font-bold text-slate-800">Lado 1 (Substituir ou manter):</label>
+              <div className="p-3.5 bg-[#030B17] border border-[#145A9B] rounded-xl space-y-2">
+                <label className="block font-bold text-slate-200">Lado 1 (Substituir ou manter):</label>
                 <div className="flex items-center gap-2">
                   <select
                     value={overrideTeam1Id}
                     onChange={(e) => setOverrideTeam1Id(e.target.value)}
-                    className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg font-semibold"
+                    className="flex-1 px-2.5 py-2 bg-[#071D3D] border border-[#145A9B] rounded-lg font-semibold text-white"
                   >
                     <option value="">-- Aguardando / Vazio --</option>
                     {pairsInTourn.map((p) => (
@@ -2063,18 +2292,18 @@ export const DoubleEliminationBracket: React.FC = () => {
                     max={99}
                     value={inputScore1}
                     onChange={(e) => setInputScore1(parseInt(e.target.value, 10) || 0)}
-                    className="w-20 px-2.5 py-2 text-center font-mono font-bold text-base bg-white border border-slate-300 rounded-lg"
+                    className="w-20 px-2.5 py-2 text-center font-mono font-bold text-base bg-[#071D3D] border border-[#145A9B] rounded-lg text-white"
                   />
                 </div>
               </div>
 
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                <label className="block font-bold text-slate-800">Lado 2 (Substituir ou manter):</label>
+              <div className="p-3.5 bg-[#030B17] border border-[#145A9B] rounded-xl space-y-2">
+                <label className="block font-bold text-slate-200">Lado 2 (Substituir ou manter):</label>
                 <div className="flex items-center gap-2">
                   <select
                     value={overrideTeam2Id}
                     onChange={(e) => setOverrideTeam2Id(e.target.value)}
-                    className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg font-semibold"
+                    className="flex-1 px-2.5 py-2 bg-[#071D3D] border border-[#145A9B] rounded-lg font-semibold text-white"
                   >
                     <option value="">-- Aguardando / Vazio --</option>
                     {pairsInTourn.map((p) => (
@@ -2089,28 +2318,28 @@ export const DoubleEliminationBracket: React.FC = () => {
                     max={99}
                     value={inputScore2}
                     onChange={(e) => setInputScore2(parseInt(e.target.value, 10) || 0)}
-                    className="w-20 px-2.5 py-2 text-center font-mono font-bold text-base bg-white border border-slate-300 rounded-lg"
+                    className="w-20 px-2.5 py-2 text-center font-mono font-bold text-base bg-[#071D3D] border border-[#145A9B] rounded-lg text-white"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Quadra do Jogo:</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Quadra do Jogo:</label>
                   <input
                     type="text"
                     value={overrideCourt}
                     onChange={(e) => setOverrideCourt(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Horário:</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Horário:</label>
                   <input
                     type="text"
                     value={overrideTime}
                     onChange={(e) => setOverrideTime(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono"
+                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono text-white"
                   />
                 </div>
               </div>
@@ -2123,7 +2352,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                     setEditingMatch(null);
                     triggerToast(`Partida ${editingMatch.matchNumber} resetada.`);
                   }}
-                  className="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer flex items-center gap-1"
+                  className="px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-950/50 rounded-lg cursor-pointer flex items-center gap-1"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   Zerar / Voltar Atrás
@@ -2133,13 +2362,13 @@ export const DoubleEliminationBracket: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setEditingMatch(null)}
-                    className="px-3 py-2 text-xs font-medium text-slate-600 cursor-pointer"
+                    className="px-3 py-2 text-xs font-medium text-slate-300 cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl cursor-pointer flex items-center gap-1.5"
+                    className="px-4 py-2 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl cursor-pointer flex items-center gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5" />
                     Salvar & Atualizar Classificação
@@ -2151,26 +2380,26 @@ export const DoubleEliminationBracket: React.FC = () => {
         </div>
       )}
 
-      {/* Start Tournament & Dynamic Draw Builder Modal (Present Pairs + Random or Manual Slot Placement) */}
+      {/* Start Tournament & Dynamic Draw Builder Modal */}
       {showStartDrawModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-6">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-[#071D3D] text-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-[#145A9B] space-y-5 my-6">
+            <div className="flex items-start justify-between border-b border-[#145A9B]/60 pb-4">
               <div>
-                <span className="px-2.5 py-0.5 rounded-md bg-amber-400 text-slate-950 font-black uppercase text-[10px]">
+                <span className="px-2.5 py-0.5 rounded-md bg-[#0987CE] text-white font-black uppercase text-[10px]">
                   INICIAR TORNEIO & GERAR TABELA OFICIAL
                 </span>
-                <h3 className="text-lg font-black text-slate-900 mt-1">
+                <h3 className="text-lg font-black text-white mt-1">
                   Tabela para Duplas Presentes ({presentPairsInTourn.length} presentes de {activePairsInTourn.length} ativas)
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-300 mt-0.5">
                   Confirme as duplas presentes na arena e escolha entre <strong>Seleção Aleatória (Sorteio)</strong> ou <strong>Colocar as Duplas Onde Quiser</strong> na chave.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowStartDrawModal(false)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 font-bold cursor-pointer"
+                className="text-slate-400 hover:text-white p-1.5 font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -2179,15 +2408,15 @@ export const DoubleEliminationBracket: React.FC = () => {
             {/* Step 1: Check-in de Presença e Pagamento dos 2 Jogadores */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-300">
                   1. Check-in de Presença e Status da Vaga (2 Pagamentos)
                 </h4>
-                <span className="text-[11px] font-bold text-emerald-700">
+                <span className="text-[11px] font-bold text-[#12C7BB]">
                   {presentPairsInTourn.length} duplas marcadas como PRESENTES
                 </span>
               </div>
 
-              <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-2xl divide-y divide-slate-100">
+              <div className="max-h-52 overflow-y-auto border border-[#145A9B] rounded-2xl divide-y divide-[#145A9B]/40">
                 {activePairsInTourn.map((pair) => {
                   const isPresent = pair.isPresent !== false;
                   const isConfirmed = pair.enrollmentStatus === 'confirmed';
@@ -2195,19 +2424,19 @@ export const DoubleEliminationBracket: React.FC = () => {
                     <div
                       key={pair.id}
                       className={`p-3 flex flex-wrap items-center justify-between gap-2 text-xs ${
-                        isPresent ? 'bg-white' : 'bg-slate-50 opacity-60'
+                        isPresent ? 'bg-[#030B17]' : 'bg-[#030B17]/50 opacity-60'
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-400">#{pair.seed}</span>
+                        <span className="font-mono font-bold text-[#5BC3FA]">#{pair.seed}</span>
                         <div>
-                          <div className="font-extrabold text-slate-900">
+                          <div className="font-extrabold text-white">
                             {pair.player1} & {pair.player2}
                           </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                          <div className="text-[11px] text-slate-400 flex items-center gap-2">
                             <span
                               className={`font-bold ${
-                                isConfirmed ? 'text-emerald-700' : 'text-amber-700'
+                                isConfirmed ? 'text-[#12C7BB]' : 'text-[#5BC3FA]'
                               }`}
                             >
                               {isConfirmed ? '✓ Vaga Confirmada (2/2 Pagos)' : '⏳ Vaga Pendente'}
@@ -2217,7 +2446,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                               type="button"
                               onClick={() => togglePairPlayerPayment(pair.id, 1)}
                               className={`underline cursor-pointer ${
-                                pair.player1Paid ? 'text-emerald-700 font-bold' : 'text-amber-700'
+                                pair.player1Paid ? 'text-[#12C7BB] font-bold' : 'text-slate-300'
                               }`}
                             >
                               {pair.player1}: {pair.player1Paid ? 'Pago' : 'Pendente'}
@@ -2227,7 +2456,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                               type="button"
                               onClick={() => togglePairPlayerPayment(pair.id, 2)}
                               className={`underline cursor-pointer ${
-                                pair.player2Paid ? 'text-emerald-700 font-bold' : 'text-amber-700'
+                                pair.player2Paid ? 'text-[#12C7BB] font-bold' : 'text-slate-300'
                               }`}
                             >
                               {pair.player2}: {pair.player2Paid ? 'Pago' : 'Pendente'}
@@ -2246,8 +2475,8 @@ export const DoubleEliminationBracket: React.FC = () => {
                         }}
                         className={`px-3 py-1.5 rounded-xl font-black text-xs transition-colors cursor-pointer ${
                           isPresent
-                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                            ? 'bg-[#0987CE] text-white hover:bg-[#0772b0]'
+                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                         }`}
                       >
                         {isPresent ? '✓ Presente no Torneio' : 'Ausente (Fora da Tabela)'}
@@ -2260,7 +2489,7 @@ export const DoubleEliminationBracket: React.FC = () => {
 
             {/* Step 2: Choose Random Draw vs Manual Placement */}
             <div className="space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-300">
                 2. Como deseja posicionar as {presentPairsInTourn.length} duplas presentes na tabela?
               </h4>
 
@@ -2270,19 +2499,15 @@ export const DoubleEliminationBracket: React.FC = () => {
                   onClick={() => setDrawMode('random')}
                   className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
                     drawMode === 'random'
-                      ? 'bg-slate-950 text-white border-slate-950 ring-2 ring-amber-400'
-                      : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'
+                      ? 'bg-[#030B17] text-white border-[#12C7BB] ring-2 ring-[#12C7BB]/40'
+                      : 'bg-[#030B17]/60 text-slate-300 border-[#145A9B] hover:bg-[#030B17]'
                   }`}
                 >
                   <div className="flex items-center gap-2 font-black text-sm">
-                    <Shuffle className="w-4 h-4 text-amber-400" />
+                    <Shuffle className="w-4 h-4 text-[#12C7BB]" />
                     Seleção Aleatória (Sorteio)
                   </div>
-                  <p
-                    className={`text-xs mt-1 ${
-                      drawMode === 'random' ? 'text-slate-300' : 'text-slate-500'
-                    }`}
-                  >
+                  <p className="text-xs mt-1 text-slate-300">
                     O sistema embaralha automaticamente todas as duplas presentes e monta os confrontos da 1ª rodada.
                   </p>
                 </button>
@@ -2299,31 +2524,27 @@ export const DoubleEliminationBracket: React.FC = () => {
                   }}
                   className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
                     drawMode === 'manual'
-                      ? 'bg-slate-950 text-white border-slate-950 ring-2 ring-amber-400'
-                      : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'
+                      ? 'bg-[#030B17] text-white border-[#12C7BB] ring-2 ring-[#12C7BB]/40'
+                      : 'bg-[#030B17]/60 text-slate-300 border-[#145A9B] hover:bg-[#030B17]'
                   }`}
                 >
                   <div className="flex items-center gap-2 font-black text-sm">
-                    <Sliders className="w-4 h-4 text-amber-400" />
+                    <Sliders className="w-4 h-4 text-[#12C7BB]" />
                     Colocar as Duplas Onde Quiser (Manual)
                   </div>
-                  <p
-                    className={`text-xs mt-1 ${
-                      drawMode === 'manual' ? 'text-slate-300' : 'text-slate-500'
-                    }`}
-                  >
+                  <p className="text-xs mt-1 text-slate-300">
                     Defina exatamente a posição de cada dupla nos confrontos da 1ª rodada antes de liberar os jogos.
                   </p>
                 </button>
               </div>
 
               {drawMode === 'manual' && (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
+                <div className="bg-[#030B17] border border-[#145A9B] rounded-2xl p-4 space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-extrabold text-slate-800">
+                    <span className="font-extrabold text-white">
                       Ordem Manual dos Confrontos (1ª Rodada):
                     </span>
-                    <span className="text-slate-500">
+                    <span className="text-slate-400">
                       Use as setas ↑ ↓ para colocar cada dupla no confronto desejado
                     </span>
                   </div>
@@ -2339,13 +2560,13 @@ export const DoubleEliminationBracket: React.FC = () => {
                         return (
                           <div
                             key={pairObj.id}
-                            className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs"
+                            className="bg-[#071D3D] border border-[#145A9B] rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs"
                           >
                             <div className="truncate">
-                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-black text-[10px] mr-1.5">
+                              <span className="px-1.5 py-0.5 rounded bg-[#0987CE] text-white font-black text-[10px] mr-1.5">
                                 Jogo {matchNum} ({slotSide})
                               </span>
-                              <span className="font-bold text-slate-900">
+                              <span className="font-bold text-white">
                                 {pairObj.player1} & {pairObj.player2}
                               </span>
                             </div>
@@ -2354,19 +2575,19 @@ export const DoubleEliminationBracket: React.FC = () => {
                                 type="button"
                                 disabled={idx === 0}
                                 onClick={() => moveManualPair(idx, -1)}
-                                className="p-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-30 cursor-pointer"
+                                className="p-1 rounded bg-[#030B17] hover:bg-[#0B254E] disabled:opacity-30 cursor-pointer"
                                 title="Subir posição"
                               >
-                                <ArrowUp className="w-3.5 h-3.5 text-slate-700" />
+                                <ArrowUp className="w-3.5 h-3.5 text-[#5BC3FA]" />
                               </button>
                               <button
                                 type="button"
                                 disabled={idx === arr.length - 1}
                                 onClick={() => moveManualPair(idx, 1)}
-                                className="p-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-30 cursor-pointer"
+                                className="p-1 rounded bg-[#030B17] hover:bg-[#0B254E] disabled:opacity-30 cursor-pointer"
                                 title="Descer posição"
                               >
-                                <ArrowDown className="w-3.5 h-3.5 text-slate-700" />
+                                <ArrowDown className="w-3.5 h-3.5 text-[#5BC3FA]" />
                               </button>
                             </div>
                           </div>
@@ -2377,15 +2598,15 @@ export const DoubleEliminationBracket: React.FC = () => {
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-              <span className="text-xs text-slate-500">
+            <div className="pt-3 border-t border-[#145A9B]/60 flex items-center justify-between gap-3">
+              <span className="text-xs text-slate-300">
                 Assim que o resultado de cada partida é confirmado, a próxima fase é populada automaticamente.
               </span>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowStartDrawModal(false)}
-                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-[#030B17] rounded-xl cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -2401,6 +2622,44 @@ export const DoubleEliminationBracket: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Real-Time Spectator & Match Details Page Modal (Opened when clicking any match card) */}
+      {selectedLiveMatch && (
+        <MatchLiveDetailsModal
+          match={selectedLiveMatch}
+          tournamentName={activeTournament.name}
+          arenaName={tenant.name}
+          isSingles={isSingles}
+          onClose={() => setSelectedLiveMatchId(null)}
+          onUpdateLiveMatch={(matchId, updater) => {
+            updateLiveRefereeMatch(matchId, updater);
+          }}
+          onConfirmFinalResult={(matchId, winningTeam, s1, s2) => {
+            const winPair =
+              winningTeam === 1 ? selectedLiveMatch.team1 : selectedLiveMatch.team2;
+            handleAdvanceMatch(matchId, winningTeam, s1, s2);
+            setSelectedLiveMatchId(null);
+            if (winPair) {
+              triggerGsapWinningPathAnimation(winPair, selectedLiveMatch);
+            }
+            triggerToast(
+              `Partida finalizada (${s1}x${s2})! Trajetória GSAP destacada e votação de MVP liberada!`
+            );
+          }}
+          onOpenFullRefereeConsole={(mId) => {
+            setSelectedLiveMatchId(null);
+            setRefereeModalMatchId(mId);
+          }}
+          onOpenMvpAndHistory={(p1, p2, mId) => {
+            setSelectedLiveMatchId(null);
+            handleOpenMatchHistory(p1, p2, mId);
+          }}
+          onOpenShareMatch={(m) => {
+            setSelectedLiveMatchId(null);
+            handleOpenShare(m);
+          }}
+        />
       )}
 
       {/* Official Referee Console Modal (Points, Service Order, Timeouts, Court Swaps, Real-Time Broadcast) */}

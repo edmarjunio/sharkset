@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { SportType, TenantConfig } from '../types';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
+import { ARENA_BRAND_PRESETS } from '../services/logoPaletteExtractor';
 import {
   MapPin,
   Navigation,
@@ -11,6 +12,7 @@ import {
   GraduationCap,
   Zap,
   Clock,
+  Palette,
 } from 'lucide-react';
 
 export const ArenasDirectory: React.FC = () => {
@@ -25,6 +27,7 @@ export const ArenasDirectory: React.FC = () => {
     setActiveTab,
     setArenaSubTab,
     tournaments,
+    updateArenaBranding,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -301,7 +304,7 @@ export const ArenasDirectory: React.FC = () => {
                 className="px-5 pb-5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => handleSelectArena(arena, 'aulas')}
@@ -313,19 +316,39 @@ export const ArenasDirectory: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleSelectArena(arena, 'campeonatos')}
-                    className="px-3 py-2 text-xs font-extrabold text-amber-950 bg-amber-100 hover:bg-amber-200 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="px-3 py-2 text-xs font-extrabold text-orange-950 bg-orange-100 hover:bg-orange-200 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
                   >
-                    <Trophy className="w-3.5 h-3.5 text-amber-700" />
+                    <Trophy className="w-3.5 h-3.5 text-orange-700" />
                     Torneios ({arenaTournaments.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const presetIdx =
+                        availableTenants.findIndex((a) => a.id === arena.id) %
+                        ARENA_BRAND_PRESETS.length;
+                      const preset = ARENA_BRAND_PRESETS[Math.max(0, presetIdx)];
+                      updateArenaBranding(arena.id, {
+                        logoUrl: arena.logoUrl || preset.logoUrl,
+                        brandPalette: arena.brandPalette || preset.palette,
+                        whiteLabelEnabled: true,
+                      });
+                      handleSelectArena(arena, 'agenda');
+                    }}
+                    className="px-3 py-2 text-xs font-extrabold text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                    title="Abrir página da Arena toda na paleta da logo da Arena com DESENVOLVIDO POR SHARKSET"
+                  >
+                    <Palette className="w-3.5 h-3.5 text-orange-600" />
+                    Site da Arena (Logo)
                   </button>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => handleSelectArena(arena, 'agenda')}
-                  className="px-4 py-2.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="px-4 py-2.5 text-xs font-black text-white bg-[#FF6B00] hover:bg-[#EA580C] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
-                  <Zap className="w-3.5 h-3.5 fill-slate-950" />
+                  <Zap className="w-3.5 h-3.5 fill-white" />
                   AGENDAR HORÁRIO & PAGAR
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>

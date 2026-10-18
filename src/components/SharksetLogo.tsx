@@ -10,33 +10,31 @@ interface SharksetLogoProps {
 export const SharksetLogo: React.FC<SharksetLogoProps> = ({
   size = 'md',
   showText = false,
-  showSubtitle = false,
   className = '',
 }) => {
   const sizeMap = {
-    xs: 'w-6 h-6',
-    sm: 'w-9 h-9',
-    md: 'w-11 h-11',
-    lg: 'w-16 h-16',
+    xs: 'w-7 h-7',
+    sm: 'w-11 h-11',
+    md: 'w-14 h-14',
+    lg: 'w-18 h-18',
     xl: 'w-24 h-24',
     '2xl': 'w-36 h-36',
   };
 
-  const badgeSize = sizeMap[size] || 'w-11 h-11';
+  const badgeSize = sizeMap[size] || 'w-14 h-14';
 
   return (
     <div className={`inline-flex flex-col items-center justify-center select-none ${className}`}>
-      <div className="inline-flex items-center gap-2">
-        {/* High-fidelity Vector SVG reproducing the Sharkset Emblem from Brand Guidelines */}
+      <div className="inline-flex items-center gap-2.5">
+        {/* High-fidelity Vector SVG reproducing the Sharkset Emblem */}
         <svg
           viewBox="0 0 200 200"
-          className={`${badgeSize} shrink-0 drop-shadow-[0_4px_12px_rgba(9,135,206,0.35)]`}
+          className={`${badgeSize} shrink-0 drop-shadow-[0_4px_12px_rgba(9,135,206,0.4)]`}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          aria-label="Sharkset Emblema Oficial"
+          aria-label="Sharkset Logo Oficial"
         >
           <defs>
-            {/* Ring Gradients */}
             <linearGradient id="ringNavy" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
               <stop offset="0%" stopColor="#0B2B5C" />
               <stop offset="50%" stopColor="#071D3D" />
@@ -53,6 +51,23 @@ export const SharksetLogo: React.FC<SharksetLogoProps> = ({
               <stop offset="0%" stopColor="#12C7BB" />
               <stop offset="100%" stopColor="#0987CE" />
             </linearGradient>
+
+            <linearGradient id="sharkBody" x1="45" y1="70" x2="160" y2="125" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#0987CE" />
+              <stop offset="100%" stopColor="#071D3D" />
+            </linearGradient>
+
+            <linearGradient id="waveDeep" x1="28" y1="120" x2="178" y2="185" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#0987CE" />
+              <stop offset="100%" stopColor="#071D3D" />
+            </linearGradient>
+
+            <linearGradient id="waveLight" x1="24" y1="115" x2="140" y2="175" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#12C7BB" />
+              <stop offset="100%" stopColor="#0987CE" />
+            </linearGradient>
+
+            <path id="textArcPath" d="M 32 98 A 68 68 0 0 1 168 98" />
           </defs>
 
           {/* Outer Circular Border Trim */}
@@ -82,8 +97,7 @@ export const SharksetLogo: React.FC<SharksetLogoProps> = ({
           {/* Net Top White Cable */}
           <path d="M 32 80 Q 100 86 168 80" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
 
-          {/* Shark Mascot */}
-          {/* Dorsal Fin */}
+          {/* Shark Mascot Dorsal Fin */}
           <path
             d="M 72 65 C 78 40 92 48 94 62 Z"
             fill="#0B4B82"
@@ -120,7 +134,6 @@ export const SharksetLogo: React.FC<SharksetLogoProps> = ({
           <ellipse cx="128" cy="85" rx="5" ry="4.5" fill="#FFFFFF" />
           <circle cx="129" cy="85" r="2.8" fill="#071D3D" />
           <circle cx="130" cy="84" r="1" fill="#FFFFFF" />
-          {/* Brow (Determined expression) */}
           <path d="M 122 81 C 126 78 133 80 136 83" stroke="#071D3D" strokeWidth="2.2" strokeLinecap="round" />
 
           {/* Smile / Mouth */}
@@ -129,24 +142,20 @@ export const SharksetLogo: React.FC<SharksetLogoProps> = ({
           {/* Futevolei Ball in White & Blue */}
           <g id="futevoleiBall">
             <circle cx="120" cy="140" r="21" fill="#F7FAFD" stroke="#0987CE" strokeWidth="2.5" />
-            {/* Star / Pattern */}
             <polygon
               points="120,126 123,134 131,134 125,139 127,147 120,142 113,147 115,139 109,134 117,134"
               fill="#0987CE"
             />
-            {/* Subtle Ball Seam Lines */}
             <path d="M 101 136 Q 120 144 139 134" stroke="#071D3D" strokeWidth="1.5" fill="none" />
             <path d="M 108 152 Q 120 142 134 153" stroke="#071D3D" strokeWidth="1.5" fill="none" />
           </g>
 
           {/* Dynamic Ocean Waves in Foreground */}
-          {/* Deep Wave Base */}
           <path
             d="M 28 125 C 40 105 60 115 70 135 C 80 155 105 168 135 164 C 160 160 174 140 178 130 C 180 155 162 180 130 184 C 90 190 40 175 28 125 Z"
             fill="url(#waveDeep)"
           />
 
-          {/* Crest Wave Turquoise */}
           <path
             d="M 24 135 C 32 112 55 110 68 130 C 82 152 108 165 140 160 C 120 176 80 180 50 165 C 32 155 26 142 24 135 Z"
             fill="url(#waveLight)"
@@ -171,36 +180,20 @@ export const SharksetLogo: React.FC<SharksetLogoProps> = ({
             letterSpacing="5"
             filter="drop-shadow(0px 2px 4px rgba(3, 11, 23, 0.9))"
           >
-            <textPath
-              href="#textArcPath"
-              startOffset="50%"
-              textAnchor="middle"
-            >
+            <textPath href="#textArcPath" startOffset="50%" textAnchor="middle">
               SHARKSET
             </textPath>
           </text>
         </svg>
 
-        {/* Optional Side Typographic Lockup */}
         {showText && (
           <div className="leading-none text-left">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl font-black tracking-tight text-white font-sans">
-                SHARK<span className="text-[#0987CE]">SET</span>
-              </span>
-            </div>
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#12C7BB] block mt-0.5">
-              É O TUBA 🦈
+            <span className="text-xl font-black tracking-tight text-white font-sans">
+              SHARK<span className="text-[#0987CE]">SET</span>
             </span>
           </div>
         )}
       </div>
-
-      {showSubtitle && (
-        <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-[#12C7BB] text-center block mt-1 drop-shadow-xs">
-          É O TUBA 🦈
-        </span>
-      )}
     </div>
   );
 };

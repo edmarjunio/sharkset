@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { TOURNAMENT_CATEGORY_LABELS } from '../services/rankingValidator';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
 import { SharksetLogo } from './SharksetLogo';
+import { MostWatchedGamesMiniRail } from './MostWatchedGamesMiniRail';
 import {
   Flame,
   Trophy,
@@ -85,7 +86,10 @@ export const HomeHighlights: React.FC = () => {
   }, [availableTenants]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8 text-[#F7FAFD]">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8 text-slate-900">
+      {/* MINIATURE MOST-WATCHED LIVE GAMES + BROADCAST STUDIO LAUNCHER */}
+      <MostWatchedGamesMiniRail />
+
       {/* =================================================================== */}
       {/* BRAND HERO BANNER: (Matching Brand Manual Slide 9: "A quadra é sua")*/}
       {/* =================================================================== */}
@@ -141,13 +145,7 @@ export const HomeHighlights: React.FC = () => {
           </div>
 
           <div className="shrink-0 flex flex-col items-center">
-            <SharksetLogo size="2xl" showSubtitle={true} />
-            <span className="text-[11px] font-black uppercase tracking-widest text-[#12C7BB] mt-1.5">
-              É O TUBA 🦈
-            </span>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-              (É O TUBARÃO!)
-            </span>
+            <SharksetLogo size="2xl" />
           </div>
         </div>
       </div>
