@@ -77,7 +77,10 @@ service cloud.firestore {
       return data.keys().hasAll(['id', 'type', 'title', 'body', 'ownerId']) &&
         data.keys().hasOnly(['id', 'type', 'title', 'body', 'recipientName', 'ownerId']) &&
         data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
-        data.type is string && data.type in ['vacant_2h', 'waitlist_freed', 'match_10pts_left', 'booking_15min'] &&
+        data.type is string && data.type in [
+          'vacant_2h', 'waitlist_freed', 'match_10pts_left', 'booking_15min',
+          'match_starting', 'match_modified', 'tuition_due_today', 'tuition_due_2days'
+        ] &&
         data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
         data.body is string && data.body.size() >= 1 && data.body.size() <= 400 &&
         data.ownerId is string && data.ownerId == request.auth.uid;

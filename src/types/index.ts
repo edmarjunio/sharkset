@@ -316,6 +316,7 @@ export interface BracketMatch {
   nextMatchLoserId?: string;
   loserDestinationSlot?: 'team1' | 'team2';
   liveReferee?: RefereeMatchState;
+  spectatorsCount?: number;
 }
 
 export interface Tournament {
@@ -382,25 +383,31 @@ export interface TenantConfig {
 
 export interface LiveChatMessage {
   id: string;
-  streamId: string;
+  streamId?: string;
+  matchId?: string;
   authorName: string;
   authorCity?: string;
   authorLevel?: AthleteLevel;
+  badge?: string;
   text: string;
   reaction?: string;
-  timestamp: string;
+  timestamp?: string;
+  createdAt?: string;
 }
 
 export interface HistoricalLegendVideo {
   id: string;
   title: string;
   legends: string[];
+  legendName?: string;
   era: string;
+  year?: string;
   location: string;
   youtubeEmbedUrl: string;
   thumbnailUrl: string;
   viewsCount: string;
   spectatorsWatchingNow: number;
+  duration?: string;
   description: string;
   highlightTag: string;
 }

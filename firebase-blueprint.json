@@ -72,7 +72,16 @@
         "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "type": {
           "type": "string",
-          "enum": ["vacant_2h", "waitlist_freed", "match_10pts_left", "booking_15min"]
+          "enum": [
+            "vacant_2h",
+            "waitlist_freed",
+            "match_10pts_left",
+            "booking_15min",
+            "match_starting",
+            "match_modified",
+            "tuition_due_today",
+            "tuition_due_2days"
+          ]
         },
         "title": { "type": "string", "maxLength": 160 },
         "body": { "type": "string", "maxLength": 400 },

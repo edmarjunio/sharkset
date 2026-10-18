@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TOURNAMENT_CATEGORY_LABELS } from '../services/rankingValidator';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
+import { SharksetLogo } from './SharksetLogo';
 import {
   Flame,
   Trophy,
@@ -14,6 +15,7 @@ import {
   CheckCircle2,
   Clock,
   Users,
+  Play,
 } from 'lucide-react';
 
 export const HomeHighlights: React.FC = () => {
@@ -51,11 +53,13 @@ export const HomeHighlights: React.FC = () => {
       monthlyPrice: number;
     }> = [];
 
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     availableTenants.forEach((ar) => {
       ar.courts.forEach((court) => {
         (court.classSchedules || []).forEach((cls) => {
-          const daysStr = (cls.daysOfWeek || ['ter', 'qui'])
-            .map((d) => d.toUpperCase())
+          const daysList = (cls.daysOfWeek || [2, 4]) as (string | number)[];
+          const daysStr = daysList
+            .map((d) => (typeof d === 'number' ? dayNames[d] || String(d) : String(d).toUpperCase()))
             .join(' e ');
           list.push({
             arenaId: ar.id,
@@ -77,24 +81,83 @@ export const HomeHighlights: React.FC = () => {
   }, [availableTenants]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8 text-[#F7FAFD]">
+      {/* =================================================================== */}
+      {/* BRAND HERO BANNER: (Matching Brand Manual Slide 9: "A quadra é sua")*/}
+      {/* =================================================================== */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#030B17] via-[#071D3D] to-[#0B254E] border-2 border-[#145A9B] p-6 sm:p-10 shadow-2xl">
+        {/* Ambient Wave Glow */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#0987CE]/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#12C7BB]/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-10">
+          <div className="space-y-4 max-w-xl text-center md:text-left">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0987CE]/20 text-[#0987CE] border border-[#0987CE]/30 text-xs font-black uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" />
+              SUA PRÓXIMA PARTIDA COMEÇA AQUI
+            </span>
+            <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
+              A quadra é sua.
+            </h1>
+            <p className="text-sm sm:text-base text-slate-300 font-medium leading-relaxed">
+              Agende, participe e acompanhe sua jornada no futevôlei. Chaveamento oficial com <strong>Infinity Scroll</strong>, súmula de árbitro e ranking regional por categoria.
+            </p>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setArenaSubTab('agenda');
+                  setActiveTab('scheduler');
+                }}
+                className="px-6 py-3 rounded-2xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs sm:text-sm shadow-lg shadow-[#0987CE]/30 transition-all cursor-pointer flex items-center gap-2"
+              >
+                Explorar Agendamentos
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setActiveTab('tournaments')}
+                className="px-5 py-3 rounded-2xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white font-extrabold text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
+              >
+                <Trophy className="w-4 h-4 text-[#0987CE]" />
+                Ver Torneios & Tabela
+              </button>
+              <button
+                onClick={() => setActiveTab('ranking_athletes')}
+                className="px-5 py-3 rounded-2xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#12C7BB]/40 text-[#12C7BB] font-extrabold text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
+              >
+                Ranking Board
+              </button>
+            </div>
+          </div>
+
+          <div className="shrink-0 flex flex-col items-center">
+            <SharksetLogo size="2xl" showSubtitle={true} />
+            <span className="text-[11px] font-black uppercase tracking-widest text-[#12C7BB] mt-1.5">
+              É O TUBA 🦈
+            </span>
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              (É O TUBARÃO!)
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* =================================================================== */}
       {/* BLOCO 1: 4 CARDS CHAMATIVOS DE CONVERSÃO RÁPIDA (SEM POLUIÇÃO)      */}
       {/* =================================================================== */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Horários de Pico Livres */}
-        <div className="bg-white border-2 border-emerald-500 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-black text-[10px] uppercase">
+              <span className="px-2.5 py-0.5 rounded-md bg-[#12C7BB]/20 text-[#12C7BB] font-black text-[10px] uppercase">
                 HORÁRIOS DE PICO LIVRES HOJE
               </span>
-              <Flame className="w-4 h-4 text-emerald-600" />
+              <Flame className="w-4 h-4 text-[#12C7BB]" />
             </div>
-            <h2 className="text-lg font-black text-slate-950 leading-tight">
+            <h2 className="text-lg font-black text-white leading-tight">
               {freePeakSlots.length} Quadras Vagas no Horário Nobre (18h às 22h)
             </h2>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-slate-300">
               Agende e pague no PIX em <strong>2 cliques</strong> na {tenant.name}.
             </p>
 
@@ -106,7 +169,7 @@ export const HomeHighlights: React.FC = () => {
                     setArenaSubTab('agenda');
                     setActiveTab('scheduler');
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-950 font-mono font-black text-xs cursor-pointer transition-colors"
+                  className="px-2.5 py-1 rounded-lg bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-[#12C7BB] font-mono font-black text-xs cursor-pointer transition-colors"
                 >
                   ⚡ {slot.startTime} · R$ {slot.price}
                 </button>
@@ -119,7 +182,7 @@ export const HomeHighlights: React.FC = () => {
               setArenaSubTab('agenda');
               setActiveTab('scheduler');
             }}
-            className="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs transition-all"
+            className="w-full py-2.5 px-4 rounded-xl bg-[#12C7BB] hover:bg-[#0ea89e] text-slate-950 font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all"
           >
             <Calendar className="w-3.5 h-3.5" />
             Reservar Horário em 2 Cliques
@@ -128,13 +191,13 @@ export const HomeHighlights: React.FC = () => {
         </div>
 
         {/* Card 2: Torneios Próximos & Tabela Oficial */}
-        <div className="bg-slate-950 text-white border-2 border-amber-400 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="px-2.5 py-0.5 rounded-md bg-amber-400 text-slate-950 font-black text-[10px] uppercase">
+              <span className="px-2.5 py-0.5 rounded-md bg-[#0987CE]/20 text-[#0987CE] font-black text-[10px] uppercase">
                 TORNEIOS PRÓXIMOS & TABELA
               </span>
-              <Trophy className="w-4 h-4 text-amber-400" />
+              <Trophy className="w-4 h-4 text-[#0987CE]" />
             </div>
             <h2 className="text-lg font-black text-white leading-tight">
               {tournaments[0]?.name || 'Copa Regional Shark Set'}
@@ -151,10 +214,10 @@ export const HomeHighlights: React.FC = () => {
                 return (
                   <div
                     key={t.id}
-                    className="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-[11px]"
+                    className="px-2.5 py-1.5 rounded-xl bg-[#030B17] border border-[#145A9B] flex items-center justify-between text-[11px]"
                   >
                     <span className="font-bold text-slate-200 truncate pr-2">{t.name}</span>
-                    <span className="font-mono font-black text-amber-400 shrink-0">
+                    <span className="font-mono font-black text-[#0987CE] shrink-0">
                       {count}/{t.maxPairs} duplas
                     </span>
                   </div>
@@ -166,33 +229,33 @@ export const HomeHighlights: React.FC = () => {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setActiveTab('tournaments')}
-              className="py-2.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs cursor-pointer flex items-center justify-center gap-1"
+              className="py-2.5 px-3 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs cursor-pointer flex items-center justify-center gap-1 shadow-md"
             >
               <Trophy className="w-3.5 h-3.5" />
               Ver Tabela
             </button>
             <button
-              onClick={() => setActiveTab('register_dupla')}
-              className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer flex items-center justify-center gap-1"
+              onClick={() => setActiveTab('ranking_athletes')}
+              className="py-2.5 px-3 rounded-xl bg-[#030B17] hover:bg-[#0B254E] text-[#12C7BB] border border-[#12C7BB]/40 font-black text-xs cursor-pointer flex items-center justify-center gap-1"
             >
-              Inscrever Dupla
+              Ranking →
             </button>
           </div>
         </div>
 
         {/* Card 3: Aulas com Vagas na Região */}
-        <div className="bg-white border-2 border-indigo-500 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-950 font-black text-[10px] uppercase">
+              <span className="px-2.5 py-0.5 rounded-md bg-[#0987CE]/20 text-[#0987CE] font-black text-[10px] uppercase">
                 AULAS COM VAGA NA REGIÃO
               </span>
-              <GraduationCap className="w-4 h-4 text-indigo-600" />
+              <GraduationCap className="w-4 h-4 text-[#0987CE]" />
             </div>
-            <h2 className="text-lg font-black text-slate-950 leading-tight">
-              Turmas de Futevôlei & Beach Tennis Abertas
+            <h2 className="text-lg font-black text-white leading-tight">
+              Turmas de Futevôlei & Beach Tennis
             </h2>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-slate-300">
               Filtre por dias (ex: <strong>Terça e Quinta 07h às 08h</strong>) e matricule-se na hora.
             </p>
 
@@ -200,12 +263,12 @@ export const HomeHighlights: React.FC = () => {
               {openClassesHighlight.slice(0, 2).map((item, i) => (
                 <div
                   key={i}
-                  className="px-2.5 py-1.5 rounded-xl bg-indigo-50/70 border border-indigo-200 flex items-center justify-between text-[11px]"
+                  className="px-2.5 py-1.5 rounded-xl bg-[#030B17] border border-[#145A9B] flex items-center justify-between text-[11px]"
                 >
-                  <span className="font-bold text-indigo-950 truncate pr-2">
+                  <span className="font-bold text-slate-200 truncate pr-2">
                     {item.daysLabel} · {item.timeLabel}
                   </span>
-                  <span className="font-mono font-black text-emerald-700 shrink-0">
+                  <span className="font-mono font-black text-[#12C7BB] shrink-0">
                     {item.spotsLeft} vagas
                   </span>
                 </div>
@@ -218,7 +281,7 @@ export const HomeHighlights: React.FC = () => {
               setArenaSubTab('aulas');
               setActiveTab('scheduler');
             }}
-            className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs transition-all"
+            className="w-full py-2.5 px-4 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all"
           >
             <GraduationCap className="w-3.5 h-3.5" />
             Ver Turmas & Mensalidades
@@ -226,13 +289,13 @@ export const HomeHighlights: React.FC = () => {
         </div>
 
         {/* Card 4: Conversão SaaS (R$ 20 Tabela / R$ 99 Arena) */}
-        <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white border-2 border-emerald-400 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="bg-gradient-to-br from-[#0B254E] via-[#071D3D] to-[#030B17] text-white border-2 border-[#12C7BB] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="px-2.5 py-0.5 rounded-md bg-emerald-400 text-slate-950 font-black text-[10px] uppercase">
+              <span className="px-2.5 py-0.5 rounded-md bg-[#12C7BB] text-slate-950 font-black text-[10px] uppercase">
                 PARA ARENAS & ORGANIZADORES
               </span>
-              <Zap className="w-4 h-4 text-emerald-400" />
+              <Zap className="w-4 h-4 text-[#12C7BB]" />
             </div>
             <h2 className="text-lg font-black text-white leading-tight">
               Tabela Oficial R$ 20 ou Sistema Arena R$ 99/mês
@@ -241,7 +304,7 @@ export const HomeHighlights: React.FC = () => {
               Automatize campeonatos, agendamentos em 2 cliques e cobrança de mensalidades no WhatsApp 2 dias antes do vencimento.
             </p>
 
-            <div className="space-y-1 text-[11px] text-emerald-300 font-bold pt-1">
+            <div className="space-y-1 text-[11px] text-[#12C7BB] font-bold pt-1">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 <span>Acesso avulso à Tabela: R$ 20 / torneio</span>
@@ -255,10 +318,10 @@ export const HomeHighlights: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('saas_hub')}
-            className="w-full py-2.5 px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs transition-all"
+            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 text-slate-950 font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Contratar Tabela (R$ 20) ou Arena (R$ 99)
+            Contratar Tabela ou Arena
           </button>
         </div>
       </div>
@@ -274,32 +337,32 @@ export const HomeHighlights: React.FC = () => {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-amber-600 block">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#0987CE] block">
               RESERVA RÁPIDA EM POUCOS CLIQUES
             </span>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-xl font-black text-white">
               Arenas Parceiras com Horários de Pico Livres
             </h2>
           </div>
           <button
             onClick={() => setActiveTab('arenas_directory')}
-            className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
+            className="px-4 py-2 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white font-black text-xs cursor-pointer flex items-center gap-1.5 self-start sm:self-auto transition-colors"
           >
             Ver Todas as Arenas ({availableTenants.length})
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5 text-[#0987CE]" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {availableTenants.map((ar) => {
-            const minPrice = Math.min(...ar.courts.map((c) => c.pricePerHour));
+            const minPrice = Math.min(...ar.courts.map((c) => c.hourlyRate || 80));
             return (
               <div
                 key={ar.id}
-                className="bg-white border border-slate-200 hover:border-slate-400 rounded-2xl overflow-hidden shadow-xs transition-all flex flex-col justify-between group"
+                className="bg-[#071D3D] border-2 border-[#145A9B] hover:border-[#0987CE] rounded-3xl overflow-hidden shadow-xl transition-all flex flex-col justify-between group"
               >
                 <div>
-                  <div className="relative h-44 bg-slate-900 overflow-hidden">
+                  <div className="relative h-44 bg-[#030B17] overflow-hidden">
                     <img
                       src={
                         ar.imageUrl ||
@@ -308,31 +371,31 @@ export const HomeHighlights: React.FC = () => {
                       alt={ar.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#030B17] via-[#071D3D]/30 to-transparent" />
                     <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                      <span className="px-2.5 py-1 rounded-lg bg-emerald-400 text-slate-950 font-black text-[10px] uppercase">
+                      <span className="px-2.5 py-1 rounded-lg bg-[#12C7BB] text-slate-950 font-black text-[10px] uppercase">
                         ● Horários Livres Hoje
                       </span>
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 text-amber-400 font-mono font-bold text-xs">
+                      <span className="px-2.5 py-1 rounded-lg bg-[#030B17]/90 text-[#12C7BB] font-mono font-bold text-xs">
                         ★ {ar.rating.toFixed(1)}
                       </span>
                     </div>
                     <div className="absolute bottom-3 left-3 right-3 text-white">
                       <h3 className="text-base font-black leading-tight">{ar.name}</h3>
                       <p className="text-[11px] text-slate-300 flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
+                        <MapPin className="w-3 h-3 text-[#0987CE] shrink-0" />
                         {ar.city}/{ar.state} · {ar.courts.length} quadras
                       </p>
                     </div>
                   </div>
 
                   <div className="p-4 space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-slate-600">
+                    <div className="flex items-center justify-between text-slate-300">
                       <span className="flex items-center gap-1 font-semibold">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
                         {ar.operatingHours.open} às {ar.operatingHours.close}
                       </span>
-                      <span className="font-mono font-black text-slate-950 text-sm">
+                      <span className="font-mono font-black text-[#12C7BB] text-sm">
                         A partir de R$ {minPrice}/h
                       </span>
                     </div>
@@ -346,7 +409,7 @@ export const HomeHighlights: React.FC = () => {
                       setArenaSubTab('agenda');
                       setActiveTab('scheduler');
                     }}
-                    className="flex-1 py-2.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs cursor-pointer text-center transition-colors"
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs cursor-pointer text-center transition-colors shadow-md"
                   >
                     Agendar & Pagar (2 Cliques)
                   </button>
@@ -356,7 +419,7 @@ export const HomeHighlights: React.FC = () => {
                       setArenaSubTab('aulas');
                       setActiveTab('scheduler');
                     }}
-                    className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
+                    className="py-2.5 px-3 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-slate-200 font-bold text-xs cursor-pointer"
                   >
                     Aulas
                   </button>

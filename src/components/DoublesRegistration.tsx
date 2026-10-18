@@ -290,14 +290,14 @@ export const DoublesRegistration: React.FC = () => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-              <span className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-black uppercase text-[10px]">
+              <span className="px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-black uppercase text-[10px] shadow-xs">
                 SHARK SET RANKING OFICIAL
               </span>
-              <span aria-hidden="true" className="text-slate-600">·</span>
-              <span className="font-extrabold text-emerald-400">
+              <span aria-hidden="true" className="text-[#145A9B]">·</span>
+              <span className="font-extrabold text-[#12C7BB]">
                 5 Escopos: Geral · País · Estado · Cidade · Arena
               </span>
-              <span aria-hidden="true" className="text-slate-600">·</span>
+              <span aria-hidden="true" className="text-[#145A9B]">·</span>
               <span className="font-semibold text-white">{athletes.length} Jogadores Homologados</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
@@ -314,7 +314,7 @@ export const DoublesRegistration: React.FC = () => {
                 regenerateBracket(activeTournament.id);
                 setActiveTab('tournaments');
               }}
-              className="px-4 py-2.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-sm"
+              className="px-4 py-2.5 text-xs font-black text-slate-950 bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-md"
             >
               <Trophy className="w-4 h-4 fill-slate-950" />
               ABRIR TABELA & CLASSIFICAÇÃO
@@ -324,26 +324,33 @@ export const DoublesRegistration: React.FC = () => {
         </div>
 
         {/* High-Visibility Sub-Tabs */}
-        <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center gap-2">
+        <div className="pt-3 border-t border-[#145A9B]/60 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setActiveTab('ranking_athletes')}
+            className="px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer bg-[#071D3D] text-[#12C7BB] hover:bg-[#0B254E] border border-[#145A9B] flex items-center gap-1.5 shadow-xs"
+          >
+            <Trophy className="w-3.5 h-3.5 text-[#12C7BB]" />
+            LÍDERES & WIN RATES (RANKING BOARD FIRESTORE) →
+          </button>
           <button
             onClick={() => setSubView('ranking_atletas')}
             className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer ${
               subView === 'ranking_atletas'
-                ? 'bg-amber-400 text-slate-950 shadow-sm'
-                : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+                ? 'bg-[#0987CE] text-white shadow-md'
+                : 'bg-[#071D3D] text-slate-300 hover:text-white border border-[#145A9B]'
             }`}
           >
-            🏆 1. RANKINGS OFICIAIS: GERAL · PAÍS · ESTADO · CIDADE · ARENA ({athletes.length})
+            🏆 RANKINGS: GERAL · PAÍS · ESTADO · CIDADE · ARENA ({athletes.length})
           </button>
           <button
             onClick={() => setSubView('inscricao_duplas')}
             className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer ${
               subView === 'inscricao_duplas'
-                ? 'bg-amber-400 text-slate-950 shadow-sm'
-                : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+                ? 'bg-[#0987CE] text-white shadow-md'
+                : 'bg-[#071D3D] text-slate-300 hover:text-white border border-[#145A9B]'
             }`}
           >
-            ✍️ 2. INSCREVER NO TORNEIO & VALIDAR DUPLA ({currentPairs.length}/{activeTournament.maxPairs})
+            ✍️ INSCREVER NO TORNEIO & VALIDAR DUPLA ({currentPairs.length}/{activeTournament.maxPairs})
           </button>
         </div>
       </div>
@@ -366,10 +373,10 @@ export const DoublesRegistration: React.FC = () => {
       {subView === 'ranking_atletas' && (
         <div className="space-y-6">
           {/* 5-SCOPE SEGMENTATION BAR: GERAL | PAÍS | ESTADO | CIDADE | ARENA */}
-          <div className="bg-slate-950 text-white border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="bg-[#071D3D] text-[#F7FAFD] border border-[#145A9B] rounded-2xl p-5 shadow-sm space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#0987CE] block">
                   SEPARAÇÃO OFICIAL DE RANKING (1 CLIQUE)
                 </span>
                 <h2 className="text-base font-black text-white">
@@ -395,8 +402,8 @@ export const DoublesRegistration: React.FC = () => {
                       onClick={() => setRankingScope(tab.id)}
                       className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
                         active
-                          ? 'bg-amber-400 text-slate-950 shadow-xs'
-                          : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                          ? 'bg-[#0987CE] text-white shadow-xs'
+                          : 'bg-[#030B17] hover:bg-[#0B254E] text-slate-300 border border-[#145A9B]'
                       }`}
                     >
                       <Icon className="w-3.5 h-3.5" />
@@ -950,13 +957,13 @@ export const DoublesRegistration: React.FC = () => {
       {subView === 'inscricao_duplas' && (
         <div className="space-y-6">
           {/* Ultra-Clean Shareable Tournament Registration Link Banner */}
-          <div className="bg-slate-950 text-white border-2 border-amber-400 rounded-2xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="bg-[#071D3D] text-[#F7FAFD] border-2 border-[#0987CE] rounded-2xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="px-2.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black uppercase text-[10px]">
+                <span className="px-2.5 py-0.5 rounded bg-[#0987CE] text-white font-black uppercase text-[10px]">
                   LINK OFICIAL DE INSCRIÇÃO · LIMPO, CLARO E DIRETO AO PONTO
                 </span>
-                <span className="font-bold text-emerald-400">
+                <span className="font-bold text-[#12C7BB]">
                   Passaporte Único Anti-Sandbagging Ativo entre Cidades
                 </span>
               </div>
@@ -980,7 +987,7 @@ export const DoublesRegistration: React.FC = () => {
                     `🔗 Link Direto de Inscrição copiado (${url})! Pronto para colar no WhatsApp ou Instagram da Arena.`
                   );
                 }}
-                className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs cursor-pointer shadow-xs"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 text-slate-950 font-black text-xs cursor-pointer shadow-md"
               >
                 🔗 Copiar Link Direto de Inscrição
               </button>
@@ -995,7 +1002,7 @@ export const DoublesRegistration: React.FC = () => {
                     '🛡️ Teste Anti-Sandbagging: Lucas Pingo é Série A em Mineiros/GO e tentou se inscrever como Iniciante — veja o bloqueio automático no formulário!'
                   );
                 }}
-                className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-amber-400 font-bold text-xs cursor-pointer"
+                className="px-3.5 py-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-[#12C7BB] font-bold text-xs cursor-pointer"
               >
                 🛡️ Testar Bloqueio Série A em Outra Cidade
               </button>

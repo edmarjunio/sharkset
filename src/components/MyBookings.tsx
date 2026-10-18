@@ -265,24 +265,24 @@ export const MyBookings: React.FC = () => {
           {waitlistNotifications.map((notif) => (
             <div
               key={notif.id}
-              className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 animate-in fade-in"
+              className="bg-[#071D3D] border-2 border-[#0987CE] rounded-2xl p-4 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4 animate-in fade-in text-[#F7FAFD]"
             >
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-9 h-9 rounded-xl bg-[#0987CE] text-white flex items-center justify-center shrink-0 mt-0.5">
                   <BellRing className="w-5 h-5" />
                 </div>
                 <div className="space-y-1 text-xs">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-extrabold uppercase tracking-wider text-amber-900 text-[11px]">
+                    <span className="font-extrabold uppercase tracking-wider text-[#0987CE] text-[11px]">
                       Disparo Automático · Lista de Espera
                     </span>
-                    <span className="text-amber-700 font-mono text-[11px]">às {notif.timestamp}</span>
+                    <span className="text-[#12C7BB] font-mono text-[11px]">às {notif.timestamp}</span>
                   </div>
-                  <p className="text-slate-900 font-medium">
+                  <p className="text-slate-200 font-medium">
                     Reserva cancelada em <strong>{notif.waitlistEntry.courtName}</strong> ({notif.waitlistEntry.date} às{' '}
                     <strong>{notif.waitlistEntry.startTime}</strong>).
                   </p>
-                  <p className="text-emerald-800 font-bold">
+                  <p className="text-emerald-400 font-bold">
                     ✓ Próximo cliente da lista notificado automaticamente: {notif.waitlistEntry.customerName} (WhatsApp:{' '}
                     {notif.waitlistEntry.customerPhone})
                   </p>
@@ -297,7 +297,7 @@ export const MyBookings: React.FC = () => {
                       `Horário das ${booked.startTime} assumido e confirmado para ${booked.customerName}!`
                     );
                   }}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  className="px-3.5 py-2 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <UserCheck className="w-3.5 h-3.5" />
                   Confirmar Reserva p/ {notif.waitlistEntry.customerName.split(' ')[0]} (1 Clique)
@@ -307,7 +307,7 @@ export const MyBookings: React.FC = () => {
                   href={notif.whatsappLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-white text-xs font-semibold flex items-center gap-1.5"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   Abrir WhatsApp Enviado
@@ -315,7 +315,7 @@ export const MyBookings: React.FC = () => {
 
                 <button
                   onClick={() => dismissWaitlistNotification(notif.id)}
-                  className="px-2.5 py-2 rounded-xl text-slate-500 hover:text-slate-800 text-xs font-semibold cursor-pointer"
+                  className="px-2.5 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-semibold cursor-pointer"
                 >
                   Dispensar
                 </button>
@@ -337,11 +337,11 @@ export const MyBookings: React.FC = () => {
       {/* ===================================================================== */}
       {/* MODELO COMPLETO DE PERFIL DE JOGADOR DE FUTEVÔLEI                     */}
       {/* ===================================================================== */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
-        <div className="bg-slate-950 text-white rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-6 shadow-xl space-y-6 text-[#F7FAFD]">
+        <div className="bg-[#030B17] border border-[#145A9B] text-white rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-black uppercase text-[10px]">
+              <span className="px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-black uppercase text-[10px] shadow-xs">
                 ATLETA SHARK SET
               </span>
               <AthleteLevelBadge
@@ -353,8 +353,8 @@ export const MyBookings: React.FC = () => {
               <span
                 className={`px-2.5 py-1 rounded-lg text-xs font-extrabold uppercase tracking-wide ${
                   myAthleteProfile.experienceCategory === 'profissional'
-                    ? 'bg-amber-400 text-slate-950'
-                    : 'bg-slate-800 text-slate-200 border border-slate-700'
+                    ? 'bg-[#12C7BB] text-slate-950 font-black'
+                    : 'bg-[#071D3D] text-slate-200 border border-[#145A9B]'
                 }`}
               >
                 Experiência: {myAthleteProfile.experienceCategory === 'profissional' ? 'Profissional' : 'Amador'}
@@ -377,7 +377,7 @@ export const MyBookings: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               onClick={() => setActiveTab('register_dupla')}
-              className="px-4 py-2.5 text-xs font-extrabold text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2.5 text-xs font-extrabold text-white bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] rounded-xl transition-colors cursor-pointer"
             >
               Ver Ranking Geral
             </button>
@@ -386,7 +386,7 @@ export const MyBookings: React.FC = () => {
                 setArenaSubTab('agenda');
                 setActiveTab('scheduler');
               }}
-              className="px-4 py-2.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-2.5 text-xs font-black text-slate-950 bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               RESERVAR QUADRA

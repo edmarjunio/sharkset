@@ -8,16 +8,18 @@ import { ArenasDirectory } from './components/ArenasDirectory';
 import { CourtScheduler } from './components/CourtScheduler';
 import { DoubleEliminationBracket } from './components/DoubleEliminationBracket';
 import { DoublesRegistration } from './components/DoublesRegistration';
+import { RankingBoard } from './components/RankingBoard';
 import { MyBookings } from './components/MyBookings';
 import { SaaSConversionHub } from './components/SaaSConversionHub';
 import { CommandPalette } from './components/CommandPalette';
 import { TenantSelectorModal } from './components/TenantSelectorModal';
+import { SharksetLogo } from './components/SharksetLogo';
 
 const MainContent: React.FC = () => {
   const { activeTab, tenant } = useApp();
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100/80 text-slate-900 pb-16 md:pb-8">
+    <div className="min-h-screen flex flex-col bg-[#030B17] text-[#F7FAFD] pb-16 md:pb-8">
       <Navbar />
 
       {/* Top Dashboard Visual Notification / Badge for Vacant Court in Next 2h + Smart Push Center (D-2 Tuition) */}
@@ -30,26 +32,28 @@ const MainContent: React.FC = () => {
         {activeTab === 'home' && <HomeHighlights />}
         {activeTab === 'tournaments' && <DoubleEliminationBracket />}
         {activeTab === 'scheduler' && <CourtScheduler />}
+        {activeTab === 'ranking_athletes' && <RankingBoard />}
         {activeTab === 'register_dupla' && <DoublesRegistration />}
         {activeTab === 'arenas_directory' && <ArenasDirectory />}
         {activeTab === 'saas_hub' && <SaaSConversionHub />}
         {activeTab === 'my_bookings' && <MyBookings />}
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-6 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <span className="font-black text-slate-900 tracking-tight">SHARK SET</span>
-            <span aria-hidden="true">·</span>
-            <span className="font-semibold text-slate-700">{tenant.name}</span>
-            <span aria-hidden="true">·</span>
-            <span>
+      <footer className="border-t border-[#145A9B]/60 bg-[#071D3D] py-6 mt-12 text-[#F7FAFD]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+          <div className="flex items-center gap-3">
+            <SharksetLogo size="xs" />
+            <span className="font-black text-white tracking-tight">SHARK<span className="text-[#0987CE]">SET</span></span>
+            <span aria-hidden="true" className="text-slate-500">·</span>
+            <span className="font-semibold text-slate-200">{tenant.name}</span>
+            <span aria-hidden="true" className="text-slate-500">·</span>
+            <span className="text-slate-400">
               {tenant.city}, {tenant.state}
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-slate-500 font-medium">
-            <span>⚽ Futevôlei · 🎾 Beach Tennis · 🏐 Vôlei de Praia</span>
+          <div className="flex items-center gap-4 text-slate-400 font-medium">
+            <span className="text-[#12C7BB] font-bold">⚽ Futevôlei · 🎾 Beach Tennis · 🏐 Vôlei de Praia</span>
           </div>
         </div>
       </footer>

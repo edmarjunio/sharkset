@@ -419,7 +419,7 @@ export function validatePairWithUnifiedPassport(
       ruleSummary:
         'Passaporte Único Anti-Sandbagging: O nível homologado no Ranking acompanha o atleta em qualquer cidade e sobe automaticamente ao atingir o teto de pontos/títulos da categoria.',
       combinedWeight: ATHLETE_LEVEL_WEIGHT[check1.effectiveLevel] + ATHLETE_LEVEL_WEIGHT[claimedLevel2],
-      maxAllowedWeight: CATEGORY_RULES[category].maxCombinedWeight,
+      maxAllowedWeight: 10,
     };
   }
 
@@ -431,7 +431,7 @@ export function validatePairWithUnifiedPassport(
       ruleSummary:
         'Passaporte Único Anti-Sandbagging: O nível homologado no Ranking acompanha o atleta em qualquer cidade e sobe automaticamente ao atingir o teto de pontos/títulos da categoria.',
       combinedWeight: ATHLETE_LEVEL_WEIGHT[check1.effectiveLevel] + ATHLETE_LEVEL_WEIGHT[check2.effectiveLevel],
-      maxAllowedWeight: CATEGORY_RULES[category].maxCombinedWeight,
+      maxAllowedWeight: 10,
     };
   }
 
