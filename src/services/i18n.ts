@@ -30,6 +30,8 @@ export function subscribeLocale(listener: (locale: SupportedLocale) => void): ()
 
 export const TRANSLATIONS: Record<SupportedLocale, Record<string, string>> = {
   pt: {
+    aquarium_pause: 'Pausar animação',
+    aquarium_play: 'Ativar animação',
     // App & Identity
     app_subtitle: 'É O TUBA 🦈',
     app_motto: 'A quadra é sua.',
@@ -121,6 +123,8 @@ export const TRANSLATIONS: Record<SupportedLocale, Record<string, string>> = {
     new_car: 'Carro novo',
   },
   en: {
+    aquarium_pause: 'Pause animation',
+    aquarium_play: 'Play animation',
     // App & Identity
     app_subtitle: 'ITS THE SHARK 🦈',
     app_motto: 'The court is yours.',
@@ -247,3 +251,4 @@ if (!Object.prototype.hasOwnProperty.call(String.prototype, 'tr')) {
     configurable: true,
   });
 }
+

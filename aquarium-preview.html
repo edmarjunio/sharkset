@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHARKSET · Aquário</title>
+  <style>
+    * { box-sizing: border-box; } body { margin: 0; background: #023c65; color: #e2faff; font: 13px system-ui, sans-serif; }
+    canvas { display: block; width: 100vw; height: 100dvh; }
+    .controls { position: fixed; inset: auto 20px 20px; display: flex; align-items: center; gap: 14px; padding: 13px 18px; border: 1px solid #88edff55; border-radius: 16px; background: #03223ccc; backdrop-filter: blur(12px); }
+    strong { letter-spacing: .13em; } small { opacity: .7; } button { padding: 8px 14px; border: 1px solid #8cffff55; border-radius: 10px; background: #0578a7; color: white; cursor: pointer; } output { margin-left: auto; font-variant-numeric: tabular-nums; }
+    @media (max-width: 600px) { small { display: none; } .controls { inset: auto 12px 12px; } }
+  </style>
+</head>
+<body>
+  <canvas id="aquarium" aria-label="Prévia do aquário animado Sharkset"></canvas>
+  <div class="controls"><strong>SHARKSET</strong><small>Prévia 2.5D · ciclo de 30 s · câmera fixa</small><output id="time">00:00</output><button id="pause" type="button">Pausar</button></div>
+  <script type="module" src="/src/animation/preview.ts"></script>
+</body>
+</html>

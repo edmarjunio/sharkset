@@ -16,6 +16,7 @@ import { TenantSelectorModal } from './components/TenantSelectorModal';
 import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
+import { AquariumBackground } from './components/AquariumBackground';
 
 const MainContent: React.FC = () => {
   const {
@@ -33,13 +34,14 @@ const MainContent: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 pb-16 md:pb-8 transition-colors"
+      className="relative isolate min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 pb-16 md:pb-8 transition-colors"
       style={
         isArenaWhiteLabel && arenaPalette
           ? { backgroundColor: arenaPalette.surfaceBg }
           : undefined
       }
     >
+      {!isArenaWhiteLabel && <AquariumBackground />}
       <Navbar />
 
       {/* Top Dashboard Visual Notification / Badge for Vacant Court in Next 2h + Smart Push Center (D-2 Tuition) */}
@@ -48,7 +50,7 @@ const MainContent: React.FC = () => {
       {/* Uninterrupted Live Broadcast Hub (Full on Home, Picture-in-Picture Floating Dock on other tabs) */}
       <PersistentLiveStreamDock />
 
-      <main className="flex-1">
+      <main className={isArenaWhiteLabel ? 'flex-1' : 'flex-1 aquarium-content'}>
         {activeTab === 'home' && <HomeHighlights />}
         {activeTab === 'tournaments' && <DoubleEliminationBracket />}
         {activeTab === 'scheduler' && <CourtScheduler />}
@@ -137,3 +139,4 @@ export default function App() {
     </AppProvider>
   );
 }
+
