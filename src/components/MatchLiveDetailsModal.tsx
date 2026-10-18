@@ -301,7 +301,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-[#030B17] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl max-w-6xl w-full shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col">
+      <div className="aquarium-glass bg-[#030B17] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl max-w-6xl w-full shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col">
         {/* TOP HEADER: Match Stage, Court, Status, Spectators Count & Quick Actions */}
         <div className="px-4 sm:px-6 py-4 bg-[#071D3D] border-b border-[#145A9B] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -384,7 +384,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
           {/* INFO STRIP: Quadra, Juiz da Partida, Horário, Trocas de Quadra & Torneio */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Quadra Rolando */}
-            <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
+            <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#0987CE]/20 border border-[#0987CE]/40 flex items-center justify-center shrink-0">
                 <MapPin className="w-4 h-4 text-[#0987CE]" />
               </div>
@@ -402,7 +402,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
             </div>
 
             {/* Quem é o Juiz / Árbitro */}
-            <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
+            <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#12C7BB]/20 border border-[#12C7BB]/40 flex items-center justify-center shrink-0">
                 <UserCheck className="w-4 h-4 text-[#12C7BB]" />
               </div>
@@ -450,7 +450,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
             </div>
 
             {/* Quem está Sacando Agora */}
-            <div className="bg-[#071D3D] border border-[#12C7BB]/60 rounded-2xl p-3.5 flex items-start gap-3">
+            <div className="aquarium-glass bg-[#071D3D] border border-[#12C7BB]/60 rounded-2xl p-3.5 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#12C7BB] text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
                 🏐
               </div>
@@ -468,7 +468,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
             </div>
 
             {/* Trocas de Quadra & Público */}
-            <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
+            <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#0987CE]/20 border border-[#0987CE]/40 flex items-center justify-center shrink-0">
                 <RefreshCw className="w-4 h-4 text-[#5BC3FA]" />
               </div>
@@ -656,7 +656,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
               </div>
 
               {/* ORDEM DE SAQUE DOS 4 ATLETAS */}
-              <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-3">
+              <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-wider text-white">
                     🏐 Ordem Oficial de Rotação de Saque (4 Atletas)
@@ -690,7 +690,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
               </div>
 
               {/* RAIO-X TÉCNICO & HISTÓRICO DE PONTOS */}
-              <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4">
+              <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
                     <Trophy className="w-4 h-4 text-[#0987CE]" />
@@ -747,7 +747,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
             </div>
 
             {/* RIGHT 5 COLUMNS: Real-Time Match Chat & Spectator Commentary */}
-            <div className="lg:col-span-5 flex flex-col bg-[#071D3D] border border-[#145A9B] rounded-3xl p-4 sm:p-5 space-y-4">
+            <div className="aquarium-glass lg:col-span-5 flex flex-col bg-[#071D3D] border border-[#145A9B] rounded-3xl p-4 sm:p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-[#145A9B]/60 pb-3">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[#12C7BB]" />

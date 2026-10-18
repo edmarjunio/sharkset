@@ -197,7 +197,7 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl shadow-2xl overflow-hidden text-[#F7FAFD]">
+      <div className="aquarium-glass relative w-full max-w-2xl max-h-[92vh] flex flex-col bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl shadow-2xl overflow-hidden text-[#F7FAFD]">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-[#030B17] via-[#071D3D] to-[#0A2E63] p-5 border-b border-[#145A9B] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -423,7 +423,7 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
             </h3>
 
             {summary && summary.history.length > 0 ? (
-              <div className="overflow-x-auto rounded-2xl border border-[#145A9B] bg-[#030B17]">
+              <div className="aquarium-glass overflow-x-auto rounded-2xl border border-[#145A9B] bg-[#030B17]">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-[#145A9B] text-slate-400 font-bold uppercase text-[10px]">
@@ -478,7 +478,7 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
                 </table>
               </div>
             ) : (
-              <div className="p-6 text-center bg-[#030B17] rounded-2xl border border-[#145A9B] space-y-2">
+              <div className="aquarium-glass p-6 text-center bg-[#030B17] rounded-2xl border border-[#145A9B] space-y-2">
                 <ShieldAlert className="w-8 h-8 text-slate-500 mx-auto" />
                 <p className="text-xs text-slate-300 font-semibold">
                   Nenhum confronto histórico registrado ainda entre essas duas duplas.

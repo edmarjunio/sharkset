@@ -9,7 +9,7 @@ export const TenantSelectorModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-      <div className="bg-[#071D3D] text-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 space-y-4">
+      <div className="aquarium-glass bg-[#071D3D] text-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
           <div className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-[#0987CE]" />

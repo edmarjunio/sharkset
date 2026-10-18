@@ -398,7 +398,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-3xl max-w-6xl w-full overflow-hidden shadow-2xl my-auto flex flex-col max-h-[95vh]">
+      <div className="aquarium-glass bg-white border border-slate-200 rounded-3xl max-w-6xl w-full overflow-hidden shadow-2xl my-auto flex flex-col max-h-[95vh]">
         {/* Top Modal Header */}
         <div className="bg-slate-900 text-white px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
@@ -450,7 +450,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
           {/* LEFT 7 COLUMNS: Live Video Player + Scoreboard + 4 Players Verification + Referee Invite */}
           <div className="lg:col-span-7 space-y-5">
             {/* Video Stream Container */}
-            <div className="relative rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-900 shadow-lg aspect-video">
+            <div className="aquarium-glass relative rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-900 shadow-lg aspect-video">
               {usingWebcam ? (
                 <video
                   ref={videoRef}
@@ -519,7 +519,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             )}
 
             {/* Broadcast Camera & Title Controls */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div className="aquarium-glass bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                   <Video className="w-4 h-4 text-orange-500" />
@@ -582,7 +582,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             </div>
 
             {/* STEP 1: 4 Identified Players in the Match (Prova Real for Ranking) */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
@@ -698,7 +698,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                 ...previous, liveBroadcast: { ...(previous.liveBroadcast || liveState), ...patch },
               }))} />
             {/* Referee Live Score & Ranking Validation Panel */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
@@ -840,7 +840,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             </div>
 
             {/* Live Chat with Highlighted Referee / Broadcast Owner Messages */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex-1 flex flex-col justify-between space-y-3 min-h-[340px]">
+            <div className="aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex-1 flex flex-col justify-between space-y-3 min-h-[340px]">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">

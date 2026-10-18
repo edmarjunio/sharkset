@@ -123,14 +123,14 @@ export const HomeHighlights: React.FC = () => {
               </button>
               <button
                 onClick={() => setActiveTab('tournaments')}
-                className="px-5 py-3 rounded-2xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white font-extrabold text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
+                className="aquarium-glass px-5 py-3 rounded-2xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white font-extrabold text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
               >
                 <Trophy className="w-4 h-4 text-[#0987CE]" />
                 Ver Torneios & Tabela
               </button>
               <button
                 onClick={() => setActiveTab('ranking_athletes')}
-                className="px-5 py-3 rounded-2xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#12C7BB]/40 text-[#12C7BB] font-extrabold text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
+                className="aquarium-glass px-5 py-3 rounded-2xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#12C7BB]/40 text-[#12C7BB] font-extrabold text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
               >
                 Ranking Board
               </button>
@@ -155,7 +155,7 @@ export const HomeHighlights: React.FC = () => {
       {/* =================================================================== */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Horários de Pico Livres */}
-        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
+        <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="px-2.5 py-0.5 rounded-md bg-[#12C7BB]/20 text-[#12C7BB] font-black text-[10px] uppercase">
@@ -200,7 +200,7 @@ export const HomeHighlights: React.FC = () => {
         </div>
 
         {/* Card 2: Torneios Próximos & Tabela Oficial */}
-        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
+        <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="px-2.5 py-0.5 rounded-md bg-[#0987CE]/20 text-[#0987CE] font-black text-[10px] uppercase">
@@ -253,7 +253,7 @@ export const HomeHighlights: React.FC = () => {
         </div>
 
         {/* Card 3: Aulas com Vagas na Região */}
-        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
+        <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="px-2.5 py-0.5 rounded-md bg-[#0987CE]/20 text-[#0987CE] font-black text-[10px] uppercase">
@@ -368,7 +368,7 @@ export const HomeHighlights: React.FC = () => {
             return (
               <div
                 key={ar.id}
-                className="bg-[#071D3D] border-2 border-[#145A9B] hover:border-[#0987CE] rounded-3xl overflow-hidden shadow-xl transition-all flex flex-col justify-between group"
+                className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] hover:border-[#0987CE] rounded-3xl overflow-hidden shadow-xl transition-all flex flex-col justify-between group"
               >
                 <div>
                   <div className="relative h-44 bg-[#030B17] overflow-hidden">

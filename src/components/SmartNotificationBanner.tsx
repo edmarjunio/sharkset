@@ -188,7 +188,7 @@ export const SmartNotificationBanner: React.FC = () => {
   };
 
   return (
-    <section className="bg-[#030B17] border-b border-[#145A9B]/60 text-white">
+    <section className="aquarium-glass bg-[#030B17] border-b border-[#145A9B]/60 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 space-y-2.5">
         {/* TOP VISUAL BADGE & CALLOUT: Vacant Court Slot in the Next 2 Hours */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-[#071D3D] via-[#0B254E]/80 to-[#030B17] border border-[#145A9B] rounded-xl px-4 py-2.5">
@@ -266,7 +266,7 @@ export const SmartNotificationBanner: React.FC = () => {
 
         {/* EXPANDABLE SMART PUSH NOTIFICATION DRAWER */}
         {notificationDrawerOpen && (
-          <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4 animate-in fade-in">
+          <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4 animate-in fade-in">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#145A9B]/60">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">

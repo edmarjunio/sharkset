@@ -266,7 +266,7 @@ export const MyBookings: React.FC = () => {
           {waitlistNotifications.map((notif) => (
             <div
               key={notif.id}
-              className="bg-[#071D3D] border-2 border-[#0987CE] rounded-2xl p-4 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4 animate-in fade-in text-[#F7FAFD]"
+              className="aquarium-glass bg-[#071D3D] border-2 border-[#0987CE] rounded-2xl p-4 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4 animate-in fade-in text-[#F7FAFD]"
             >
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl bg-[#0987CE] text-white flex items-center justify-center shrink-0 mt-0.5">
@@ -338,8 +338,8 @@ export const MyBookings: React.FC = () => {
       {/* ===================================================================== */}
       {/* MODELO COMPLETO DE PERFIL DE JOGADOR DE FUTEVÔLEI                     */}
       {/* ===================================================================== */}
-      <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-6 shadow-xl space-y-6 text-[#F7FAFD]">
-        <div className="bg-[#030B17] border border-[#145A9B] text-white rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-6 shadow-xl space-y-6 text-[#F7FAFD]">
+        <div className="aquarium-glass bg-[#030B17] border border-[#145A9B] text-white rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-black uppercase text-[10px] shadow-xs">
@@ -852,7 +852,7 @@ export const MyBookings: React.FC = () => {
             {(myAthleteProfile.mediaGallery || []).map((item) => (
               <div
                 key={item.id}
-                className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 flex flex-col justify-between shadow-xs"
+                className="aquarium-glass border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 flex flex-col justify-between shadow-xs"
               >
                 <div className="aspect-video bg-slate-900 relative overflow-hidden flex items-center justify-center">
                   {item.type === 'video' ? (
@@ -889,7 +889,7 @@ export const MyBookings: React.FC = () => {
       {/* Analytics Row: Quadras que mais joga + Lista de Espera */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quadras que mais joga */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -936,7 +936,7 @@ export const MyBookings: React.FC = () => {
         </div>
 
         {/* Lista de Espera para Quadras Esgotadas */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -995,7 +995,7 @@ export const MyBookings: React.FC = () => {
       </div>
 
       {/* Histórico Completo de Reservas */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+      <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
             <h2 className="text-base font-bold text-slate-900">Histórico de Reservas de Quadra</h2>

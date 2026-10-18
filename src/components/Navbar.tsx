@@ -66,7 +66,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <header
-      className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md text-slate-900 border-b border-slate-200 shadow-xs transition-colors"
+      className="aquarium-glass sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md text-slate-900 border-b border-slate-200 shadow-xs transition-colors"
       style={
         isArenaWhiteLabelSite && arenaPalette
           ? {
@@ -112,7 +112,7 @@ export const Navbar: React.FC = () => {
                 <img
                   src={tenant.logoUrl}
                   alt={tenant.name}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-contain bg-slate-900 p-1.5 border-2 shadow-md transition-transform group-hover:scale-105 shrink-0"
+                  className="aquarium-glass w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-contain bg-slate-900 p-1.5 border-2 shadow-md transition-transform group-hover:scale-105 shrink-0"
                   style={{ borderColor: arenaPalette?.primary || '#FF6B00' }}
                 />
                 <div className="hidden xl:block">

@@ -294,7 +294,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-slate-950 text-white border border-slate-800 rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-5 my-auto">
+      <div className="aquarium-glass bg-slate-950 text-white border border-slate-800 rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-5 my-auto">
         {/* Top Bar: Match Identity + Live Broadcast Indicator */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-800">
           <div className="space-y-1">
@@ -396,7 +396,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleDecrementPoint(1)}
-                className="w-12 h-12 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+                className="aquarium-glass w-12 h-12 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
                 title="Corrigir (-1 ponto)"
               >
                 <Minus className="w-5 h-5" />
@@ -465,7 +465,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleDecrementPoint(2)}
-                className="w-12 h-12 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+                className="aquarium-glass w-12 h-12 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
                 title="Corrigir (-1 ponto)"
               >
                 <Minus className="w-5 h-5" />
@@ -504,7 +504,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
         </div>
 
         {/* Fundamento do Próximo Ponto (Opcional 1-Clique) */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="aquarium-glass bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-amber-400" />
             Fundamento do Ponto (Opcional antes de clicar em +1):
@@ -530,7 +530,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
         {/* SERVICE ORDER ROTATION (4 SERVERS) & COURT / TIMEOUT CONTROLS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* 4-Player Service Order Control */}
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div className="aquarium-glass lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h4 className="text-xs font-black uppercase tracking-wider text-amber-400">
@@ -579,7 +579,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
           </div>
 
           {/* Match Controls & Live Feed */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3">
+          <div className="aquarium-glass bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3">
             <div className="space-y-2">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-300">
                 Controles de Quadra & Tempo
@@ -651,7 +651,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
         </div>
 
         {/* CARTÃO AMARELO / DISCIPLINA OFICIAL PARA JOGADOR */}
-        <div className="bg-slate-900 border border-amber-400/30 rounded-2xl p-4 space-y-3">
+        <div className="aquarium-glass bg-slate-900 border border-amber-400/30 rounded-2xl p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">

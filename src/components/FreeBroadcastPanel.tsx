@@ -40,7 +40,7 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
     finally { setBusy(false); }
   }
   const canEdit = !broadcastId && broadcast?.ownerId === auth.currentUser?.uid;
-  return <section className="rounded-2xl border border-sky-200 bg-white p-4 space-y-3 text-slate-900">
+  return <section className="aquarium-glass rounded-2xl border border-sky-200 bg-white p-4 space-y-3 text-slate-900">
     <h2 className="font-bold">{arenaId ? 'Transmissão da arena' : 'Transmissão livre'}</h2>
     <p className="text-sm text-slate-600">Sem reserva ou outros jogadores. Não vale pontos no ranking.</p>
     {!id && <button disabled={busy} onClick={() => save()} className="rounded-xl bg-[#0987CE] text-white px-4 py-3 font-bold">Criar transmissão</button>}

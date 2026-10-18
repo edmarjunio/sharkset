@@ -11,27 +11,27 @@
 }
 
 .shark-site-background {
-  background: linear-gradient(rgb(248 250 252 / 84%), rgb(248 250 252 / 92%)), url('/brand/background.png') center top / cover fixed;
+  isolation: isolate;
+  color: #effaff;
+  background: transparent;
 }
-@media (max-width: 640px) { .shark-site-background { background-attachment: scroll; } }
+.shark-site-background::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(rgb(2 24 43 / 12%), rgb(2 24 43 / 28%)),
+    url('/brand/background.png') center center / cover no-repeat;
+}
 
 body {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #F8FAFC;
-  color: #0F172A;
+  background-color: #032c47;
+  color: #effaff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
-button, [role="button"], input[type="submit"] {
-  box-shadow: 0 3px 0 rgb(7 29 61 / 14%), 0 5px 12px rgb(7 29 61 / 10%);
-  transition: box-shadow 150ms ease, translate 150ms ease;
-}
-button:not(:disabled):hover, [role="button"]:hover { translate: 0 -1px; box-shadow: 0 5px 0 rgb(7 29 61 / 12%), 0 8px 18px rgb(7 29 61 / 15%); }
-button:not(:disabled):active { translate: 0 1px; box-shadow: 0 1px 3px rgb(7 29 61 / 15%); }
-button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--shark-teal); outline-offset: 3px; }
-button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
-@media (prefers-reduced-motion: reduce) { button, [role="button"] { transition: none; translate: none !important; } }
 
 /* Custom scrollbars for clean bracket navigation */
 ::-webkit-scrollbar {
@@ -39,12 +39,228 @@ button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
   height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #F1F5F9;
+  background: #07334a;
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #3a99b1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #FF6B00;
+  background: #12C7BB;
+}
+
+/* Shared aquarium surfaces: alpha belongs to the background, never the content.
+   Keep these outside Tailwind layers so existing utility classes use the theme. */
+.shark-site-background .aquarium-glass {
+  background-color: rgb(3 30 53 / 58%);
+  background-image: linear-gradient(135deg, rgb(175 244 255 / 9%), rgb(4 43 67 / 5%));
+  border-color: rgb(154 235 255 / 30%);
+  box-shadow: inset 0 1px 0 rgb(221 251 255 / 16%), 0 10px 30px rgb(0 16 32 / 16%);
+  -webkit-backdrop-filter: blur(12px) saturate(125%);
+  backdrop-filter: blur(12px) saturate(125%);
+  color: #effaff;
+}
+.shark-site-background .aquarium-glass .aquarium-glass {
+  background-color: rgb(4 32 54 / 35%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.shark-site-background :is(header.sticky, [role="dialog"]).aquarium-glass {
+  background-color: rgb(3 30 53 / 78%);
+}
+.shark-site-background :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-slate-700,
+  .text-slate-600, .text-gray-900, .text-gray-800, .text-gray-700) { color: #effaff; }
+.shark-site-background :is(.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400) { color: #c0e3ef; }
+.shark-site-background :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea) {
+  background-color: rgb(1 24 44 / 66%);
+  color: #effaff;
+  border-color: rgb(154 235 255 / 35%);
+  color-scheme: dark;
+}
+.shark-site-background :is(input, textarea)::placeholder { color: #b7d9e7; opacity: 1; }
+.shark-site-background option { background: #082d46; color: #effaff; }
+.shark-site-background :is(button, [role="button"]).aquarium-glass:hover {
+  background-color: rgb(22 104 140 / 68%);
+  border-color: rgb(154 235 255 / 65%);
+}
+.shark-site-background :is(video, .broadcast-media) {
+  opacity: 1;
+  filter: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .shark-site-background .aquarium-glass { background-color: rgb(3 30 53 / 88%); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .shark-site-background .aquarium-glass { background-color: rgb(3 30 53 / 94%); backdrop-filter: none; }
+}
+
+/* Compatibility for existing neutral surfaces throughout the application. */
+.shark-site-background :is([class~="bg-[#030B17]"],
+  [class~="bg-[#030B17]/50"],
+  [class~="bg-[#030B17]/60"],
+  [class~="bg-[#030B17]/70"],
+  [class~="bg-[#030B17]/80"],
+  [class~="bg-[#030B17]/85"],
+  [class~="bg-[#030B17]/90"],
+  [class~="bg-[#030B17]/95"],
+  [class~="bg-[#040E1C]"],
+  [class~="bg-[#071D3D]"],
+  [class~="bg-[#071D3D]/50"],
+  [class~="bg-[#071D3D]/80"],
+  [class~="bg-[#071D3D]/90"],
+  [class~="bg-[#071D3D]/95"],
+  [class~="bg-[#0B254E]"],
+  [class~="bg-[#0B254E]/40"],
+  [class~="bg-slate-100"],
+  [class~="bg-slate-200"],
+  [class~="bg-slate-50"],
+  [class~="bg-slate-50/50"],
+  [class~="bg-slate-50/60"],
+  [class~="bg-slate-800"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/75"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-950/85"],
+  [class~="bg-slate-950/90"],
+  [class~="bg-white"],
+  [class~="bg-white/95"]):not(img):not(video):not(svg):not(.broadcast-media) {
+  background-color: rgb(3 30 53 / 52%);
+  border-color: rgb(154 235 255 / 28%);
+  color: #effaff;
+}
+.shark-site-background .aquarium-glass :is([class~="bg-[#030B17]"],
+  [class~="bg-[#030B17]/50"],
+  [class~="bg-[#030B17]/60"],
+  [class~="bg-[#030B17]/70"],
+  [class~="bg-[#030B17]/80"],
+  [class~="bg-[#030B17]/85"],
+  [class~="bg-[#030B17]/90"],
+  [class~="bg-[#030B17]/95"],
+  [class~="bg-[#040E1C]"],
+  [class~="bg-[#071D3D]"],
+  [class~="bg-[#071D3D]/50"],
+  [class~="bg-[#071D3D]/80"],
+  [class~="bg-[#071D3D]/90"],
+  [class~="bg-[#071D3D]/95"],
+  [class~="bg-[#0B254E]"],
+  [class~="bg-[#0B254E]/40"],
+  [class~="bg-slate-100"],
+  [class~="bg-slate-200"],
+  [class~="bg-slate-50"],
+  [class~="bg-slate-50/50"],
+  [class~="bg-slate-50/60"],
+  [class~="bg-slate-800"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/75"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-950/85"],
+  [class~="bg-slate-950/90"],
+  [class~="bg-white"],
+  [class~="bg-white/95"]):not(img):not(video):not(svg):not(.broadcast-media) {
+  background-color: rgb(3 30 53 / 32%);
+}
+
+/* Keep status colors distinct while removing pale opaque fills. */
+.shark-site-background :is([class~="bg-sky-50"], [class~="bg-sky-50/60"], [class~="bg-sky-100"]) { background-color: color-mix(in srgb, #a7e7ff 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #a7e7ff 45%, transparent); }
+.shark-site-background :is(.text-sky-600, .text-sky-700, .text-sky-800, .text-sky-900, .text-sky-950) { color: #a7e7ff; }
+.shark-site-background :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900, .text-blue-950) { color: #b5dcff; }
+.shark-site-background :is(.text-cyan-600, .text-cyan-700, .text-cyan-800, .text-cyan-900, .text-cyan-950) { color: #a5f3fc; }
+.shark-site-background :is([class~="bg-emerald-50"], [class~="bg-emerald-100"], [class~="bg-emerald-50/90"], [class~="bg-emerald-50/60"], [class~="bg-emerald-50/80"]) { background-color: color-mix(in srgb, #a7f3d0 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #a7f3d0 45%, transparent); }
+.shark-site-background :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900, .text-emerald-950) { color: #a7f3d0; }
+.shark-site-background :is([class~="bg-orange-100"], [class~="bg-orange-50/70"], [class~="bg-orange-50"]) { background-color: color-mix(in srgb, #fed7aa 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #fed7aa 45%, transparent); }
+.shark-site-background :is(.text-orange-600, .text-orange-700, .text-orange-800, .text-orange-900, .text-orange-950) { color: #fed7aa; }
+.shark-site-background :is([class~="bg-amber-50/70"], [class~="bg-amber-50"], [class~="bg-amber-50/40"], [class~="bg-amber-100/80"], [class~="bg-amber-50/20"], [class~="bg-amber-100"], [class~="bg-amber-50/90"], [class~="bg-amber-50/50"]) { background-color: color-mix(in srgb, #fde68a 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #fde68a 45%, transparent); }
+.shark-site-background :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950) { color: #fde68a; }
+.shark-site-background :is([class~="bg-red-50"]) { background-color: color-mix(in srgb, #fecaca 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #fecaca 45%, transparent); }
+.shark-site-background :is(.text-red-600, .text-red-700, .text-red-800, .text-red-900, .text-red-950) { color: #fecaca; }
+.shark-site-background :is([class~="bg-rose-100"], [class~="bg-rose-50"], [class~="bg-rose-50/40"]) { background-color: color-mix(in srgb, #fecdd3 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #fecdd3 45%, transparent); }
+.shark-site-background :is(.text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900, .text-rose-950) { color: #fecdd3; }
+.shark-site-background :is(.text-violet-600, .text-violet-700, .text-violet-800, .text-violet-900, .text-violet-950) { color: #ddd6fe; }
+.shark-site-background :is([class~="bg-indigo-50"]) { background-color: color-mix(in srgb, #c7d2fe 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #c7d2fe 45%, transparent); }
+.shark-site-background :is(.text-indigo-600, .text-indigo-700, .text-indigo-800, .text-indigo-900, .text-indigo-950) { color: #c7d2fe; }
+
+.shark-site-background :is(section, article, aside, footer, [role="dialog"], .rounded-2xl, .rounded-3xl).aquarium-glass {
+  -webkit-backdrop-filter: blur(12px) saturate(125%);
+  backdrop-filter: blur(12px) saturate(125%);
+}
+.shark-site-background .aquarium-glass [class~="bg-gradient-to-r"]:not(button):not(a) {
+  background-image: linear-gradient(110deg, rgb(27 133 176 / 22%), rgb(4 35 60 / 30%));
+}
+@media (prefers-reduced-transparency: reduce) {
+  .shark-site-background .aquarium-glass { background: #082d46; backdrop-filter: none; }
+}
+
+/* One sculpted, glossy button treatment for every interactive button. */
+.shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]) {
+  border-radius: 999px;
+  background-image: linear-gradient(180deg,
+    rgb(235 253 255 / 28%) 0%, rgb(166 236 255 / 9%) 45%,
+    rgb(0 13 35 / 12%) 52%, rgb(0 13 35 / 26%) 100%);
+  box-shadow:
+    inset 0 2px 1px rgb(240 254 255 / 55%),
+    inset 1px 0 1px rgb(188 243 255 / 24%),
+    inset 0 -3px 2px rgb(0 14 37 / 32%),
+    0 4px 0 #04233d,
+    0 6px 0 rgb(91 215 249 / 24%),
+    0 9px 15px rgb(0 12 30 / 32%);
+  translate: 0 0;
+  scale: 1;
+  transform-origin: center;
+  transition: translate 200ms cubic-bezier(.2,.8,.2,1),
+    scale 200ms cubic-bezier(.2,.8,.2,1), box-shadow 200ms ease,
+    background-color 180ms ease, border-color 180ms ease;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]):hover {
+    translate: 0 -7px;
+    scale: 1.045;
+    box-shadow:
+      inset 0 2px 2px rgb(245 255 255 / 75%),
+      inset 1px 0 2px rgb(188 243 255 / 40%),
+      inset 0 -3px 2px rgb(0 14 37 / 28%),
+      0 7px 0 #04233d,
+      0 9px 0 rgb(91 215 249 / 40%),
+      0 18px 25px rgb(0 12 30 / 48%),
+      0 0 18px rgb(62 211 255 / 22%);
+  }
+}
+
+.shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):focus-visible {
+  outline: 3px solid #9bf3ff;
+  outline-offset: 5px;
+}
+.shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]):active {
+  translate: 0 3px;
+  scale: .98;
+  box-shadow: inset 0 2px 5px rgb(0 14 37 / 45%),
+    inset 0 -1px 1px rgb(188 243 255 / 28%),
+    0 1px 0 #04233d, 0 3px 7px rgb(0 12 30 / 30%);
+  transition-duration: 70ms;
+}
+.shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):is(:disabled, [aria-disabled="true"]) {
+  opacity: .5;
+  cursor: not-allowed;
+  translate: none;
+  scale: 1;
+  box-shadow: inset 0 1px 1px rgb(240 254 255 / 20%), 0 2px 4px rgb(0 12 30 / 20%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]) {
+    transition: none;
+    translate: none !important;
+    scale: 1 !important;
+  }
 }

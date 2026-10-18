@@ -81,7 +81,7 @@ export const ArenasDirectory: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* High-Impact Minimalist Hero & Filter Bar */}
-      <div className="bg-slate-950 text-white rounded-2xl p-6 shadow-md space-y-5 border border-slate-800">
+      <div className="aquarium-glass bg-slate-950 text-white rounded-2xl p-6 shadow-md space-y-5 border border-slate-800">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-400">
@@ -358,7 +358,7 @@ export const ArenasDirectory: React.FC = () => {
         })}
 
         {filteredArenas.length === 0 && (
-          <div className="col-span-full bg-white border-2 border-slate-200 rounded-2xl p-12 text-center space-y-3">
+          <div className="aquarium-glass col-span-full bg-white border-2 border-slate-200 rounded-2xl p-12 text-center space-y-3">
             <MapPin className="w-10 h-10 text-slate-400 mx-auto" />
             <h3 className="text-base font-black text-slate-900">
               Nenhuma arena encontrada num raio de {radiusKm} km

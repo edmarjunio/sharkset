@@ -286,7 +286,7 @@ export const DoublesRegistration: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* Header & View Switcher — High-Contrast SHARK SET Visual Hierarchy */}
-      <div className="bg-slate-950 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-5">
+      <div className="aquarium-glass bg-slate-950 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
@@ -373,7 +373,7 @@ export const DoublesRegistration: React.FC = () => {
       {subView === 'ranking_atletas' && (
         <div className="space-y-6">
           {/* 5-SCOPE SEGMENTATION BAR: GERAL | PAÍS | ESTADO | CIDADE | ARENA */}
-          <div className="bg-[#071D3D] text-[#F7FAFD] border border-[#145A9B] rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="aquarium-glass bg-[#071D3D] text-[#F7FAFD] border border-[#145A9B] rounded-2xl p-5 shadow-sm space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#0987CE] block">
@@ -497,7 +497,7 @@ export const DoublesRegistration: React.FC = () => {
           </div>
 
           {/* Interactive Match Points Simulator (Performance + Opponent Level) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+          <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
               <div>
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -593,7 +593,7 @@ export const DoublesRegistration: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Add New Athlete to Ranking with Country, State, City, Arena */}
             <div className="space-y-6">
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs h-fit space-y-4">
+              <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-5 shadow-xs h-fit space-y-4">
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 pb-2 border-b border-slate-100">
                   <UserPlus className="w-4 h-4 text-slate-700" />
                   Cadastrar Jogador no Ranking
@@ -719,7 +719,7 @@ export const DoublesRegistration: React.FC = () => {
               </div>
 
               {/* Log de Atualizações Automáticas do Ranking */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
+              <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 pb-2 border-b border-slate-100">
                   <TrendingUp className="w-4 h-4 text-emerald-600" />
                   Últimos Jogos Contabilizados ({rankingLogs.length})
@@ -748,7 +748,7 @@ export const DoublesRegistration: React.FC = () => {
             </div>
 
             {/* Official Ranking Table with Scope Position, Global Position, Location & Auto-Promotion */}
-            <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="aquarium-glass lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <div>
                   <div className="flex items-center gap-2">
@@ -957,7 +957,7 @@ export const DoublesRegistration: React.FC = () => {
       {subView === 'inscricao_duplas' && (
         <div className="space-y-6">
           {/* Ultra-Clean Shareable Tournament Registration Link Banner */}
-          <div className="bg-[#071D3D] text-[#F7FAFD] border-2 border-[#0987CE] rounded-2xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="aquarium-glass bg-[#071D3D] text-[#F7FAFD] border-2 border-[#0987CE] rounded-2xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="px-2.5 py-0.5 rounded bg-[#0987CE] text-white font-black uppercase text-[10px]">
@@ -1010,7 +1010,7 @@ export const DoublesRegistration: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-xs h-fit space-y-4">
+          <div className="aquarium-glass bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-xs h-fit space-y-4">
             <div className="pb-3 border-b border-slate-100 space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-black text-slate-950 flex items-center gap-2">
@@ -1191,7 +1191,7 @@ export const DoublesRegistration: React.FC = () => {
           </div>
 
           {/* Registered Pairs List + Individual 2-Player Payment + Admin Rejection & Refund */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="aquarium-glass lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div className="space-y-1">
                 <h2 className="text-base font-bold text-slate-900">

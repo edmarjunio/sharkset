@@ -671,7 +671,7 @@ export const CourtScheduler: React.FC = () => {
       {/* LIVE BROADCAST, INVITED MATCHES, 4 PLAYERS & REFEREE HUB IN ARENA     */}
       {/* ===================================================================== */}
       {arenaSubTab === 'agenda' && (
-        <div className="bg-white border-2 border-orange-200 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="aquarium-glass bg-white border-2 border-orange-200 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-2 text-xs font-black text-orange-600 uppercase tracking-wider">
@@ -702,7 +702,7 @@ export const CourtScheduler: React.FC = () => {
                   <div
                     key={bk.id}
                     onClick={() => setActiveLiveBroadcastBookingId(bk.id)}
-                    className="p-4 rounded-2xl bg-slate-50 hover:bg-orange-50/40 border border-slate-200 hover:border-orange-400 transition-all cursor-pointer flex flex-col justify-between gap-3 group"
+                    className="aquarium-glass p-4 rounded-2xl bg-slate-50 hover:bg-orange-50/40 border border-slate-200 hover:border-orange-400 transition-all cursor-pointer flex flex-col justify-between gap-3 group"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
@@ -890,7 +890,7 @@ export const CourtScheduler: React.FC = () => {
               return (
                 <div
                   key={court.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4"
+                  className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
                     <div>
@@ -1022,7 +1022,7 @@ export const CourtScheduler: React.FC = () => {
             const studentsDueToday = findStudentsWithTuitionDueToday(arenaStudents, todayStr);
             const studentsDueIn2Days = findStudentsWithTuitionDueIn2Days(arenaStudents, todayStr);
             return (
-              <div className="bg-slate-950 text-white border border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="aquarium-glass bg-slate-950 text-white border border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="px-2.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black uppercase text-[10px]">
@@ -1077,7 +1077,7 @@ export const CourtScheduler: React.FC = () => {
           })()}
 
           {/* Active Classes Cards with Dual Enrollment Buttons (Aluno Self-Enroll vs Professor/Dono Enroll) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+          <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
               <div>
                 <h2 className="text-lg font-black text-slate-900">
@@ -1178,7 +1178,7 @@ export const CourtScheduler: React.FC = () => {
           </div>
 
           {/* Professor & Arena Owner Control Panel: Students, Classes, Due Dates & Monthly Fees */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+          <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div>
                 <span className="text-[11px] font-black uppercase tracking-wider text-amber-700">
@@ -1477,7 +1477,7 @@ export const CourtScheduler: React.FC = () => {
       {/* ===================================================================== */}
       {arenaSubTab === 'campeonatos' && (
         <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Campeonatos & Torneios em {tenant.name}</h2>
               <p className="text-xs text-slate-500">
@@ -1502,7 +1502,7 @@ export const CourtScheduler: React.FC = () => {
               return (
                 <div
                   key={tourn.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5"
+                  className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5"
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                     <div className="space-y-1">
@@ -1607,7 +1607,7 @@ export const CourtScheduler: React.FC = () => {
       {/* ===================================================================== */}
       {activeSlot && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div className="aquarium-glass bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             {!bookingSuccessUrl ? (
               <form onSubmit={handleConfirmBooking} className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1778,7 +1778,7 @@ export const CourtScheduler: React.FC = () => {
       {/* ===================================================================== */}
       {waitlistSlot && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 space-y-4 max-h-[90vh] overflow-y-auto">
             {(() => {
               const currentBooking = bookings.find(
                 (b) =>
@@ -1995,7 +1995,7 @@ export const CourtScheduler: React.FC = () => {
       {/* ===================================================================== */}
       {selectedClassForEnroll && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <form onSubmit={handleEnrollStudent} className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
@@ -2165,7 +2165,7 @@ export const CourtScheduler: React.FC = () => {
       {/* ===================================================================== */}
       {showCreateTournModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <form onSubmit={handleCreateTournamentSubmit} className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
@@ -2333,7 +2333,7 @@ export const CourtScheduler: React.FC = () => {
       {/* ===================================================================== */}
       {activeRegisteringTourn && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <form onSubmit={handleCompleteTournRegistration} className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>

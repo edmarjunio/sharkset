@@ -971,7 +971,7 @@ export const DoubleEliminationBracket: React.FC = () => {
 
       {/* Coastal Beach Stadium Hero Banner matching the User's Print */}
       {!isFullscreen && (
-        <div className="relative rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-slate-900">
+        <div className="aquarium-glass relative rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-slate-900">
           <img
             src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=85"
             alt={activeTournament.name}
@@ -1021,7 +1021,7 @@ export const DoubleEliminationBracket: React.FC = () => {
 
       {/* Ultra-Intuitive 3-Step Visual Guide (Hidden in Fullscreen Mode for maximum bracket space) */}
       {!isFullscreen && (
-        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-white">
+        <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-white">
           <div className="space-y-2.5 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="px-2.5 py-0.5 rounded bg-[#0987CE] text-white font-black uppercase text-[10px]">
@@ -1095,7 +1095,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       )}
 
       {/* Tournament Management Header — Clean Responsive Hierarchy (Never overflows horizontally) */}
-      <div className="bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
+      <div className="aquarium-glass bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div className="space-y-1.5 min-w-0">
@@ -1274,7 +1274,7 @@ export const DoubleEliminationBracket: React.FC = () => {
 
         {/* Real-Time Live Match Scoreboard Banner (Clickable to open MatchLiveDetailsModal) */}
         {liveMatches.length > 0 && (
-          <div className="bg-[#030B17] border-2 border-[#0987CE]/80 rounded-2xl p-4 space-y-3">
+          <div className="aquarium-glass bg-[#030B17] border-2 border-[#0987CE]/80 rounded-2xl p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#145A9B]/60 pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-black uppercase animate-pulse">
@@ -1453,7 +1453,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       </div>
 
       {/* Dual View Mode Switcher + Stage Filter */}
-      <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-black text-slate-300 uppercase tracking-wider px-2">
             Modo de Visualização:
@@ -1675,7 +1675,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* TABELA DE CLASSIFICAÇÃO AUTOMÁTICA DO TORNEIO                         */}
       {/* ===================================================================== */}
       {(activeStageTab === 'all' || activeStageTab === 'standings') && (
-        <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-6 shadow-xl space-y-4 text-[#F7FAFD]">
+        <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-6 shadow-xl space-y-4 text-[#F7FAFD]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#145A9B]/60">
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
@@ -1934,7 +1934,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* ===================================================================== */}
       {showTournamentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleSaveTournamentModal} className="space-y-4 text-xs">
               <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
                 <div>
@@ -2108,7 +2108,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* ===================================================================== */}
       {showQuickEnrollModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
             <form onSubmit={handleQuickEnrollSubmit} className="space-y-4 text-xs">
               <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
                 <div>
@@ -2251,7 +2251,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* Full Unfrozen Match Editor Modal */}
       {editingMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
               <div>
                 <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
@@ -2383,7 +2383,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* Start Tournament & Dynamic Draw Builder Modal */}
       {showStartDrawModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-[#071D3D] text-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-[#145A9B] space-y-5 my-6">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-[#145A9B] space-y-5 my-6">
             <div className="flex items-start justify-between border-b border-[#145A9B]/60 pb-4">
               <div>
                 <span className="px-2.5 py-0.5 rounded-md bg-[#0987CE] text-white font-black uppercase text-[10px]">
@@ -2539,7 +2539,7 @@ export const DoubleEliminationBracket: React.FC = () => {
               </div>
 
               {drawMode === 'manual' && (
-                <div className="bg-[#030B17] border border-[#145A9B] rounded-2xl p-4 space-y-2.5">
+                <div className="aquarium-glass bg-[#030B17] border border-[#145A9B] rounded-2xl p-4 space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-extrabold text-white">
                       Ordem Manual dos Confrontos (1ª Rodada):

@@ -66,7 +66,7 @@ const MainContent: React.FC = () => {
       </main>
 
       <footer
-        className="border-t border-slate-200 bg-white py-6 mt-12 text-slate-700"
+        className="aquarium-glass border-t border-slate-200 bg-white py-6 mt-12 text-slate-700"
         style={
           isArenaWhiteLabel && arenaPalette
             ? {

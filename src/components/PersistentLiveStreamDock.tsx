@@ -131,7 +131,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
         <div className="fixed bottom-20 md:bottom-4 right-4 z-40">
           <button
             onClick={() => setIsMinimized(false)}
-            className="px-4 py-2.5 rounded-2xl bg-[#071D3D] text-white border-2 border-[#0987CE] shadow-2xl flex items-center gap-2.5 cursor-pointer hover:bg-[#0B254E] transition-all"
+            className="aquarium-glass px-4 py-2.5 rounded-2xl bg-[#071D3D] text-white border-2 border-[#0987CE] shadow-2xl flex items-center gap-2.5 cursor-pointer hover:bg-[#0B254E] transition-all"
           >
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
             <span className="text-xs font-black text-[#5BC3FA]">
@@ -144,7 +144,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
     }
 
     return (
-      <div className="fixed bottom-20 md:bottom-4 right-4 z-40 w-80 sm:w-96 bg-[#030B17] text-white rounded-2xl border-2 border-[#0987CE] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="aquarium-glass fixed bottom-20 md:bottom-4 right-4 z-40 w-80 sm:w-96 bg-[#030B17] text-white rounded-2xl border-2 border-[#0987CE] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
         {/* Top PiP Bar */}
         <div className="px-3 py-2 bg-[#071D3D] border-b border-[#145A9B] flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 truncate">
@@ -186,9 +186,9 @@ export const PersistentLiveStreamDock: React.FC = () => {
                 : activeLegend.thumbnailUrl
             }
             alt="Transmissão Ao Vivo"
-            className="w-full h-full object-cover opacity-75"
+            className="w-full h-full object-cover broadcast-media"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#030B17] via-[#030B17]/30 to-transparent" />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#030B17]/25 via-transparent to-transparent" />
 
           {/* Live Viewers & Audio Toggle */}
           <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px]">
@@ -264,7 +264,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
           : 'max-w-7xl mx-auto px-4 sm:px-6 pt-6'
       }
     >
-      <div className="w-full max-w-7xl bg-[#030B17] text-white border-2 border-[#145A9B] rounded-3xl overflow-hidden shadow-xl">
+      <div className="aquarium-glass w-full max-w-7xl bg-[#030B17] text-white border-2 border-[#145A9B] rounded-3xl overflow-hidden shadow-xl">
         {/* Top Broadcast Bar */}
         <div className="px-4 sm:px-6 py-3.5 bg-[#071D3D] border-b border-[#145A9B] flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -329,7 +329,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
           {/* Left Column: Video Stage + Stream Selector */}
           <div className="lg:col-span-8 p-4 sm:p-6 space-y-4 border-b lg:border-b-0 lg:border-r border-[#145A9B]">
             {/* Main Video Stage */}
-            <div className="relative rounded-2xl overflow-hidden bg-[#071D3D] border border-[#145A9B] aspect-video group">
+            <div className="aquarium-glass relative rounded-2xl overflow-hidden bg-[#071D3D] border border-[#145A9B] aspect-video group">
               <img
                 src={
                   streamMode === 'live'
@@ -337,9 +337,9 @@ export const PersistentLiveStreamDock: React.FC = () => {
                     : activeLegend.thumbnailUrl
                 }
                 alt="Quadra Central Ao Vivo"
-                className="w-full h-full object-cover opacity-80 group-hover:scale-[1.01] transition-transform duration-500"
+                className="w-full h-full object-cover broadcast-media group-hover:scale-[1.01] transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#030B17] via-[#030B17]/25 to-black/40" />
+              <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#030B17]/25 via-transparent to-transparent" />
 
               {/* Top Overlay: Viewers Count + Camera Label */}
               <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2">
@@ -552,7 +552,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
           <div className="lg:col-span-4 p-4 sm:p-5 flex flex-col justify-between bg-[#030B17] space-y-4">
             {/* Interactive Crowd Poll */}
             {activeLiveEntry && (
-              <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 space-y-2.5">
+              <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-black text-[#12C7BB] uppercase flex items-center gap-1">
                     <Flame className="w-3.5 h-3.5" />

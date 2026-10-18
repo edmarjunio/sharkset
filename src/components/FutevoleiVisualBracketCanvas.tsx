@@ -434,7 +434,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
   };
 
   return (
-    <div className="bg-[#030B17] border-2 border-[#145A9B] rounded-3xl overflow-hidden shadow-2xl">
+    <div className="aquarium-glass bg-[#030B17] border-2 border-[#145A9B] rounded-3xl overflow-hidden shadow-2xl">
       {/* Top Infinity-Scroll & Fullscreen Toolbar */}
       <div className="px-4 sm:px-6 py-3.5 bg-[#071D3D] text-[#F7FAFD] border-b border-[#145A9B] flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">

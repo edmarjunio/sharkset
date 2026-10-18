@@ -218,7 +218,7 @@ export const RankingBoard: React.FC = () => {
       <FreeBroadcastPanel />
       <p className="rounded-xl bg-white p-4 text-sm text-slate-700">Escolha sua categoria no cadastro. A promoção exige a pontuação da categoria, pelo menos 6 partidas, 4 vitórias e 60% de aproveitamento. Após 30 dias sem partida válida, o progresso ativo zera; o histórico da categoria permanece.</p>
       {/* Top Banner & Cloud Firestore Connection Header */}
-      <div className="bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+      <div className="aquarium-glass bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
         {/* Ambient Gradient Glow */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#0987CE]/15 rounded-full blur-3xl pointer-events-none" />
 
@@ -304,10 +304,10 @@ export const RankingBoard: React.FC = () => {
       {processedAthletes.length >= 3 && !searchTerm && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* 2nd Place */}
-          <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between order-2 md:order-1 relative">
+          <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between order-2 md:order-1 relative">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#030B17] border border-[#145A9B] text-slate-200 font-black text-xl flex items-center justify-center">
+                <div className="aquarium-glass w-12 h-12 rounded-2xl bg-[#030B17] border border-[#145A9B] text-slate-200 font-black text-xl flex items-center justify-center">
                   🥈
                 </div>
                 <div>
@@ -394,10 +394,10 @@ export const RankingBoard: React.FC = () => {
           </div>
 
           {/* 3rd Place */}
-          <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between order-3 relative">
+          <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-lg flex flex-col justify-between order-3 relative">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#030B17] border border-[#145A9B] text-amber-500 font-black text-xl flex items-center justify-center">
+                <div className="aquarium-glass w-12 h-12 rounded-2xl bg-[#030B17] border border-[#145A9B] text-amber-500 font-black text-xl flex items-center justify-center">
                   🥉
                 </div>
                 <div>
@@ -437,7 +437,7 @@ export const RankingBoard: React.FC = () => {
       )}
 
       {/* Category Tabs & Filter Toolbar */}
-      <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-xl space-y-4">
+      <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 shadow-xl space-y-4">
         {/* Category Tabs */}
         <div className="flex flex-wrap items-center gap-1.5 border-b border-[#145A9B]/60 pb-3">
           <button
@@ -558,7 +558,7 @@ export const RankingBoard: React.FC = () => {
       </div>
 
       {/* Main Ranking Table with Win Rates & Category Rankings */}
-      <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl shadow-xl overflow-hidden">
+      <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -750,7 +750,7 @@ export const RankingBoard: React.FC = () => {
       </div>
 
       {/* Rules Explanatory Footer: Anti-Sandbagging & Cross-City Logic */}
-      <div className="bg-[#071D3D] text-slate-300 border-2 border-[#145A9B] rounded-3xl p-5 text-xs flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+      <div className="aquarium-glass bg-[#071D3D] text-slate-300 border-2 border-[#145A9B] rounded-3xl p-5 text-xs flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-[#0987CE]/20 text-[#0987CE] flex items-center justify-center shrink-0">
             <ShieldCheck className="w-5 h-5" />

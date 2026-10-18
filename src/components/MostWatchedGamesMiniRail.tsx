@@ -127,7 +127,7 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+    <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
@@ -168,7 +168,7 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
                 }
               }
             }}
-            className="group bg-slate-50 hover:bg-white border border-slate-200 hover:border-orange-400 rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md flex flex-col justify-between"
+            className="aquarium-glass group bg-slate-50 hover:bg-white border border-slate-200 hover:border-orange-400 rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md flex flex-col justify-between"
           >
             {/* Miniature Video Preview Header */}
             <div className="relative h-28 w-full bg-slate-900 overflow-hidden">

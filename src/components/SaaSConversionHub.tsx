@@ -100,7 +100,7 @@ export const SaaSConversionHub: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 text-white">
       {feedbackBanner && (
-        <div className="bg-[#071D3D] text-white border-2 border-[#12C7BB] rounded-2xl p-4 flex items-center justify-between gap-4 shadow-md">
+        <div className="aquarium-glass bg-[#071D3D] text-white border-2 border-[#12C7BB] rounded-2xl p-4 flex items-center justify-between gap-4 shadow-md">
           <div className="flex items-center gap-3 text-xs sm:text-sm font-bold">
             <Sparkles className="w-5 h-5 text-[#12C7BB] shrink-0" />
             <span>{feedbackBanner}</span>
@@ -126,7 +126,7 @@ export const SaaSConversionHub: React.FC = () => {
       )}
 
       {/* HERO BANNER */}
-      <div className="bg-[#071D3D] text-white border-2 border-[#145A9B] rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+      <div className="aquarium-glass bg-[#071D3D] text-white border-2 border-[#145A9B] rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-3 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -174,7 +174,7 @@ export const SaaSConversionHub: React.FC = () => {
       {/* PRICING & CONVERSION CARDS: R$ 20 / TABELA vs R$ 99 / MÊS ARENA PRO */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* CARD 1: R$ 20 POR TABELA DE CAMPEONATO */}
-        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-6 sm:p-8 shadow-lg flex flex-col justify-between space-y-6">
+        <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-6 sm:p-8 shadow-lg flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-black uppercase tracking-wider text-white bg-[#0987CE] px-3 py-1 rounded-lg">
@@ -215,7 +215,7 @@ export const SaaSConversionHub: React.FC = () => {
             </ul>
           </div>
 
-          <form onSubmit={handleUnlockSingleTable20} className="bg-[#030B17] border border-[#145A9B] rounded-2xl p-4 space-y-3">
+          <form onSubmit={handleUnlockSingleTable20} className="aquarium-glass bg-[#030B17] border border-[#145A9B] rounded-2xl p-4 space-y-3">
             <div className="text-xs font-extrabold text-[#5BC3FA] uppercase tracking-wider">
               Liberar Nova Tabela Agora por R$ 20,00:
             </div>
@@ -288,7 +288,7 @@ export const SaaSConversionHub: React.FC = () => {
             </ul>
           </div>
 
-          <div className="bg-[#030B17] border border-[#145A9B] rounded-2xl p-4 space-y-3">
+          <div className="aquarium-glass bg-[#030B17] border border-[#145A9B] rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-[#12C7BB]">
                 ⚡ 1 único horário de quadra alugado já paga o mês inteiro!
@@ -310,7 +310,7 @@ export const SaaSConversionHub: React.FC = () => {
       {/* ONBOARDING ENGINE FOR 1,000+ ARENAS + ROI SIMULATOR */}
       <div id="cadastrar-arena-99" className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* New Arena Instant Onboarding Form (7 cols) */}
-        <div className="lg:col-span-7 bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-6 sm:p-8 shadow-lg space-y-5">
+        <div className="aquarium-glass lg:col-span-7 bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-6 sm:p-8 shadow-lg space-y-5">
           <div className="space-y-1 border-b border-[#145A9B]/60 pb-4">
             <span className="text-[11px] font-black uppercase tracking-wider text-[#12C7BB]">
               CAPTAÇÃO DE CLIENTES · ARQUITETURA MULTI-ARENA ESCALÁVEL
@@ -448,7 +448,7 @@ export const SaaSConversionHub: React.FC = () => {
 
         {/* ROI Calculator & Multi-Arena Live Switcher (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-6 shadow-lg space-y-4">
+          <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-6 shadow-lg space-y-4">
             <div className="flex items-center gap-2 text-xs font-black uppercase text-[#12C7BB]">
               <TrendingUp className="w-4 h-4" />
               Simulador de Faturamento p/ Dono da Arena
@@ -505,7 +505,7 @@ export const SaaSConversionHub: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-[#030B17] border border-[#145A9B] text-white rounded-2xl p-4 space-y-2">
+            <div className="aquarium-glass bg-[#030B17] border border-[#145A9B] text-white rounded-2xl p-4 space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-300">
                 <span>Receita Mensal Movimentada:</span>
                 <span className="font-mono font-bold text-[#12C7BB]">
@@ -520,7 +520,7 @@ export const SaaSConversionHub: React.FC = () => {
           </div>
 
           {/* Active Multi-Tenant Arenas Running Simultaneously */}
-          <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-6 shadow-lg space-y-3">
+          <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-6 shadow-lg space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-black text-white">
                 Arenas Operando Simultaneamente ({availableTenants.length})
