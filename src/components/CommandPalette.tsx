@@ -69,6 +69,13 @@ export const CommandPalette: React.FC = () => {
         action: () => setActiveTab('register_dupla'),
       },
       {
+        id: 'nav-academy',
+        label: 'Shark Academy & Comunidade Futevôlei (Marcação, Base, Areia + IA Vision)',
+        category: 'Ensino & IA',
+        icon: GraduationCap,
+        action: () => setActiveTab('shark_academy'),
+      },
+      {
         id: 'nav-bookings',
         label: 'Tela do Cliente: Quadras que Mais Joga & Histórico',
         category: 'Cliente',

@@ -457,3 +457,43 @@ export interface SmartNotificationItem {
   read: boolean;
   pushDelivered: boolean;
 }
+
+export interface MatchMvpVoteRecord {
+  id: string;
+  matchId: string;
+  tournamentId: string;
+  tournamentName?: string;
+  playerName: string;
+  pairNames: string;
+  voterName: string;
+  votedAt: string;
+  ownerId?: string;
+}
+
+export type AcademyCategory =
+  | 'marcacao_padrao'
+  | 'posicionamento_quadra'
+  | 'corrida_areia'
+  | 'base_defesa'
+  | 'ataque_shark'
+  | 'comunidade';
+
+export type AcademyMediaType = 'video' | 'document' | 'image';
+
+export interface AcademyPost {
+  id: string;
+  title: string;
+  category: AcademyCategory;
+  mediaType: AcademyMediaType;
+  mediaUrl?: string;
+  summary: string;
+  tacticalKeyPoints?: string[];
+  authorName: string;
+  authorRole?: string;
+  arenaName?: string;
+  level: 'iniciante' | 'intermediario' | 'avancado' | 'todos';
+  likesCount: number;
+  createdAt?: string;
+  ownerId?: string;
+}
+

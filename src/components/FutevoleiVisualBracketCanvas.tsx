@@ -204,7 +204,9 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
     return (
       <div
         key={match.id}
-        className={`relative w-[290px] sm:w-[310px] rounded-2xl border-2 shadow-sm transition-all shrink-0 ${borderClass}`}
+        data-match-id={match.id}
+        data-winner-id={match.winnerId || ''}
+        className={`bracket-match-node relative w-[290px] sm:w-[310px] rounded-2xl border-2 shadow-sm transition-all shrink-0 ${borderClass}`}
       >
         {/* Top Match Number & Quick Referee / Edit Header */}
         <div className={`px-3 py-2 rounded-t-xl flex items-center justify-between text-[11px] ${headerBgClass}`}>
@@ -239,7 +241,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                 type="button"
                 onClick={() => onHistoryMatch(match)}
                 className="p-1 text-[#12C7BB] hover:text-white hover:bg-white/10 rounded cursor-pointer transition-colors"
-                title="Ver histórico de confrontos direto (Head-to-Head) entre essas duplas"
+                title="Ver histórico H2H e Votação de MVP da partida"
               >
                 <Swords className="w-3 h-3" />
               </button>
@@ -249,7 +251,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                 type="button"
                 onClick={() => onOpenRefereeModal(match.id)}
                 className="px-2 py-0.5 rounded bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-[10px] flex items-center gap-0.5 cursor-pointer shadow-xs"
-                title="Abrir Súmula do Árbitro (Saque, Tempo, Cartão Amarelo)"
+                title="Abrir Súmula do Árbitro (Saque, Tempo, Cartão)"
               >
                 <ShieldAlert className="w-2.5 h-2.5" />
                 Árbitro
@@ -279,12 +281,12 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
 
         {/* Live Service / Cards Mini Strip */}
         {match.liveReferee && !isCompleted && isReady && (
-          <div className="px-3 py-1 bg-slate-950/90 text-[10px] text-amber-300 font-bold flex items-center justify-between border-b border-slate-800">
+          <div className="px-3 py-1 bg-[#030B17] text-[10px] text-[#12C7BB] font-bold flex items-center justify-between border-b border-[#145A9B]">
             <span className="truncate">🏐 Saque: {currentServer || '1º Sacador'}</span>
             <div className="flex items-center gap-1.5 shrink-0">
               {yellowCardsCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 font-black text-[9px]">
-                  🟨 {yellowCardsCount}
+                <span className="px-1.5 py-0.2 rounded bg-[#0987CE] text-white font-black text-[9px]">
+                  📋 {yellowCardsCount}
                 </span>
               )}
               <span className="text-slate-300 font-mono">
@@ -298,9 +300,10 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
         <form onSubmit={(e) => onInlineSubmit(match, e)} className="p-2.5 space-y-1.5">
           {/* Slot 1 */}
           <div
+            data-slot-winner={team1Won ? 'true' : 'false'}
             className={`flex items-center justify-between px-2.5 py-2 rounded-xl border text-xs transition-colors ${
               team1Won
-                ? 'bg-emerald-950/60 border-emerald-400 font-black text-white'
+                ? 'bg-[#0987CE]/25 border-[#12C7BB] font-black text-white'
                 : 'bg-[#030B17] border-[#145A9B]/60 text-slate-200'
             }`}
           >
@@ -318,7 +321,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
-              {team1Won && <Trophy className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+              {team1Won && <Trophy className="w-3.5 h-3.5 text-[#12C7BB] shrink-0" />}
               <input
                 type="number"
                 min={0}
@@ -334,9 +337,10 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
 
           {/* Slot 2 */}
           <div
+            data-slot-winner={team2Won ? 'true' : 'false'}
             className={`flex items-center justify-between px-2.5 py-2 rounded-xl border text-xs transition-colors ${
               team2Won
-                ? 'bg-emerald-950/60 border-emerald-400 font-black text-white'
+                ? 'bg-[#0987CE]/25 border-[#12C7BB] font-black text-white'
                 : 'bg-[#030B17] border-[#145A9B]/60 text-slate-200'
             }`}
           >
@@ -354,7 +358,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
-              {team2Won && <Trophy className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+              {team2Won && <Trophy className="w-3.5 h-3.5 text-[#12C7BB] shrink-0" />}
               <input
                 type="number"
                 min={0}
@@ -368,36 +372,48 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
             </div>
           </div>
 
-          {/* Footer: Visual Routing Destinations (Vencedor vai p/ Jogo X · Perdedor cai p/ Jogo Y) + Confirm Button */}
+          {/* Footer: Visual Routing Destinations + Votar MVP + Confirm Button */}
           <div className="pt-1 flex items-center justify-between gap-1 text-[10px]">
-            <div className="flex flex-wrap items-center gap-1 text-slate-500 font-semibold truncate">
+            <div className="flex flex-wrap items-center gap-1 text-slate-400 font-semibold truncate">
               {nextWinNum && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#0987CE]/20 text-[#5BC3FA] border border-[#0987CE]/40 font-bold">
                   <ArrowRight className="w-2.5 h-2.5" />
                   Venc: J{nextWinNum}
                 </span>
               )}
               {nextLoseNum ? (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 font-bold">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#071D3D] text-slate-300 border border-[#145A9B] font-bold">
                   <CornerDownRight className="w-2.5 h-2.5" />
                   Perd: Rep. J{nextLoseNum}
                 </span>
               ) : match.stage === 'losers' || match.stage === 'semifinals' ? (
-                <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-bold">
+                <span className="px-1.5 py-0.5 rounded bg-rose-950/60 text-rose-300 border border-rose-500/30 font-bold">
                   Perdeu = Eliminado
                 </span>
               ) : null}
             </div>
 
-            {isReady && (
-              <button
-                type="submit"
-                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] flex items-center gap-1 cursor-pointer shrink-0"
-              >
-                <Check className="w-2.5 h-2.5" />
-                {isCompleted ? 'Salvar' : 'Confirmar'}
-              </button>
-            )}
+            <div className="flex items-center gap-1 shrink-0">
+              {isCompleted && onHistoryMatch && (
+                <button
+                  type="button"
+                  onClick={() => onHistoryMatch(match)}
+                  className="px-2 py-1 rounded-lg bg-[#12C7BB]/20 hover:bg-[#12C7BB]/35 border border-[#12C7BB]/50 text-[#12C7BB] font-black text-[10px] cursor-pointer transition-colors"
+                  title="Votar no MVP (Craque da Partida) e ver histórico no Firestore"
+                >
+                  🗳️ MVP
+                </button>
+              )}
+              {isReady && (
+                <button
+                  type="submit"
+                  className="px-2.5 py-1 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-[10px] flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Check className="w-2.5 h-2.5" />
+                  {isCompleted ? 'Salvar' : 'Confirmar'}
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>

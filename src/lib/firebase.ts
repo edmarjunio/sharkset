@@ -12,7 +12,7 @@ import {
   setDoc,
   where,
 } from 'firebase/firestore';
-import { AthleteProfile } from '../types';
+import { AcademyPost, AthleteProfile, MatchMvpVoteRecord } from '../types';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -360,4 +360,187 @@ export async function seedAthletesToFirestore(athletes: AthleteProfile[]): Promi
   }
   return count;
 }
+
+const LOCAL_MVP_VOTES_KEY = 'sharkset_v1_mvp_votes';
+
+const INITIAL_SEEDED_MVP_VOTES: MatchMvpVoteRecord[] = [
+  {
+    id: 'mvp-seed-1',
+    matchId: 't-futevolei-1-m-1',
+    tournamentId: 't-futevolei-1',
+    tournamentName: 'Copa Shark Set Futevôlei - Série C',
+    playerName: 'Lucas "Tubarão"',
+    pairNames: 'Lucas "Tubarão" & Gabriel "Pingo"',
+    voterName: 'Torcida Arena Conflora',
+    votedAt: '2026-10-18 14:20',
+  },
+  {
+    id: 'mvp-seed-2',
+    matchId: 't-futevolei-1-m-1',
+    tournamentId: 't-futevolei-1',
+    tournamentName: 'Copa Shark Set Futevôlei - Série C',
+    playerName: 'Lucas "Tubarão"',
+    pairNames: 'Lucas "Tubarão" & Gabriel "Pingo"',
+    voterName: 'Prof. Rodrigo',
+    votedAt: '2026-10-18 14:22',
+  },
+  {
+    id: 'mvp-seed-3',
+    matchId: 't-futevolei-1-m-1',
+    tournamentId: 't-futevolei-1',
+    tournamentName: 'Copa Shark Set Futevôlei - Série C',
+    playerName: 'Gabriel "Pingo"',
+    pairNames: 'Lucas "Tubarão" & Gabriel "Pingo"',
+    voterName: 'Matheus Areia',
+    votedAt: '2026-10-18 14:25',
+  },
+];
+
+export function getLocalMvpVotes(): MatchMvpVoteRecord[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_MVP_VOTES_KEY);
+    if (!raw) {
+      localStorage.setItem(LOCAL_MVP_VOTES_KEY, JSON.stringify(INITIAL_SEEDED_MVP_VOTES));
+      return INITIAL_SEEDED_MVP_VOTES;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : INITIAL_SEEDED_MVP_VOTES;
+  } catch {
+    return INITIAL_SEEDED_MVP_VOTES;
+  }
+}
+
+export function saveLocalMvpVote(vote: MatchMvpVoteRecord): MatchMvpVoteRecord[] {
+  const existing = getLocalMvpVotes();
+  const updated = [vote, ...existing.filter((v) => v.id !== vote.id)];
+  try {
+    localStorage.setItem(LOCAL_MVP_VOTES_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore storage quota
+  }
+  return updated;
+}
+
+/**
+ * Persists an MVP Vote at the end of a match to Firestore (/match_mvp_votes/{voteId})
+ * and synchronizes with local cache for instant UI feedback.
+ */
+export async function persistMvpVoteToFirestore(vote: {
+  id: string;
+  matchId: string;
+  tournamentId: string;
+  tournamentName?: string;
+  playerName: string;
+  pairNames: string;
+  voterName: string;
+  votedAt?: string;
+}): Promise<MatchMvpVoteRecord> {
+  const cleanId = vote.id.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || `mvp-${Date.now()}`;
+  const votedAtStr = (vote.votedAt || new Date().toLocaleString('pt-BR')).slice(0, 40);
+  const record: MatchMvpVoteRecord = {
+    id: cleanId,
+    matchId: vote.matchId.slice(0, 64),
+    tournamentId: vote.tournamentId.slice(0, 64),
+    tournamentName: (vote.tournamentName || 'Torneio Oficial SHARK SET').slice(0, 120),
+    playerName: vote.playerName.slice(0, 120),
+    pairNames: vote.pairNames.slice(0, 160),
+    voterName: (vote.voterName || 'Atleta SHARK SET').slice(0, 120),
+    votedAt: votedAtStr,
+    ownerId: auth.currentUser?.uid || 'local-user',
+  };
+
+  saveLocalMvpVote(record);
+
+  const currentUser = auth.currentUser;
+  if (!currentUser || !currentUser.emailVerified) {
+    return record;
+  }
+
+  const path = `match_mvp_votes/${cleanId}`;
+  try {
+    await setDoc(doc(db, 'match_mvp_votes', cleanId), {
+      id: record.id,
+      matchId: record.matchId,
+      tournamentId: record.tournamentId,
+      tournamentName: record.tournamentName,
+      playerName: record.playerName,
+      pairNames: record.pairNames,
+      voterName: record.voterName,
+      votedAt: record.votedAt,
+      ownerId: currentUser.uid,
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+
+  return record;
+}
+
+/**
+ * Fetches MVP votes from Firestore (/match_mvp_votes) merged with local votes.
+ */
+export async function fetchMvpVotesFromFirestore(matchId?: string): Promise<MatchMvpVoteRecord[]> {
+  const localVotes = getLocalMvpVotes();
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    return matchId ? localVotes.filter((v) => v.matchId === matchId) : localVotes;
+  }
+
+  const path = 'match_mvp_votes';
+  try {
+    const collRef = collection(db, path);
+    const q = query(collRef, where('ownerId', '==', currentUser.uid), limit(100));
+    const snap = await getDocs(q);
+    const firestoreVotes: MatchMvpVoteRecord[] = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      firestoreVotes.push({
+        id: d.id || docSnap.id,
+        matchId: d.matchId,
+        tournamentId: d.tournamentId,
+        tournamentName: d.tournamentName,
+        playerName: d.playerName,
+        pairNames: d.pairNames,
+        voterName: d.voterName,
+        votedAt: d.votedAt,
+        ownerId: d.ownerId,
+      });
+    });
+
+    const mergedMap = new Map<string, MatchMvpVoteRecord>();
+    [...localVotes, ...firestoreVotes].forEach((v) => mergedMap.set(v.id, v));
+    const allVotes = Array.from(mergedMap.values());
+    return matchId ? allVotes.filter((v) => v.matchId === matchId) : allVotes;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+  }
+}
+
+/**
+ * Persists a tactical training post to Firestore (/academy_posts/{postId}).
+ */
+export async function persistAcademyPostToFirestore(post: AcademyPost): Promise<void> {
+  const currentUser = auth.currentUser;
+  if (!currentUser || !currentUser.emailVerified) return;
+
+  const cleanId = post.id.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+  const path = `academy_posts/${cleanId}`;
+  try {
+    await setDoc(doc(db, 'academy_posts', cleanId), {
+      id: cleanId,
+      title: post.title.slice(0, 140),
+      category: post.category,
+      mediaType: post.mediaType,
+      mediaUrl: (post.mediaUrl || '').slice(0, 500),
+      summary: post.summary.slice(0, 600),
+      authorName: post.authorName.slice(0, 100),
+      level: post.level,
+      likesCount: Number(post.likesCount) || 0,
+      ownerId: currentUser.uid,
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
 

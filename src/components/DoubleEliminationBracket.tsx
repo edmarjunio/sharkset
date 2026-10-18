@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import gsap from 'gsap';
 import { useApp } from '../context/AppContext';
 import {
   AthleteLevel,
@@ -90,21 +91,39 @@ export const DoubleEliminationBracket: React.FC = () => {
   const [editingMatch, setEditingMatch] = useState<BracketMatch | null>(null);
   const [refereeModalMatchId, setRefereeModalMatchId] = useState<string | null>(null);
 
-  // Share & Match History Modal States
+  // Share & Match History / MVP Voting Modal States
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareMatch, setShareMatch] = useState<BracketMatch | null>(null);
   const [showMatchHistoryModal, setShowMatchHistoryModal] = useState(false);
   const [historyPair1, setHistoryPair1] = useState<TeamPair | null>(null);
   const [historyPair2, setHistoryPair2] = useState<TeamPair | null>(null);
+  const [activeHistoryMatchId, setActiveHistoryMatchId] = useState<string | undefined>(undefined);
+
+  // GSAP Winning Team Path Highlight State
+  const [activePathHighlight, setActivePathHighlight] = useState<{
+    winner: TeamPair;
+    matchSteps: Array<{
+      matchId: string;
+      matchNumber: number;
+      stageName: string;
+      isDestination?: boolean;
+    }>;
+    completedMatch: BracketMatch;
+  } | null>(null);
 
   const handleOpenShare = (match?: BracketMatch) => {
     setShareMatch(match || null);
     setShowShareModal(true);
   };
 
-  const handleOpenMatchHistory = (p1?: TeamPair | null, p2?: TeamPair | null) => {
+  const handleOpenMatchHistory = (
+    p1?: TeamPair | null,
+    p2?: TeamPair | null,
+    matchId?: string
+  ) => {
     setHistoryPair1(p1 || null);
     setHistoryPair2(p2 || null);
+    setActiveHistoryMatchId(matchId);
     setShowMatchHistoryModal(true);
   };
 
@@ -403,6 +422,108 @@ export const DoubleEliminationBracket: React.FC = () => {
     }
   };
 
+  /**
+   * Smooth GSAP animation that highlights the winning team's trajectory across the bracket
+   * whenever a match result is updated or replayed.
+   */
+  const triggerGsapWinningPathAnimation = (winner: TeamPair, completedMatch: BracketMatch) => {
+    const wonMatches = currentMatches
+      .filter((m) => m.winnerId === winner.id || m.id === completedMatch.id)
+      .sort((a, b) => a.matchNumber - b.matchNumber);
+
+    const steps: Array<{
+      matchId: string;
+      matchNumber: number;
+      stageName: string;
+      isDestination?: boolean;
+    }> = wonMatches.map((m) => ({
+      matchId: m.id,
+      matchNumber: m.matchNumber,
+      stageName: m.stageName,
+      isDestination: false,
+    }));
+
+    if (completedMatch.nextMatchWinnerId) {
+      const destMatch = currentMatches.find((m) => m.id === completedMatch.nextMatchWinnerId);
+      if (destMatch && !steps.some((s) => s.matchId === destMatch.id)) {
+        steps.push({
+          matchId: destMatch.id,
+          matchNumber: destMatch.matchNumber,
+          stageName: destMatch.stageName,
+          isDestination: true,
+        });
+      }
+    }
+
+    setActivePathHighlight({
+      winner,
+      matchSteps: steps,
+      completedMatch,
+    });
+
+    // Run GSAP timeline after React commits DOM update
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const allNodes = document.querySelectorAll('.bracket-match-node');
+        if (allNodes.length > 0) {
+          gsap.set(allNodes, {
+            clearProps: 'boxShadow,scale,borderColor',
+          });
+        }
+
+        const bannerEl = document.querySelector('.gsap-path-banner');
+        if (bannerEl) {
+          gsap.fromTo(
+            bannerEl,
+            { opacity: 0, y: -14, scale: 0.98 },
+            { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: 'power3.out' }
+          );
+        }
+
+        const stepPills = document.querySelectorAll('.gsap-step-pill');
+        if (stepPills.length > 0) {
+          gsap.fromTo(
+            stepPills,
+            { opacity: 0, scale: 0.8, x: -10 },
+            { opacity: 1, scale: 1, x: 0, duration: 0.35, stagger: 0.14, ease: 'back.out(1.7)' }
+          );
+        }
+
+        const targetElements: Element[] = [];
+        steps.forEach((st) => {
+          const nodes = document.querySelectorAll(`[data-match-id="${st.matchId}"]`);
+          nodes.forEach((n) => targetElements.push(n));
+        });
+
+        if (targetElements.length > 0) {
+          const tl = gsap.timeline();
+          tl.fromTo(
+            targetElements,
+            {
+              scale: 1,
+              boxShadow: '0 0 0px 0px rgba(18, 199, 187, 0)',
+            },
+            {
+              scale: 1.04,
+              borderColor: '#12C7BB',
+              boxShadow: '0 0 32px 6px rgba(18, 199, 187, 0.78)',
+              duration: 0.42,
+              stagger: 0.22,
+              ease: 'back.out(1.8)',
+            }
+          ).to(targetElements, {
+            scale: 1,
+            borderColor: '#0987CE',
+            boxShadow: '0 0 18px 3px rgba(9, 135, 206, 0.55)',
+            duration: 0.5,
+            stagger: 0.15,
+            ease: 'power2.out',
+          });
+        }
+      }, 60);
+    });
+  };
+
   const handleInlineSubmit = (match: BracketMatch, e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!match.team1 || !match.team2) {
@@ -423,8 +544,9 @@ export const DoubleEliminationBracket: React.FC = () => {
     const winningTeam: 1 | 2 = s1 > s2 ? 1 : 2;
     const winner = winningTeam === 1 ? match.team1 : match.team2;
     handleAdvanceMatch(match.id, winningTeam, s1, s2);
+    triggerGsapWinningPathAnimation(winner, match);
     triggerToast(
-      `Jogo ${match.matchNumber} finalizado (${s1}x${s2}): ${formatParticipantName(winner)} avançou! Classificação do torneio e Ranking de Futevôlei atualizados automaticamente!`
+      `Jogo ${match.matchNumber} finalizado (${s1}x${s2}): ${formatParticipantName(winner)} avançou! Trajetória GSAP destacada e votação de MVP liberada!`
     );
   };
 
@@ -454,11 +576,13 @@ export const DoubleEliminationBracket: React.FC = () => {
 
     if (newT1 && newT2 && inputScore1 !== inputScore2) {
       const winningTeam: 1 | 2 = inputScore1 > inputScore2 ? 1 : 2;
+      const winner = winningTeam === 1 ? newT1 : newT2;
       setTimeout(() => {
         handleAdvanceMatch(editingMatch.id, winningTeam, inputScore1, inputScore2);
+        triggerGsapWinningPathAnimation(winner, editingMatch);
       }, 10);
       triggerToast(
-        `Jogo ${editingMatch.matchNumber} salvo! Classificação do torneio e Ranking atualizados automaticamente!`
+        `Jogo ${editingMatch.matchNumber} salvo! Trajetória GSAP do vencedor e Ranking atualizados!`
       );
     } else {
       triggerToast(`Configuração do Jogo ${editingMatch.matchNumber} salva!`);
@@ -506,24 +630,26 @@ export const DoubleEliminationBracket: React.FC = () => {
     return (
       <div
         key={match.id}
-        className={`bg-white border rounded-2xl p-3.5 transition-all shadow-xs ${
+        data-match-id={match.id}
+        data-winner-id={match.winnerId || ''}
+        className={`bracket-match-node bg-[#071D3D] border rounded-2xl p-3.5 transition-all shadow-md text-[#F7FAFD] ${
           isLive
-            ? 'border-amber-400 ring-2 ring-amber-400/30'
+            ? 'border-rose-500 ring-2 ring-rose-500/30'
             : isCompleted
-            ? 'border-slate-300 ring-1 ring-slate-100'
-            : 'border-slate-200 hover:border-slate-300'
+            ? 'border-[#0987CE] ring-1 ring-[#0987CE]/30'
+            : 'border-[#145A9B] hover:border-[#0987CE]'
         }`}
       >
-        <div className="flex items-center justify-between text-xs text-slate-500 pb-2 mb-2 border-b border-slate-100">
+        <div className="flex items-center justify-between text-xs text-slate-300 pb-2 mb-2 border-b border-[#145A9B]/60">
           <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-slate-800">Jogo {match.matchNumber}</span>
+            <span className="font-extrabold text-white">Jogo {match.matchNumber}</span>
             {isLive && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-black uppercase animate-pulse">
                 AO VIVO
               </span>
             )}
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="text-[11px] font-mono text-slate-500">{match.courtName || 'Quadra 1'}</span>
+            <span aria-hidden="true" className="text-slate-500">·</span>
+            <span className="text-[11px] font-mono text-slate-300">{match.courtName || 'Quadra 1'}</span>
           </div>
 
           <div className="flex items-center gap-1">
@@ -531,7 +657,7 @@ export const DoubleEliminationBracket: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setRefereeModalMatchId(match.id)}
-                className="px-2 py-0.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                className="px-2 py-0.5 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
                 title="Abrir Tela do Árbitro (computar pontos, ordem de saque, pedidos de tempo)"
               >
                 <ShieldAlert className="w-3 h-3" />
@@ -541,7 +667,7 @@ export const DoubleEliminationBracket: React.FC = () => {
             <button
               type="button"
               onClick={() => handleOpenMatchEditor(match)}
-              className="p-1 text-slate-400 hover:text-slate-800 rounded cursor-pointer"
+              className="p-1 text-slate-300 hover:text-white rounded cursor-pointer"
               title="Editar participantes, horário ou placar livremente"
             >
               <Sliders className="w-3.5 h-3.5" />
@@ -551,8 +677,8 @@ export const DoubleEliminationBracket: React.FC = () => {
 
         {/* Real-time Referee Info Bar inside Match Card (Service Order & Timeouts) */}
         {match.liveReferee && !isCompleted && isReady && (
-          <div className="mb-2 px-2.5 py-1.5 rounded-xl bg-slate-900 text-white text-[10px] flex items-center justify-between gap-2">
-            <span className="truncate font-bold text-amber-300">
+          <div className="mb-2 px-2.5 py-1.5 rounded-xl bg-[#030B17] border border-[#145A9B] text-white text-[10px] flex items-center justify-between gap-2">
+            <span className="truncate font-bold text-[#12C7BB]">
               🏐 Sacando: {currentServerName || '1º Sacador'}
             </span>
             <span className="font-mono text-slate-300 shrink-0">
@@ -564,17 +690,18 @@ export const DoubleEliminationBracket: React.FC = () => {
         <form onSubmit={(e) => handleInlineSubmit(match, e)} className="space-y-1.5">
           {/* Team 1 */}
           <div
+            data-slot-winner={team1Won ? 'true' : 'false'}
             className={`flex items-center justify-between p-2 rounded-xl text-xs transition-colors ${
               team1Won
-                ? 'bg-amber-100/70 font-bold text-slate-900 border border-amber-300'
-                : 'bg-slate-50 text-slate-700 border border-slate-100'
+                ? 'bg-[#0987CE]/25 font-bold text-white border border-[#12C7BB]'
+                : 'bg-[#030B17] text-slate-200 border border-[#145A9B]/60'
             }`}
           >
             <div
               onClick={() => handleOpenMatchEditor(match)}
               className="flex items-center gap-1.5 truncate pr-2 flex-1 cursor-pointer"
             >
-              <span className="text-[10px] text-slate-400 font-mono shrink-0">
+              <span className="text-[10px] text-[#0987CE] font-mono shrink-0">
                 {match.team1 ? `#${match.team1.seed}` : '—'}
               </span>
               <span className="truncate font-medium">
@@ -583,7 +710,7 @@ export const DoubleEliminationBracket: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
-              {team1Won && <Trophy className="w-3 h-3 text-amber-600 shrink-0" />}
+              {team1Won && <Trophy className="w-3 h-3 text-[#12C7BB] shrink-0" />}
               <input
                 type="number"
                 min={0}
@@ -592,24 +719,25 @@ export const DoubleEliminationBracket: React.FC = () => {
                 placeholder="-"
                 value={getInlineScore(match, 's1')}
                 onChange={(e) => handleInlineScoreChange(match, 's1', e.target.value)}
-                className="w-12 h-7 text-center font-mono font-bold text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 tabular-nums"
+                className="w-12 h-7 text-center font-mono font-bold text-xs bg-[#071D3D] text-white border border-[#145A9B] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0987CE] tabular-nums"
               />
             </div>
           </div>
 
           {/* Team 2 */}
           <div
+            data-slot-winner={team2Won ? 'true' : 'false'}
             className={`flex items-center justify-between p-2 rounded-xl text-xs transition-colors ${
               team2Won
-                ? 'bg-amber-100/70 font-bold text-slate-900 border border-amber-300'
-                : 'bg-slate-50 text-slate-700 border border-slate-100'
+                ? 'bg-[#0987CE]/25 font-bold text-white border border-[#12C7BB]'
+                : 'bg-[#030B17] text-slate-200 border border-[#145A9B]/60'
             }`}
           >
             <div
               onClick={() => handleOpenMatchEditor(match)}
               className="flex items-center gap-1.5 truncate pr-2 flex-1 cursor-pointer"
             >
-              <span className="text-[10px] text-slate-400 font-mono shrink-0">
+              <span className="text-[10px] text-[#0987CE] font-mono shrink-0">
                 {match.team2 ? `#${match.team2.seed}` : '—'}
               </span>
               <span className="truncate font-medium">
@@ -618,7 +746,7 @@ export const DoubleEliminationBracket: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
-              {team2Won && <Trophy className="w-3 h-3 text-amber-600 shrink-0" />}
+              {team2Won && <Trophy className="w-3 h-3 text-[#12C7BB] shrink-0" />}
               <input
                 type="number"
                 min={0}
@@ -627,7 +755,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                 placeholder="-"
                 value={getInlineScore(match, 's2')}
                 onChange={(e) => handleInlineScoreChange(match, 's2', e.target.value)}
-                className="w-12 h-7 text-center font-mono font-bold text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 tabular-nums"
+                className="w-12 h-7 text-center font-mono font-bold text-xs bg-[#071D3D] text-white border border-[#145A9B] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0987CE] tabular-nums"
               />
             </div>
           </div>
@@ -640,11 +768,11 @@ export const DoubleEliminationBracket: React.FC = () => {
                 const msg = notifyLiveMatchProgress(match.id, liveS1 || 10, liveS2 || 8);
                 if (msg) triggerToast(`🔔 Push enviado! ${msg}`);
               }}
-              className="w-full py-1.5 px-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-950 font-extrabold text-[11px] flex items-center justify-between transition-colors cursor-pointer"
+              className="w-full py-1.5 px-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#0987CE]/60 text-[#5BC3FA] font-extrabold text-[11px] flex items-center justify-between transition-colors cursor-pointer"
               title="Notificar jogadores do próximo jogo que faltam <= 10 pontos para acabar"
             >
               <span className="flex items-center gap-1">
-                <BellRing className="w-3 h-3 text-amber-600" />
+                <BellRing className="w-3 h-3 text-[#12C7BB]" />
                 Faltam {nearEndEval.pointsRemaining || 8} pts p/ acabar
               </span>
               <span className="underline">Notificar Próximo Jogo</span>
@@ -652,17 +780,28 @@ export const DoubleEliminationBracket: React.FC = () => {
           )}
 
           <div className="pt-2 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400 truncate max-w-[155px]" title={routingNote}>
+            <span className="text-slate-400 truncate max-w-[140px]" title={routingNote}>
               {routingNote}
             </span>
 
             <div className="flex items-center gap-1">
+              {isCompleted && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenMatchHistory(match.team1, match.team2, match.id)}
+                  className="px-2 py-1 rounded-lg bg-[#12C7BB]/20 hover:bg-[#12C7BB]/35 border border-[#12C7BB]/50 text-[#12C7BB] font-black text-[10px] cursor-pointer transition-colors"
+                  title="Votar no MVP (Craque da Partida) no Firestore"
+                >
+                  🗳️ MVP
+                </button>
+              )}
+
               {isReady && (
                 <a
                   href={generateMatchCallWhatsAppLink(match, activeTournament.name, tenant.name)}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                  className="p-1.5 text-[#12C7BB] hover:bg-[#030B17] rounded-lg transition-colors"
                   title="Chamar jogadores no WhatsApp"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -672,8 +811,8 @@ export const DoubleEliminationBracket: React.FC = () => {
               {isReady && (
                 <button
                   type="submit"
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1"
-                  title="Confirmar placar e popular automaticamente a próxima partida"
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#0987CE] text-white hover:bg-[#0772b0] transition-colors cursor-pointer flex items-center gap-1"
+                  title="Confirmar placar e animar caminho do vencedor (GSAP)"
                 >
                   <Check className="w-3 h-3" />
                   {isCompleted ? 'Atualizar' : 'Confirmar'}
@@ -687,7 +826,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                     handleResetMatch(match.id);
                     triggerToast(`Jogo ${match.matchNumber} voltou atrás (resetado).`);
                   }}
-                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                  className="p-1 text-slate-400 hover:text-rose-400 hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                   title="Voltar atrás / desfazer resultado"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -1188,8 +1327,103 @@ export const DoubleEliminationBracket: React.FC = () => {
           >
             Semis & Final
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const completed = currentMatches.filter((m) => m.status === 'completed' && m.winnerId);
+              const targetMatch = completed[completed.length - 1] || currentMatches[0];
+              const winPair =
+                targetMatch?.winnerId === targetMatch?.team2?.id
+                  ? targetMatch?.team2
+                  : targetMatch?.team1 || activePairsInTourn[0];
+              if (winPair && targetMatch) {
+                triggerGsapWinningPathAnimation(winPair, targetMatch);
+              }
+            }}
+            className="px-3 py-1.5 text-xs font-black rounded-lg bg-gradient-to-r from-[#0987CE] to-[#12C7BB] text-slate-950 hover:opacity-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+            title="Animar com GSAP o caminho da dupla vencedora na chave"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Animar Caminho GSAP
+          </button>
         </div>
       </div>
+
+      {/* ===================================================================== */}
+      {/* GSAP WINNING TEAM PATH BANNER & POST-MATCH MVP VOTING CALLOUT         */}
+      {/* ===================================================================== */}
+      {activePathHighlight && (
+        <div className="gsap-path-banner bg-gradient-to-r from-[#030B17] via-[#071D3D] to-[#0B254E] border-2 border-[#12C7BB] rounded-2xl p-4 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-md bg-[#12C7BB] text-slate-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                TRAJETÓRIA DO VENCEDOR · ANIMAÇÃO GSAP
+              </span>
+              <span className="text-xs font-black text-white">
+                🦈 {formatParticipantName(activePathHighlight.winner)}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {activePathHighlight.matchSteps.map((step, idx) => (
+                <React.Fragment key={step.matchId}>
+                  <span
+                    className={`gsap-step-pill px-2.5 py-1 rounded-xl text-[11px] font-black flex items-center gap-1 border ${
+                      step.isDestination
+                        ? 'bg-[#0987CE]/25 border-[#0987CE] text-[#5BC3FA]'
+                        : 'bg-[#12C7BB]/20 border-[#12C7BB] text-white'
+                    }`}
+                  >
+                    {step.isDestination ? '🎯 Próximo: ' : '✅ Venceu '}
+                    Jogo #{step.matchNumber} ({step.stageName})
+                  </span>
+                  {idx < activePathHighlight.matchSteps.length - 1 && (
+                    <span className="text-[#12C7BB] font-black text-xs">➔</span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() =>
+                handleOpenMatchHistory(
+                  activePathHighlight.completedMatch.team1,
+                  activePathHighlight.completedMatch.team2,
+                  activePathHighlight.completedMatch.id
+                )
+              }
+              className="px-3.5 py-2 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <Award className="w-4 h-4 text-[#12C7BB]" />
+              🗳️ Votar MVP do Jogo #{activePathHighlight.completedMatch.matchNumber}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                triggerGsapWinningPathAnimation(
+                  activePathHighlight.winner,
+                  activePathHighlight.completedMatch
+                )
+              }
+              className="px-3 py-2 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-[#12C7BB] font-bold text-xs cursor-pointer"
+            >
+              Repetir GSAP
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePathHighlight(null)}
+              className="px-2.5 py-2 rounded-xl bg-[#030B17] text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ===================================================================== */}
       {/* VISUALIZAÇÃO 1: CHAVEAMENTO OFICIAL DE FUTEVÔLEI COM INFINITY SCROLL   */}
@@ -1206,7 +1440,7 @@ export const DoubleEliminationBracket: React.FC = () => {
           onOpenRefereeModal={(mId) => setRefereeModalMatchId(mId)}
           onOpenMatchEditor={handleOpenMatchEditor}
           onShareMatch={(m) => handleOpenShare(m)}
-          onHistoryMatch={(m) => handleOpenMatchHistory(m.team1, m.team2)}
+          onHistoryMatch={(m) => handleOpenMatchHistory(m.team1, m.team2, m.id)}
         />
       )}
 
@@ -2158,9 +2392,9 @@ export const DoubleEliminationBracket: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleConfirmStartTournamentDraw}
-                  className="px-5 py-2.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="px-5 py-2.5 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
-                  <Play className="w-3.5 h-3.5 fill-slate-950" />
+                  <Play className="w-3.5 h-3.5 fill-white" />
                   Gerar Tabela p/ {presentPairsInTourn.length} Duplas Presentes
                 </button>
               </div>
@@ -2179,10 +2413,15 @@ export const DoubleEliminationBracket: React.FC = () => {
             updateLiveRefereeMatch(matchId, updater);
           }}
           onConfirmFinalResult={(matchId, winningTeam, s1, s2) => {
+            const winPair =
+              winningTeam === 1 ? activeRefereeMatch.team1 : activeRefereeMatch.team2;
             handleAdvanceMatch(matchId, winningTeam, s1, s2);
             setRefereeModalMatchId(null);
+            if (winPair) {
+              triggerGsapWinningPathAnimation(winPair, activeRefereeMatch);
+            }
             triggerToast(
-              `Partida finalizada pelo árbitro (${s1}x${s2})! Vencedor avançou automaticamente para a próxima fase!`
+              `Partida finalizada pelo árbitro (${s1}x${s2})! Trajetória GSAP destacada e votação de MVP liberada!`
             );
           }}
           onNotify10PointsRemaining={(matchId, s1, s2) => {
@@ -2203,7 +2442,7 @@ export const DoubleEliminationBracket: React.FC = () => {
         tenantName={tenant.name}
       />
 
-      {/* Head-to-Head & Match History Modal */}
+      {/* Head-to-Head & Match History + Firestore MVP Voting Modal */}
       <MatchHistoryModal
         isOpen={showMatchHistoryModal}
         onClose={() => setShowMatchHistoryModal(false)}
@@ -2211,6 +2450,9 @@ export const DoubleEliminationBracket: React.FC = () => {
         initialPair1={historyPair1}
         initialPair2={historyPair2}
         tenantName={tenant.name}
+        activeMatchId={activeHistoryMatchId}
+        tournamentId={activeTournament.id}
+        tournamentName={activeTournament.name}
       />
     </div>
   );

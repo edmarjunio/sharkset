@@ -89,6 +89,50 @@
         "ownerId": { "type": "string", "maxLength": 128 }
       },
       "required": ["id", "type", "title", "body", "ownerId"]
+    },
+    "MatchMvpVote": {
+      "title": "MatchMvpVote",
+      "description": "Voto de MVP (Craque da Partida) registrado ao final de um jogo do chaveamento SHARK SET.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "matchId": { "type": "string", "maxLength": 64 },
+        "tournamentId": { "type": "string", "maxLength": 64 },
+        "tournamentName": { "type": "string", "maxLength": 120 },
+        "playerName": { "type": "string", "maxLength": 120 },
+        "pairNames": { "type": "string", "maxLength": 160 },
+        "voterName": { "type": "string", "maxLength": 120 },
+        "votedAt": { "type": "string", "maxLength": 40 },
+        "ownerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "matchId", "tournamentId", "playerName", "pairNames", "voterName", "votedAt", "ownerId"]
+    },
+    "AcademyPost": {
+      "title": "AcademyPost",
+      "description": "Conteúdo didático e tático postado na Comunidade & Academia de Futevôlei SHARK SET.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 140 },
+        "category": {
+          "type": "string",
+          "enum": ["marcacao_padrao", "posicionamento_quadra", "corrida_areia", "base_defesa", "ataque_shark", "comunidade"]
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["video", "document", "image"]
+        },
+        "mediaUrl": { "type": "string", "maxLength": 500 },
+        "summary": { "type": "string", "maxLength": 600 },
+        "authorName": { "type": "string", "maxLength": 100 },
+        "level": {
+          "type": "string",
+          "enum": ["iniciante", "intermediario", "avancado", "todos"]
+        },
+        "likesCount": { "type": "number" },
+        "ownerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "title", "category", "mediaType", "summary", "authorName", "level", "likesCount", "ownerId"]
     }
   },
   "firestore": {
@@ -107,6 +151,14 @@
     "/notifications/{notificationId}": {
       "schema": { "$ref": "#/entities/SmartNotification" },
       "description": "Histórico de push notifications e alertas inteligentes do usuário"
+    },
+    "/match_mvp_votes/{voteId}": {
+      "schema": { "$ref": "#/entities/MatchMvpVote" },
+      "description": "Votos de MVP eleitos pelos atletas e espectadores ao final das partidas"
+    },
+    "/academy_posts/{postId}": {
+      "schema": { "$ref": "#/entities/AcademyPost" },
+      "description": "Aulas, vídeos, apostilas e análises táticas da Comunidade Futevôlei SHARK SET"
     }
   }
 }

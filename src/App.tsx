@@ -14,6 +14,7 @@ import { SaaSConversionHub } from './components/SaaSConversionHub';
 import { CommandPalette } from './components/CommandPalette';
 import { TenantSelectorModal } from './components/TenantSelectorModal';
 import { SharksetLogo } from './components/SharksetLogo';
+import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 
 const MainContent: React.FC = () => {
   const { activeTab, tenant } = useApp();
@@ -33,6 +34,7 @@ const MainContent: React.FC = () => {
         {activeTab === 'tournaments' && <DoubleEliminationBracket />}
         {activeTab === 'scheduler' && <CourtScheduler />}
         {activeTab === 'ranking_athletes' && <RankingBoard />}
+        {activeTab === 'shark_academy' && <SharkAcademyCommunity />}
         {activeTab === 'register_dupla' && <DoublesRegistration />}
         {activeTab === 'arenas_directory' && <ArenasDirectory />}
         {activeTab === 'saas_hub' && <SaaSConversionHub />}

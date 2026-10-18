@@ -17,6 +17,7 @@ import {
   Tv,
   Building2,
   Globe,
+  GraduationCap,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -82,11 +83,11 @@ export const Navbar: React.FC = () => {
           </button>
         </div>
 
-        {/* Zone 2: Clean 5-Tab Navigation with Translations */}
-        <nav className="hidden lg:flex items-center gap-1.5 bg-[#071D3D]/90 p-1.5 rounded-2xl border border-[#145A9B]">
+        {/* Zone 2: Clean Navigation with Translations */}
+        <nav className="hidden lg:flex items-center gap-1 bg-[#071D3D]/90 p-1.5 rounded-2xl border border-[#145A9B]">
           <button
             onClick={() => setActiveTab('home')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'home'
                 ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
                 : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
@@ -98,7 +99,7 @@ export const Navbar: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('arenas_directory')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'arenas_directory' || activeTab === 'scheduler'
                 ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
                 : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
@@ -115,7 +116,7 @@ export const Navbar: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('tournaments')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'tournaments'
                 ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
                 : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
@@ -127,7 +128,7 @@ export const Navbar: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('ranking_athletes')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'ranking_athletes'
                 ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
                 : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
@@ -138,8 +139,20 @@ export const Navbar: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('shark_academy')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'shark_academy'
+                ? 'bg-[#12C7BB] text-slate-950 shadow-md shadow-[#12C7BB]/25'
+                : 'text-[#12C7BB] hover:text-white hover:bg-[#0B254E]'
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            {'shark_academy'.tr}
+          </button>
+
+          <button
             onClick={() => setActiveTab('register_dupla')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'register_dupla'
                 ? 'bg-[#0987CE] text-white shadow-md shadow-[#0987CE]/25'
                 : 'text-slate-300 hover:text-white hover:bg-[#0B254E]'
@@ -261,6 +274,16 @@ export const Navbar: React.FC = () => {
           }`}
         >
           {'ranking_board'.tr}
+        </button>
+        <button
+          onClick={() => setActiveTab('shark_academy')}
+          className={`flex-1 px-2.5 py-2 text-xs font-extrabold rounded-lg whitespace-nowrap cursor-pointer text-center transition-all ${
+            activeTab === 'shark_academy'
+              ? 'bg-[#12C7BB] text-slate-950 shadow-xs'
+              : 'text-[#12C7BB] bg-[#071D3D]'
+          }`}
+        >
+          {'shark_academy'.tr}
         </button>
         <button
           onClick={() => setActiveTab('register_dupla')}

@@ -86,6 +86,41 @@ service cloud.firestore {
         data.ownerId is string && data.ownerId == request.auth.uid;
     }
 
+    function isValidMatchMvpVote(data) {
+      return data.keys().hasAll(['id', 'matchId', 'tournamentId', 'playerName', 'pairNames', 'voterName', 'votedAt', 'ownerId']) &&
+        data.keys().hasOnly([
+          'id', 'matchId', 'tournamentId', 'tournamentName', 'playerName',
+          'pairNames', 'voterName', 'votedAt', 'ownerId'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.matchId is string && data.matchId.size() >= 1 && data.matchId.size() <= 64 &&
+        data.tournamentId is string && data.tournamentId.size() >= 1 && data.tournamentId.size() <= 64 &&
+        data.playerName is string && data.playerName.size() >= 1 && data.playerName.size() <= 120 &&
+        data.pairNames is string && data.pairNames.size() >= 1 && data.pairNames.size() <= 160 &&
+        data.voterName is string && data.voterName.size() >= 1 && data.voterName.size() <= 120 &&
+        data.votedAt is string && data.votedAt.size() >= 1 && data.votedAt.size() <= 40 &&
+        data.ownerId is string && data.ownerId == request.auth.uid;
+    }
+
+    function isValidAcademyPost(data) {
+      return data.keys().hasAll(['id', 'title', 'category', 'mediaType', 'summary', 'authorName', 'level', 'likesCount', 'ownerId']) &&
+        data.keys().hasOnly([
+          'id', 'title', 'category', 'mediaType', 'mediaUrl', 'summary',
+          'authorName', 'level', 'likesCount', 'ownerId'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+        data.category is string && data.category in [
+          'marcacao_padrao', 'posicionamento_quadra', 'corrida_areia', 'base_defesa', 'ataque_shark', 'comunidade'
+        ] &&
+        data.mediaType is string && data.mediaType in ['video', 'document', 'image'] &&
+        data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 600 &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100 &&
+        data.level is string && data.level in ['iniciante', 'intermediario', 'avancado', 'todos'] &&
+        data.likesCount is number && data.likesCount >= 0 &&
+        data.ownerId is string && data.ownerId == request.auth.uid;
+    }
+
     match /arenas/{arenaId} {
       allow get: if isValidId(arenaId) && isOwner(existing().ownerId);
       allow list: if isOwner(existing().ownerId);
@@ -132,6 +167,28 @@ service cloud.firestore {
         incoming().ownerId == existing().ownerId &&
         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body']);
       allow delete: if isVerifiedUser() && isValidId(notificationId) && isOwner(existing().ownerId);
+    }
+
+    match /match_mvp_votes/{voteId} {
+      allow get: if isValidId(voteId) && isOwner(existing().ownerId);
+      allow list: if isOwner(existing().ownerId);
+      allow create: if isVerifiedUser() && isValidId(voteId) && isValidMatchMvpVote(incoming());
+      allow update: if isVerifiedUser() && isValidId(voteId) && isValidMatchMvpVote(incoming()) &&
+        isOwner(existing().ownerId) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['playerName', 'pairNames', 'votedAt']);
+      allow delete: if isVerifiedUser() && isValidId(voteId) && isOwner(existing().ownerId);
+    }
+
+    match /academy_posts/{postId} {
+      allow get: if isValidId(postId) && isOwner(existing().ownerId);
+      allow list: if isOwner(existing().ownerId);
+      allow create: if isVerifiedUser() && isValidId(postId) && isValidAcademyPost(incoming());
+      allow update: if isVerifiedUser() && isValidId(postId) && isValidAcademyPost(incoming()) &&
+        isOwner(existing().ownerId) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'summary', 'likesCount']);
+      allow delete: if isVerifiedUser() && isValidId(postId) && isOwner(existing().ownerId);
     }
   }
 }

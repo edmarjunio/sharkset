@@ -66,6 +66,7 @@ export type MainTab =
   | 'arenas_directory'
   | 'saas_hub'
   | 'ranking_athletes'
+  | 'shark_academy'
   | 'my_bookings';
 
 export type ArenaSubTab = 'agenda' | 'aulas' | 'campeonatos' | 'config_dono';

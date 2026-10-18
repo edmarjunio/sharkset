@@ -1,26 +1,29 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { TeamPair } from '../types';
+import { MatchMvpVoteRecord, TeamPair } from '../types';
 import {
   computeHeadToHeadSummary,
   HistoricalMatchRecord,
   INITIAL_HISTORICAL_MATCHES,
 } from '../services/matchHistoryEngine';
 import { SharksetLogo } from './SharksetLogo';
-import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, getDocs, query, limit, setDoc, doc } from 'firebase/firestore';
+import {
+  fetchMvpVotesFromFirestore,
+  getLocalMvpVotes,
+  persistMvpVoteToFirestore,
+} from '../lib/firebase';
 import {
   X,
   Swords,
   TrendingUp,
   Trophy,
-  Calendar,
-  Clock,
   Sparkles,
-  ArrowRight,
   ShieldAlert,
   Flame,
   CheckCircle2,
-  RefreshCw,
+  Award,
+  ThumbsUp,
+  Users,
+  Calendar,
 } from 'lucide-react';
 
 interface MatchHistoryModalProps {
@@ -30,6 +33,9 @@ interface MatchHistoryModalProps {
   initialPair1?: TeamPair | null;
   initialPair2?: TeamPair | null;
   tenantName: string;
+  activeMatchId?: string;
+  tournamentId?: string;
+  tournamentName?: string;
 }
 
 export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
@@ -39,6 +45,9 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
   initialPair1,
   initialPair2,
   tenantName,
+  activeMatchId,
+  tournamentId = 't-futevolei-1',
+  tournamentName = 'Copa Shark Set Futevôlei',
 }) => {
   const [selectedPair1Id, setSelectedPair1Id] = useState<string>(
     initialPair1?.id || availablePairs[0]?.id || 'pair-1'
@@ -47,8 +56,11 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
     initialPair2?.id || availablePairs[1]?.id || 'pair-2'
   );
 
-  const [firestoreMatches, setFirestoreMatches] = useState<HistoricalMatchRecord[]>([]);
-  const [isLoadingFirestore, setIsLoadingFirestore] = useState<boolean>(false);
+  const [firestoreMatches] = useState<HistoricalMatchRecord[]>(INITIAL_HISTORICAL_MATCHES);
+  const [mvpVotes, setMvpVotes] = useState<MatchMvpVoteRecord[]>(() => getLocalMvpVotes());
+  const [voterNameInput, setVoterNameInput] = useState<string>('Torcedor Shark Set');
+  const [voteFeedback, setVoteFeedback] = useState<string | null>(null);
+  const [isSubmittingVote, setIsSubmittingVote] = useState<boolean>(false);
   const [firestoreStatus, setFirestoreStatus] = useState<'connected' | 'fallback' | 'synced'>('connected');
 
   // Update selection if props change when opening
@@ -57,42 +69,27 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
     if (initialPair2?.id) setSelectedPair2Id(initialPair2.id);
   }, [initialPair1, initialPair2]);
 
-  // Pull historical records from Firestore on mount
+  // Pull MVP votes from Firestore (/match_mvp_votes) on open
   useEffect(() => {
     if (!isOpen) return;
 
     let isMounted = true;
-    const loadFromFirestore = async () => {
-      setIsLoadingFirestore(true);
-      const path = 'match_history';
+    const loadMvpVotes = async () => {
       try {
-        const coll = collection(db, path);
-        const q = query(coll, limit(50));
-        const snap = await getDocs(q);
-
-        if (!snap.empty && isMounted) {
-          const list: HistoricalMatchRecord[] = [];
-          snap.forEach((d) => {
-            list.push(d.data() as HistoricalMatchRecord);
-          });
-          setFirestoreMatches(list);
-          setFirestoreStatus('connected');
-        } else if (isMounted) {
-          setFirestoreMatches(INITIAL_HISTORICAL_MATCHES);
-          setFirestoreStatus('fallback');
-        }
-      } catch (err) {
+        const votes = await fetchMvpVotesFromFirestore();
         if (isMounted) {
-          handleFirestoreError(err, OperationType.LIST, path);
-          setFirestoreMatches(INITIAL_HISTORICAL_MATCHES);
+          setMvpVotes(votes);
+          setFirestoreStatus('connected');
+        }
+      } catch {
+        if (isMounted) {
+          setMvpVotes(getLocalMvpVotes());
           setFirestoreStatus('fallback');
         }
-      } finally {
-        if (isMounted) setIsLoadingFirestore(false);
       }
     };
 
-    loadFromFirestore();
+    loadMvpVotes();
     return () => {
       isMounted = false;
     };
@@ -122,6 +119,79 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
       allRecords
     );
   }, [pair1, pair2, pair1Names, pair2Names, allRecords]);
+
+  // Candidates for MVP voting from the two pairs
+  const mvpCandidates = useMemo(() => {
+    const list: Array<{ playerName: string; pairNames: string; teamIndex: 1 | 2 }> = [];
+    if (pair1) {
+      if (pair1.player1) list.push({ playerName: pair1.player1, pairNames: pair1Names, teamIndex: 1 });
+      if (pair1.player2 && pair1.player2.toLowerCase() !== 'individual (1x1)') {
+        list.push({ playerName: pair1.player2, pairNames: pair1Names, teamIndex: 1 });
+      }
+    }
+    if (pair2) {
+      if (pair2.player1) list.push({ playerName: pair2.player1, pairNames: pair2Names, teamIndex: 2 });
+      if (pair2.player2 && pair2.player2.toLowerCase() !== 'individual (1x1)') {
+        list.push({ playerName: pair2.player2, pairNames: pair2Names, teamIndex: 2 });
+      }
+    }
+    return list;
+  }, [pair1, pair2, pair1Names, pair2Names]);
+
+  // Aggregate MVP vote counts
+  const mvpLeaderboard = useMemo(() => {
+    const counts = new Map<string, { playerName: string; pairNames: string; votes: number; lastVoter?: string }>();
+    mvpCandidates.forEach((c) => {
+      counts.set(c.playerName, { playerName: c.playerName, pairNames: c.pairNames, votes: 0 });
+    });
+
+    mvpVotes.forEach((v) => {
+      const existing = counts.get(v.playerName);
+      if (existing) {
+        existing.votes += 1;
+        if (!existing.lastVoter) existing.lastVoter = v.voterName;
+      } else {
+        counts.set(v.playerName, {
+          playerName: v.playerName,
+          pairNames: v.pairNames,
+          votes: 1,
+          lastVoter: v.voterName,
+        });
+      }
+    });
+
+    const sorted = Array.from(counts.values()).sort((a, b) => b.votes - a.votes);
+    const totalVotes = sorted.reduce((acc, item) => acc + item.votes, 0);
+    return {
+      rows: sorted.map((item) => ({
+        ...item,
+        percentage: totalVotes > 0 ? Math.round((item.votes / totalVotes) * 100) : 0,
+      })),
+      totalVotes,
+      topMvp: sorted[0] && sorted[0].votes > 0 ? sorted[0] : null,
+    };
+  }, [mvpCandidates, mvpVotes]);
+
+  const handleCastMvpVote = async (playerName: string, pairNames: string) => {
+    setIsSubmittingVote(true);
+    try {
+      const newVote = await persistMvpVoteToFirestore({
+        id: `mvp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        matchId: activeMatchId || `${selectedPair1Id}_vs_${selectedPair2Id}`,
+        tournamentId,
+        tournamentName,
+        playerName,
+        pairNames,
+        voterName: voterNameInput.trim() || 'Atleta SHARK SET',
+      });
+      setMvpVotes((prev) => [newVote, ...prev]);
+      setFirestoreStatus('synced');
+      setVoteFeedback(`Voto confirmado para ${playerName} como Craque/MVP da Partida! Gravado no Firestore.`);
+      setTimeout(() => setVoteFeedback(null), 4500);
+    } finally {
+      setIsSubmittingVote(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -399,7 +469,7 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
                           </td>
                           <td className="py-3 px-3 text-right font-mono text-[10px] text-slate-400">
                             <div>{m.durationMinutes} min</div>
-                            <div className="text-amber-400">{m.sharkAttacksCount || 0} Sharks</div>
+                            <div className="text-[#12C7BB]">{m.sharkAttacksCount || 0} Sharks</div>
                           </td>
                         </tr>
                       );
@@ -416,6 +486,136 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
                 <p className="text-[11px] text-slate-400">
                   Quando a partida na chave terminar, o resultado será automaticamente gravado no Firestore e computado no retrospecto!
                 </p>
+              </div>
+            )}
+          </div>
+
+          {/* ================================================================= */}
+          {/* ELEIÇÃO & RANKING DE MVP (CRAQUE DA PARTIDA - FIRESTORE)         */}
+          {/* ================================================================= */}
+          <div className="bg-gradient-to-br from-[#030B17] via-[#071D3D] to-[#0B254E] border-2 border-[#0987CE] rounded-2xl p-4 sm:p-5 space-y-4 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#145A9B]/70 pb-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md bg-[#0987CE] text-white font-black text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <Award className="w-3 h-3" />
+                    VOTAÇÃO MVP · FIRESTORE
+                  </span>
+                  <span className="text-[10px] font-mono text-[#12C7BB]">
+                    {mvpLeaderboard.totalVotes} votos computados
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-white">
+                  Eleja o Craque da Partida (MVP SHARKSET 🦈)
+                </h3>
+              </div>
+
+              {mvpLeaderboard.topMvp && (
+                <div className="px-3 py-1.5 rounded-xl bg-[#0987CE]/20 border border-[#0987CE] flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-[#12C7BB] shrink-0" />
+                  <div className="text-left">
+                    <span className="text-[9px] font-black uppercase text-[#12C7BB] block leading-none">
+                      MVP ATUAL DA PARTIDA
+                    </span>
+                    <span className="text-xs font-black text-white">
+                      {mvpLeaderboard.topMvp.playerName} ({mvpLeaderboard.topMvp.votes}v)
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {voteFeedback && (
+              <div className="p-3 rounded-xl bg-[#12C7BB]/20 border border-[#12C7BB] text-xs font-bold text-[#F7FAFD] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#12C7BB] shrink-0" />
+                <span>{voteFeedback}</span>
+              </div>
+            )}
+
+            {/* Voter name input */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+              <label className="text-slate-300 font-bold shrink-0 flex items-center gap-1">
+                <Users className="w-3.5 h-3.5 text-[#0987CE]" />
+                Seu Nome de Torcedor/Atleta:
+              </label>
+              <input
+                type="text"
+                value={voterNameInput}
+                onChange={(e) => setVoterNameInput(e.target.value)}
+                placeholder="Ex: Torcedor Shark"
+                className="flex-1 px-3 py-1.5 rounded-xl bg-[#030B17] border border-[#145A9B] text-white font-semibold text-xs focus:outline-none focus:border-[#0987CE]"
+              />
+            </div>
+
+            {/* Candidate voting cards & progress bars */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {mvpLeaderboard.rows.slice(0, 6).map((row, idx) => {
+                const isLeader = idx === 0 && row.votes > 0;
+                return (
+                  <div
+                    key={row.playerName}
+                    className={`p-3 rounded-xl border transition-all flex flex-col justify-between gap-2 ${
+                      isLeader
+                        ? 'bg-[#0B254E] border-[#0987CE] shadow-md shadow-[#0987CE]/15'
+                        : 'bg-[#030B17]/90 border-[#145A9B]/70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-white text-xs">
+                            {isLeader ? '👑 ' : ''}{row.playerName}
+                          </span>
+                          {isLeader && (
+                            <span className="px-1.5 py-0.5 rounded bg-[#12C7BB] text-slate-950 font-black text-[9px] uppercase">
+                              MVP
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-400 block truncate max-w-[180px]">
+                          {row.pairNames}
+                        </span>
+                      </div>
+
+                      <button
+                        disabled={isSubmittingVote}
+                        onClick={() => handleCastMvpVote(row.playerName, row.pairNames)}
+                        className="px-2.5 py-1 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-[10px] flex items-center gap-1 cursor-pointer transition-colors shrink-0 shadow-xs"
+                      >
+                        <ThumbsUp className="w-3 h-3" />
+                        Votar MVP
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px] font-mono">
+                        <span className="text-slate-300 font-bold">{row.votes} voto(s)</span>
+                        <span className="text-[#12C7BB] font-black">{row.percentage}%</span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-[#071D3D] overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#0987CE] to-[#12C7BB] transition-all duration-500"
+                          style={{ width: `${Math.max(4, row.percentage)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Recent MVP Votes Log */}
+            {mvpVotes.length > 0 && (
+              <div className="pt-2 border-t border-[#145A9B]/50 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
+                <span className="font-bold text-slate-300">Últimos votos no Firestore:</span>
+                {mvpVotes.slice(0, 4).map((v) => (
+                  <span
+                    key={v.id}
+                    className="px-2 py-0.5 rounded-md bg-[#030B17] border border-[#145A9B]/60 text-slate-200"
+                  >
+                    <strong>{v.voterName}</strong> → <span className="text-[#12C7BB] font-bold">{v.playerName}</span>
+                  </span>
+                ))}
               </div>
             )}
           </div>

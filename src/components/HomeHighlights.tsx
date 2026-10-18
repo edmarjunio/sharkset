@@ -57,9 +57,13 @@ export const HomeHighlights: React.FC = () => {
     availableTenants.forEach((ar) => {
       ar.courts.forEach((court) => {
         (court.classSchedules || []).forEach((cls) => {
-          const daysList = (cls.daysOfWeek || [2, 4]) as (string | number)[];
-          const daysStr = daysList
-            .map((d) => (typeof d === 'number' ? dayNames[d] || String(d) : String(d).toUpperCase()))
+          const rawDays = Array.isArray(cls.daysOfWeek) ? cls.daysOfWeek : [2, 4];
+          const daysStr = rawDays
+            .map((d) => {
+              const num = Number(d);
+              if (!Number.isNaN(num) && dayNames[num]) return dayNames[num];
+              return String(d ?? '').toUpperCase();
+            })
             .join(' e ');
           list.push({
             arenaId: ar.id,
@@ -125,6 +129,13 @@ export const HomeHighlights: React.FC = () => {
                 className="px-5 py-3 rounded-2xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#12C7BB]/40 text-[#12C7BB] font-extrabold text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
               >
                 Ranking Board
+              </button>
+              <button
+                onClick={() => setActiveTab('shark_academy')}
+                className="px-5 py-3 rounded-2xl bg-[#12C7BB] hover:bg-[#0ea89e] text-slate-950 font-black text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2 shadow-md shadow-[#12C7BB]/20"
+              >
+                <GraduationCap className="w-4 h-4 text-slate-950" />
+                Shark Academy & Comunidade (Tática + IA)
               </button>
             </div>
           </div>
