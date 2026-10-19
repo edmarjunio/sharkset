@@ -23,6 +23,7 @@ import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
 import { Maximize2, Minimize2 } from 'lucide-react';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MainContent: React.FC = () => {
   const {
@@ -211,9 +212,11 @@ const MainContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
       <MainContent />
       <BroadcastWatchScreen />
     </AppProvider>
+    </ErrorBoundary>
   );
 }
