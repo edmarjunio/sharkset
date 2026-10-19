@@ -530,26 +530,24 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                     )}
 
                     <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-[#145A9B]/50">
-                      <button
+                      <button aria-label="Diminuir 1 ponto da dupla 1" title="Diminuir 1 ponto da dupla 1"
                         type="button"
                         disabled={!isReady}
                         onClick={() => handleQuickSubtractPoint(1)}
-                        className="w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
-                        title="Diminuir 1 ponto"
+                        className="score-control score-control-subtract w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
                       >
-                        <Minus className="w-4 h-4" />
+                        <Minus className="score-control score-control-subtract w-4 h-4" />
                       </button>
                       <span className="text-4xl sm:text-5xl font-mono font-black text-white tabular-nums">
                         {score1}
                       </span>
-                      <button
+                      <button aria-label="Adicionar 1 ponto da dupla 1" title="Adicionar 1 ponto da dupla 1"
                         type="button"
                         disabled={!isReady}
                         onClick={() => handleQuickAddPoint(1)}
-                        className="px-3.5 h-10 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
+                        className="score-control score-control-add px-3.5 h-10 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
                       >
-                        <Plus className="w-4 h-4 stroke-[3]" />
-                        +1 Pt
+                        <Plus className="score-control score-control-add w-4 h-4 stroke-[3]" />
                       </button>
                     </div>
                   </div>
@@ -588,26 +586,24 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                     )}
 
                     <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-[#145A9B]/50">
-                      <button
+                      <button aria-label="Diminuir 1 ponto da dupla 2" title="Diminuir 1 ponto da dupla 2"
                         type="button"
                         disabled={!isReady}
                         onClick={() => handleQuickSubtractPoint(2)}
-                        className="w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
-                        title="Diminuir 1 ponto"
+                        className="score-control score-control-subtract w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
                       >
-                        <Minus className="w-4 h-4" />
+                        <Minus className="score-control score-control-subtract w-4 h-4" />
                       </button>
                       <span className="text-4xl sm:text-5xl font-mono font-black text-white tabular-nums">
                         {score2}
                       </span>
-                      <button
+                      <button aria-label="Adicionar 1 ponto da dupla 2" title="Adicionar 1 ponto da dupla 2"
                         type="button"
                         disabled={!isReady}
                         onClick={() => handleQuickAddPoint(2)}
-                        className="px-3.5 h-10 rounded-xl bg-[#12C7BB] hover:bg-[#0ea89e] text-slate-950 font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
+                        className="score-control score-control-add px-3.5 h-10 rounded-xl bg-[#12C7BB] hover:bg-[#0ea89e] text-slate-950 font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
                       >
-                        <Plus className="w-4 h-4 stroke-[3]" />
-                        +1 Pt
+                        <Plus className="score-control score-control-add w-4 h-4 stroke-[3]" />
                       </button>
                     </div>
                   </div>
@@ -711,7 +707,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
 
                 {refState.pointHistory.length === 0 ? (
                   <div className="p-6 rounded-xl bg-[#030B17] border border-[#145A9B]/60 text-center text-xs text-slate-400">
-                    Nenhum ponto detalhado registrado ainda nesta partida. Use os botões <strong>+1 Pt</strong> acima ou abra a Súmula do Árbitro para registrar cada lance em tempo real!
+                    Nenhum ponto detalhado registrado ainda nesta partida. Use os botões <strong>+</strong> acima ou abra a Súmula do Árbitro para registrar cada lance em tempo real!
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -895,3 +891,4 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
     </div>
   );
 };
+

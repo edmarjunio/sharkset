@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { BracketMatch, BracketSource, MatchSet, SemiFormat, TeamPair } from '../types';
-import { layoutBracket, bracketEdges, CARD_WIDTH, CARD_HEIGHT } from '../services/bracketLayout';
+import { layoutBracket, bracketEdges, bracketSlotOrigins, CARD_WIDTH, CARD_HEIGHT } from '../services/bracketLayout';
 import { matchRules } from '../services/tournamentRules';
 import {
   Maximize2,
@@ -58,6 +58,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
     localStorage.getItem('sharkset_bracket_view') === 'columns' ? 'columns' : 'panorama'
   );
   const [search, setSearch] = useState('');
+  const [showRelegationPaths, setShowRelegationPaths] = useState(false);
   const [quickModalMatchId, setQuickModalMatchId] = useState<string | null>(null);
   const [quickSets, setQuickSets] = useState<MatchSet[]>([{ score1: 18, score2: 14 }]);
   const [quickError, setQuickError] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
 
   const layout = useMemo(() => layoutBracket(matches), [matches]);
   const edges = useMemo(() => bracketEdges(matches), [matches]);
+  const slotOrigins = useMemo(() => bracketSlotOrigins(matches), [matches]);
   const matchById = useMemo(() => new Map(matches.map((m) => [m.id, m])), [matches]);
   const identity = matches.map((match) => match.id).join('|');
 
@@ -194,7 +196,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
     if (source.kind === 'team') return formatParticipantName(source.team);
     const originMatch = matchById.get(source.matchId);
     if (!originMatch) return 'Aguardando definição';
-    return `${source.kind === 'winner' ? 'Vencedor' : 'Perdedor'} do Jogo #${originMatch.matchNumber}`;
+    return `${source.kind === 'winner' ? 'VENCEDOR' : 'PERDEDOR'} DO JOGO ${originMatch.matchNumber}`;
   }
 
   function isMatchLive(match: BracketMatch): boolean {
@@ -227,8 +229,8 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
         ? 'bg-amber-400 text-slate-950'
         : 'bg-sky-400 text-slate-950';
 
-    const team1Label = match.team1 ? formatParticipantName(match.team1) : describeSourceSlot(match.source1);
-    const team2Label = match.team2 ? formatParticipantName(match.team2) : describeSourceSlot(match.source2);
+    const team1Label = match.team1 ? formatParticipantName(match.team1) : describeSourceSlot(match.source1 ?? slotOrigins.get(`${match.id}:0`));
+    const team2Label = match.team2 ? formatParticipantName(match.team2) : describeSourceSlot(match.source2 ?? slotOrigins.get(`${match.id}:1`));
     const team1Won = isCompleted && match.winnerId === match.team1?.id;
     const team2Won = isCompleted && match.winnerId === match.team2?.id;
 
@@ -291,7 +293,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                     ? 'bg-white/20 text-white font-extrabold ring-1 ring-white/50'
                     : pair
                     ? 'bg-black/25 text-white/95 font-medium'
-                    : 'bg-black/15 text-white/65 italic text-[11px]'
+                    : 'bg-black/20 text-white font-semibold text-[11px]'
                 }`}
               >
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -299,7 +301,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                   {pair && !won && (
                     <span className="text-[10px] opacity-75 shrink-0">#{pair.seed}</span>
                   )}
-                  <span className="truncate" title={label}>
+                  <span className={pair ? 'truncate' : 'whitespace-normal leading-tight'} title={label}>
                     {label}
                   </span>
                 </div>
@@ -561,23 +563,30 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
         <div className="flex flex-wrap items-center gap-3 text-[11px]">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/90 border border-emerald-400/50 text-emerald-200 font-bold">
             <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400" />
-            Chave Vencedores (Verde)
+            Cartões verdes: chave dos vencedores
           </span>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-950/90 border border-amber-400/50 text-amber-200 font-bold">
             <span className="w-2.5 h-2.5 rounded-sm bg-amber-400" />
-            Chave Perdedores (Amarelo)
+            Cartões amarelos: chave dos perdedores
           </span>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-950/90 border-2 border-red-500 text-red-200 font-bold">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
             Ao Vivo ({liveCount})
           </span>
           <span className="text-slate-300 hidden sm:inline">
-            • Arraste para mover livremente (Infinity Scroll) · Roda do mouse amplia ({completedCount}/{matches.length} concluídos)
+            Arraste para mover · Role para ampliar ({completedCount}/{matches.length} concluídos)
           </span>
         </div>
       </div>
 
       {/* BRACKET CONTENT: COLUMNS OR INFINITY SCROLL PANORAMA */}
+      {view === 'panorama' && (
+        <label className="inline-flex items-center gap-2 text-xs text-amber-200 cursor-pointer">
+          <input type="checkbox" checked={showRelegationPaths}
+            onChange={(event) => setShowRelegationPaths(event.target.checked)} />
+          Mostrar ligações de entrada na repescagem
+        </label>
+      )}
       {view === 'columns' ? (
         <div className="flex gap-4 overflow-auto pb-6">
           {rounds.map((key) => {
@@ -691,7 +700,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                 style={{ position: 'absolute', left: layout.centerX, top: 10, width: CARD_WIDTH }}
                 className="px-3 py-1.5 rounded-full bg-sky-950/95 border border-sky-400/60 text-sky-200 text-xs font-black uppercase tracking-wider text-center shadow-lg pointer-events-none"
               >
-                🏆 Semifinais & Final
+                🏆 Semifinais e decisões
               </div>
               <div
                 style={{ position: 'absolute', right: 36, top: 10 }}
@@ -729,14 +738,17 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                   const from = layout.positions.get(edge.from),
                     to = layout.positions.get(edge.to);
                   if (!from || !to) return null;
-                  const origin = matches.find((item) => item.id === edge.from),
-                    match = matches.find((item) => item.id === edge.to)!;
+                  const origin = matchById.get(edge.from),
+                    match = matchById.get(edge.to)!;
+                  // Decisions remain independent in the reference geometry.
+                  if (match.stage === 'grand_final' || match.stage === 'third_place') return null;
                   const crossBracket = origin?.stage === 'winners' && match.stage === 'losers';
+                  if (crossBracket && !showRelegationPaths) return null;
                   const right = from.x < to.x,
                     x1 = from.x + (right ? 280 : 0),
                     x2 = to.x + (right ? 0 : 280);
-                  const y1 = from.y + 80,
-                    y2 = to.y + 60 + edge.slot * 40,
+                  const y1 = from.y + CARD_HEIGHT / 2,
+                    y2 = to.y + CARD_HEIGHT / 2,
                     middle = (x1 + x2) / 2;
                   const central = from.x === to.x;
                   const route = crossBracket
@@ -749,11 +761,11 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                       key={`${edge.from}-${edge.outcome}`}
                       d={route}
                       fill="none"
-                      stroke={edge.outcome === 'loser' ? '#fbbf24' : '#67e8f9'}
+                      stroke={edge.outcome === 'loser' || origin?.stage === 'losers' ? '#fbbf24' : '#67e8f9'}
                       strokeWidth={2}
                       vectorEffect="non-scaling-stroke"
                       strokeDasharray={edge.outcome === 'loser' ? '7 5' : undefined}
-                      markerEnd={`url(#arrow-${edge.outcome})`}
+                      markerEnd={`url(#arrow-${edge.outcome === 'loser' || origin?.stage === 'losers' ? 'loser' : 'winner'})`}
                       opacity={
                         search && !matchingIds.has(edge.from) && !matchingIds.has(edge.to)
                           ? 0.2

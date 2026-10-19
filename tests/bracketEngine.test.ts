@@ -5,7 +5,7 @@ import { generateBracket, validateGraph } from '../src/services/bracketGraph';
 import { allowSemifinalException, changeMatchRules, declareWalkover, editMatchDetails, editRegisteredTeam, officializeMatch, resetBracketMatch } from '../src/services/bracketOperations';
 import { computeTournamentStandings, getPodium } from '../src/services/bracketEngine';
 import { validateMatchSets, validateSet, EARLY_RULES, PLAYOFF_RULES } from '../src/services/tournamentRules';
-import { layoutBracket, bracketEdges, CARD_HEIGHT, CARD_WIDTH } from '../src/services/bracketLayout';
+import { layoutBracket, bracketEdges, bracketSlotOrigins, CARD_HEIGHT, CARD_WIDTH } from '../src/services/bracketLayout';
 import type { BracketMatch, TeamPair } from '../src/types';
 
 function teams(count: number): TeamPair[] {
@@ -181,6 +181,40 @@ test('panorama includes all rounds and keeps opposite brackets on their side', (
       if (match.stage === 'losers') assert.ok(position.x > layout.centerX);
       assert.ok(position.y + CARD_HEIGHT <= layout.height);
     }
+  }
+});
+
+test('reference trees keep game positions and identify every pending source in legacy draws', () => {
+  const matches = generateBracket('test', teams(16));
+  const positions = layoutBracket(matches).positions;
+  const point = (number: number) => positions.get(matches.find(match => match.matchNumber === number)!.id)!;
+  for (const [parent, first, second] of [[9, 1, 2], [10, 3, 4], [11, 5, 6], [12, 7, 8], [21, 9, 10], [22, 11, 12], [23, 17, 18], [24, 19, 20]]) {
+    assert.equal(point(parent).y, (point(first).y + point(second).y) / 2);
+    assert.equal(point(first).x, point(second).x);
+    assert.ok(parent <= 22 ? point(parent).x > point(first).x : point(parent).x < point(first).x);
+  }
+  const legacy = matches.map(({ source1, source2, ...match }) => match);
+  const origins = bracketSlotOrigins(legacy);
+  for (const match of matches) [match.source1, match.source2].forEach((source, slot) => {
+    if (source && source.kind !== 'team') assert.deepEqual(origins.get(`${match.id}:${slot}`), source);
+  });
+});
+
+test('reference geometry keeps decisions side by side between the two semifinals', () => {
+  for (const count of [4, 5, 8, 16, 17, 32, 64, 128]) {
+    const matches = generateBracket('test', teams(count));
+    const layout = layoutBracket(matches);
+    const position = (stage: string) => layout.positions.get(matches.find(match => match.stage === stage)!.id)!;
+    const final = position('grand_final'), third = position('third_place');
+    const semis = matches.filter(match => match.stage === 'semifinals')
+      .map(match => layout.positions.get(match.id)!).sort((a, b) => a.y - b.y);
+    assert.equal(final.y, third.y);
+    assert.ok(final.x + CARD_WIDTH < third.x);
+    assert.ok(final.x < layout.centerX && third.x > layout.centerX);
+    assert.ok(semis.every(point => point.x === layout.centerX));
+    assert.ok(semis[0].y + CARD_HEIGHT < final.y);
+    assert.ok(final.y + CARD_HEIGHT < semis[1].y);
+    assert.deepEqual(layoutBracket([...matches].reverse()).positions, layout.positions);
   }
 });
 

@@ -34,7 +34,7 @@ const MainContent: React.FC = () => {
   const arenaPalette = tenant.brandPalette;
   const broadcastId = new URLSearchParams(window.location.search).get('broadcast');
   if (broadcastId && /^[\w-]{1,64}$/.test(broadcastId)) {
-    return <main className="shark-site-background min-h-screen p-4"><div className="max-w-5xl mx-auto"><FreeBroadcastPanel broadcastId={broadcastId} /></div></main>;
+    return <main className="shark-site-background min-h-screen p-4"><AquariumBackground /><div className="max-w-5xl mx-auto"><FreeBroadcastPanel broadcastId={broadcastId} /></div></main>;
   }
 
   return (

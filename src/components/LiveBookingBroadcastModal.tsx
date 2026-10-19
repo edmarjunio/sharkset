@@ -748,19 +748,19 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                     {liveState.score1}
                   </div>
                   <div className="flex items-center justify-center gap-2">
-                    <button
+                    <button aria-label="Diminuir 1 ponto da dupla 1" title="Diminuir 1 ponto da dupla 1"
                       type="button"
                       onClick={() => handleScorePoint(1, -1)}
-                      className="p-2 rounded-xl bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 cursor-pointer"
+                      className="score-control score-control-subtract p-2 rounded-xl bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 cursor-pointer"
                     >
-                      <Minus className="w-4 h-4" />
+                      <Minus className="score-control score-control-subtract w-4 h-4" />
                     </button>
-                    <button
+                    <button aria-label="Adicionar 1 ponto da dupla 1" title="Adicionar 1 ponto da dupla 1"
                       type="button"
                       onClick={() => handleScorePoint(1, 1)}
-                      className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                      className="score-control score-control-add flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                     >
-                      <Plus className="w-4 h-4" /> Ponto Dupla 1
+                      <Plus className="score-control score-control-add w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -771,19 +771,19 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                     {liveState.score2}
                   </div>
                   <div className="flex items-center justify-center gap-2">
-                    <button
+                    <button aria-label="Diminuir 1 ponto da dupla 2" title="Diminuir 1 ponto da dupla 2"
                       type="button"
                       onClick={() => handleScorePoint(2, -1)}
-                      className="p-2 rounded-xl bg-white border border-sky-200 text-sky-800 hover:bg-sky-100 cursor-pointer"
+                      className="score-control score-control-subtract p-2 rounded-xl bg-white border border-sky-200 text-sky-800 hover:bg-sky-100 cursor-pointer"
                     >
-                      <Minus className="w-4 h-4" />
+                      <Minus className="score-control score-control-subtract w-4 h-4" />
                     </button>
-                    <button
+                    <button aria-label="Adicionar 1 ponto da dupla 2" title="Adicionar 1 ponto da dupla 2"
                       type="button"
                       onClick={() => handleScorePoint(2, 1)}
-                      className="flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                      className="score-control score-control-add flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                     >
-                      <Plus className="w-4 h-4" /> Ponto Dupla 2
+                      <Plus className="score-control score-control-add w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -979,3 +979,4 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
     </div>
   );
 };
+

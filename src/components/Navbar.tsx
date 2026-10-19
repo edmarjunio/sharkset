@@ -145,7 +145,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* CENTER: Clean Descontraído Uppercase Navigation matching the attached print + ARENAS */}
-        <nav className="hidden lg:flex flex-1 flex-wrap justify-center items-center gap-4 xl:gap-6">
+        <nav aria-label="Navegação principal" className="desktop-navigation hidden lg:flex flex-1 flex-wrap justify-center items-center gap-4 xl:gap-6">
           {navItems.map((item) => {
             const isActive =
               activeTab === item.id ||
@@ -155,6 +155,7 @@ export const Navbar: React.FC = () => {
               <button
                 key={item.id}
                 type="button"
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => setActiveTab(item.id)}
                 className={`relative py-3 text-xs xl:text-[13px] font-extrabold tracking-wider uppercase transition-colors whitespace-nowrap cursor-pointer ${
                   isActive ? 'text-slate-950' : 'text-slate-600 hover:text-slate-950'
@@ -188,6 +189,7 @@ export const Navbar: React.FC = () => {
             onClick={handleOpenLiveBroadcastStudio}
             className="px-3.5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all whitespace-nowrap"
             title="Iniciar ou abrir transmissão ao vivo de agendamento na Arena"
+            aria-label="Transmitir ao vivo"
           >
             <Radio className="w-3.5 h-3.5 text-red-400 animate-pulse shrink-0" />
             <span className="hidden sm:inline">Transmitir Live</span>
@@ -209,6 +211,8 @@ export const Navbar: React.FC = () => {
             onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
             className="relative p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
             title="Alertas e Notificações"
+            aria-label="Alertas e notificações"
+            aria-expanded={notificationDrawerOpen}
           >
             <Bell className="w-4 h-4" />
             {(unreadSmartCount > 0 || notifiedWaitlistCount > 0) && (
@@ -241,8 +245,6 @@ export const Navbar: React.FC = () => {
             </span>
           </button>
         </div>
-      </div>
-
       {/* Mobile & Tablet Horizontal Navigation Bar */}
       <nav aria-label="Navegação principal no celular" className="mobile-navigation lg:hidden flex items-center justify-between border-t border-slate-200 bg-slate-50 px-3 py-2 overflow-x-auto gap-2">
         {navItems.map((item) => {
@@ -253,6 +255,7 @@ export const Navbar: React.FC = () => {
             <button
               key={item.id}
               type="button"
+              aria-current={isActive ? 'page' : undefined}
               onClick={() => setActiveTab(item.id)}
               className={`px-3 py-1.5 text-[11px] font-extrabold rounded-full whitespace-nowrap cursor-pointer transition-all ${
                 isActive
@@ -273,6 +276,7 @@ export const Navbar: React.FC = () => {
           <Search className="w-4 h-4 shrink-0" /><span>Buscar atletas, arenas ou torneios...</span>
           <span className="ml-auto hidden sm:inline text-xs opacity-60">Ctrl + K</span>
         </button>
+      </div>
       </div>
     </header>
   );
