@@ -3,7 +3,7 @@ import { ATHLETE_TIERS, getRankingPromotionSuggestion } from './rankingValidator
 
 export const DAY_MS = 86_400_000;
 export const INACTIVITY_DAYS = 30;
-export const REMINDER_DAYS = 27;
+export const REMINDER_DAYS = 25;
 
 export function getInactivityDays(lastMatchAt: string | undefined, now = Date.now()): number | null {
   if (!lastMatchAt) return null;

@@ -47,10 +47,12 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
     {!id && <button disabled={busy} onClick={() => save()} className="rounded-xl bg-[#0987CE] text-white px-4 py-3 font-bold">Criar transmissão</button>}
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     {broadcast && <>
-      <div className="rounded-xl overflow-hidden bg-[#071D3D]">
-        {broadcast.isLive && broadcast.videoUrl ? <video src={broadcast.videoUrl} controls autoPlay muted playsInline className="w-full aspect-video object-contain" /> :
+      <div className="relative rounded-2xl overflow-hidden bg-[#071D3D] aspect-video flex items-center justify-center border-2 border-slate-900 shadow-xl">
+        {broadcast.isLive && broadcast.videoUrl ? <video src={broadcast.videoUrl} controls autoPlay muted playsInline className="w-full h-full object-contain" /> :
           <p className="text-center text-white p-6">{canEdit ? 'Conecte o vídeo para publicar.' : 'A transmissão ainda não começou.'}</p>}
-        <div className="p-3"><BroadcastOverlay state={broadcast} team1={broadcast.team1} team2={broadcast.team2} /></div>
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl z-20 pointer-events-none">
+          <BroadcastOverlay state={broadcast} team1={broadcast.team1} team2={broadcast.team2} compact />
+        </div>
       </div>
       <button onClick={() => useBroadcastNavigation.getState().open({ kind: 'published', id })} className="rounded-xl bg-cyan-700 text-white px-4 py-2 font-bold">Assistir / tela cheia</button>
       {canEdit && <fieldset disabled={busy} className="space-y-3">

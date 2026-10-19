@@ -506,8 +506,9 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                 </div>
               </div>
 
-              <div className="absolute bottom-3 left-3 right-3">
-                <BroadcastOverlay state={liveState} team1={team1Names} team2={team2Names} />
+              {/* Placar de Transmissão SHARKSET (Fixo no Topo Central da Tela da Transmissão) */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-xl z-20 pointer-events-none">
+                <BroadcastOverlay state={liveState} team1={team1Names} team2={team2Names} compact />
               </div>
             </div>
 

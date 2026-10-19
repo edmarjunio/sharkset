@@ -61,7 +61,12 @@ export function FreeSlotsDateTimeFilter({ userCoords, className = '', defaultSpo
     return { ...item, state, free: free.filter(cell => defaultSport === 'all' || item.arena.courts.find(c => c.id === cell.courtId)?.sports.includes(defaultSport)) };
   });
   const shown = groups.filter(group => (arenaFilter === 'all' || arenaFilter === group.arena.id) && (!group.state || group.state.loading || group.state.error || group.free.length));
-  const alerts = groups.map(group => ({ ...group, free: slotsInWindow(group.state?.cells || [], now).filter(cell => cell.isPeakHour || fresh[cell.id] > Date.now() - 300000) })).filter(group => group.free.length && !group.state?.loading && !group.state?.error);
+  // Notificações dos horários que acabaram de livrar ou horários livres nas próximas horas na direita da tela
+  const alerts = groups.map(group => {
+    const rawFree = slotsInWindow(group.state?.cells || [], now);
+    const relevantFree = rawFree.filter(cell => fresh[cell.id] > Date.now() - 300000 || cell.isPeakHour || true);
+    return { ...group, free: relevantFree };
+  }).filter(group => group.free.length && !group.state?.loading && !group.state?.error);
   const alertKey = alerts.map(group => group.arena.id).join('|');
   useEffect(() => { setCarouselIndex(0); }, [alertKey]);
   useEffect(() => { if (paused || hovered || alerts.length < 2) return; const timer = window.setInterval(() => { if (!document.hidden) setCarouselIndex(index => index + 1); }, 6000); return () => window.clearInterval(timer); }, [paused, hovered, alertKey]);
@@ -99,7 +104,15 @@ export function FreeSlotsDateTimeFilter({ userCoords, className = '', defaultSpo
     </section>}
     {homeTop && (activeTab !== 'home' || !visible) && selectedAlert && !dismissed && <aside aria-label="Carrossel de horários livres próximos" aria-roledescription="carrossel" className="fixed right-3 bottom-5 z-30 w-[min(320px,calc(100vw-24px))] max-h-[65dvh] overflow-y-auto rounded-2xl border border-cyan-400/60 bg-[#041529]/95 text-white shadow-2xl backdrop-blur-md"
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocusCapture={() => setHovered(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setHovered(false); }}>
-      <div className="flex items-center justify-between px-3 pt-3 gap-2"><span className="text-xs font-black text-amber-300">{selectedAlert.free.some(cell => fresh[cell.id] > Date.now() - 300000) ? 'Novo horário livre perto de você' : 'Horário de pico livre perto de você'}</span><button type="button" aria-label="Fechar horários laterais" onClick={() => setDismissed(true)} className="p-2 rounded-lg hover:bg-white/10"><X className="w-4 h-4" /></button></div>
+      <div className="flex items-center justify-between px-3 pt-3 gap-2">
+        <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+          <Zap className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+          {selectedAlert.free.some(cell => fresh[cell.id] > Date.now() - 300000)
+            ? '🔥 Acabou de livrar horário!'
+            : '⏰ Horários livres próximas horas'}
+        </span>
+        <button type="button" aria-label="Fechar horários laterais" onClick={() => setDismissed(true)} className="p-2 rounded-lg hover:bg-white/10"><X className="w-4 h-4" /></button>
+      </div>
       {BOOKING_DEMO && <p className="px-3 text-[10px] text-amber-200">Demonstração · disponibilidade de exemplo</p>}
       <div className="p-2"><ArenaMiniCard {...selectedAlert} compact onOpen={() => viewArena(selectedAlert.arena)} onSelect={slot => selectSlot(selectedAlert.arena, slot)} /></div>
       <div className="flex justify-between items-center px-3 pb-3"><button type="button" aria-label="Arena anterior" onClick={() => setCarouselIndex(index => (index - 1 + alerts.length) % alerts.length)} className="p-2 rounded-lg hover:bg-white/10"><ChevronLeft className="w-4 h-4" /></button><span className="text-xs">{carouselIndex % alerts.length + 1} / {alerts.length}</span><button type="button" aria-label={paused ? 'Retomar carrossel' : 'Pausar carrossel'} onClick={() => setPaused(!paused)} className="p-2 rounded-lg hover:bg-white/10">{paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}</button><button type="button" aria-label="Próxima arena" onClick={() => setCarouselIndex(index => index + 1)} className="p-2 rounded-lg hover:bg-white/10"><ChevronRight className="w-4 h-4" /></button></div>

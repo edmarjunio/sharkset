@@ -301,12 +301,13 @@ export function getRankingPromotionSuggestion(
   const reachedTitles = tier.minTitlesForAutoPromo ? titlesCount >= tier.minTitlesForAutoPromo : false;
   const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
   const reachedDominance =
-    (currentLevel === 'iniciante' && wins >= 10 && winRate >= 75) ||
-    (currentLevel === 'serie_c' && wins >= 15 && winRate >= 75) ||
-    (currentLevel === 'serie_b' && wins >= 22 && winRate >= 75);
+    (currentLevel === 'iniciante' && wins >= 8 && winRate >= 70) ||
+    (currentLevel === 'serie_c' && wins >= 12 && winRate >= 70) ||
+    (currentLevel === 'serie_b' && wins >= 18 && winRate >= 70);
 
-  const hasConsistentResults = matchesPlayed >= 6 && wins >= 4 && winRate >= 60;
-  if (hasConsistentResults && (reachedPoints || reachedTitles || reachedDominance)) {
+  // Trava de Consistência: Mínimo de 5 partidas com taxa de vitória >= 60% OU vitória em torneio (título >= 1)
+  const hasConsistencyLockSatisfied = (matchesPlayed >= 5 && winRate >= 60) || (titlesCount >= 1);
+  if (hasConsistencyLockSatisfied && (reachedPoints || reachedTitles || reachedDominance)) {
     const reasonDetail = reachedPoints
       ? `atingiu ${points} pts (teto: ${tier.maxPoints} pts)`
       : reachedTitles
@@ -316,7 +317,7 @@ export function getRankingPromotionSuggestion(
     return {
       shouldPromote: true,
       recommendedLevel: tier.nextLevel,
-      explanation: `SUBIDA OBRIGATÓRIA: Atleta ${reasonDetail} em torneios oficiais. Promovido para ${ATHLETE_LEVEL_LABELS[tier.nextLevel]} (bloqueado de atuar em ${ATHLETE_LEVEL_LABELS[currentLevel]}).`,
+      explanation: `SUBIDA OBRIGATÓRIA: Atleta ${reasonDetail} com consistência comprovada. Promovido para ${ATHLETE_LEVEL_LABELS[tier.nextLevel]} (bloqueado de atuar em ${ATHLETE_LEVEL_LABELS[currentLevel]}).`,
       progressPercent: 100,
       pointsToNext: 0,
       triggeredByDominance: reachedDominance,
@@ -326,7 +327,9 @@ export function getRankingPromotionSuggestion(
   return {
     shouldPromote: false,
     recommendedLevel: currentLevel,
-    explanation: `Para subir: ${pointsToNext} pts restantes, pelo menos 6 partidas, 4 vitórias e 60% de aproveitamento na categoria.`,
+    explanation: reachedPoints && !hasConsistencyLockSatisfied
+      ? `Pontuação atingida (${points} pts), mas aguardando trava de consistência (mínimo 5 jogos com 60% win rate ou 1 título).`
+      : `Para subir: ${pointsToNext} pts restantes (${progressPercent}% XP) + trava de consistência (mínimo 5 jogos com 60% win rate ou título).`,
     progressPercent,
     pointsToNext,
   };

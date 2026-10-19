@@ -8,6 +8,7 @@ import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { watchSessionReducer } from '../services/watchSession';
 import { ImmersiveSurface } from './ImmersiveSurface';
 import { FutevoleiVisualBracketCanvas } from './FutevoleiVisualBracketCanvas';
+import { BroadcastOverlay, isSemiOrFinalStage } from './BroadcastOverlay';
 import type { TeamPair } from '../types';
 
 interface PublishedVideo { title?: string; videoUrl?: string; isLive?: boolean; team1?: string; team2?: string; score1?: number; score2?: number }
@@ -105,8 +106,25 @@ function WatchScreen({ source }: { source: WatchSource }) {
           <button onClick={close} className="watch-control" title="Voltar ao site"><ArrowLeft size={20} /><span>Voltar</span></button>
           <div className="min-w-0"><h1 className="font-bold truncate">{title}</h1><p className="text-xs text-slate-300">{broadcast?.isLive ? 'Ao vivo' : 'Transmissão'}</p></div>
         </header>
-        {match && <div className="watch-score"><span>{pairName(match.team1)}</span><strong>{match.score1 ?? 0} × {match.score2 ?? 0}</strong><span>{pairName(match.team2)}</span></div>}
-        {published && <div className="watch-score"><span>{published.team1 || 'Dupla 1'}</span><strong>{published.score1 ?? 0} × {published.score2 ?? 0}</strong><span>{published.team2 || 'Dupla 2'}</span></div>}
+
+        {/* Placar Oficial SHARKSET no Topo Central da Tela (Visão Limpa do Espectador) */}
+        {(match || published || booking?.liveBroadcast) && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl z-30 pointer-events-none">
+            <BroadcastOverlay
+              state={{
+                score1: (match ? match.score1 : published ? published.score1 : booking?.liveBroadcast?.score1) ?? 0,
+                score2: (match ? match.score2 : published ? published.score2 : booking?.liveBroadcast?.score2) ?? 0,
+                sets1: match?.sets1 ?? booking?.liveBroadcast?.sets1 ?? 0,
+                sets2: match?.sets2 ?? booking?.liveBroadcast?.sets2 ?? 0,
+                bestOf: (match?.stageName && isSemiOrFinalStage(match.stageName)) ? 3 : (booking?.liveBroadcast?.bestOf || 1),
+                stageName: match?.stageName || 'Ao Vivo',
+              }}
+              team1={match ? pairName(match.team1) : published?.team1 || booking?.customerName || 'Dupla 1'}
+              team2={match ? pairName(match.team2) : published?.team2 || 'Dupla 2'}
+              compact
+            />
+          </div>
+        )}
         <div className={`watch-controls ${visibleControls ? '' : 'watch-controls-hidden'}`} onFocusCapture={event => { focused.current = event.target.matches(':focus-visible'); setControls(true); }} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) { focused.current = false; reveal(); } }}>
           {error && <p role="alert" className="watch-error">{error}</p>}
           <div className="flex items-center gap-2 flex-wrap">

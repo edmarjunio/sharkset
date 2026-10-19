@@ -65,10 +65,32 @@ export const Navbar: React.FC = () => {
     if (booking) setActiveLiveBroadcastBookingId(booking.id);
     else { setActiveTab('scheduler'); setArenaSubTab('transmissoes'); }
   };
-  const liveActions = <div className="navbar-live-actions">
-    <button type="button" onClick={() => setActiveTab('live')} aria-current={activeTab === 'live' ? 'page' : undefined} className="navbar-live-action navbar-live-list" title="Assistir transmissões próximas"><Radio size={16} /><span>LIVE</span></button>
-    <button type="button" onClick={openBroadcastStudio} className="navbar-live-action navbar-live-studio" title="Abrir estúdio de transmissão"><Radio size={16} /><span>Transmissão ao vivo</span></button>
-  </div>;
+  const liveActions = (
+    <div className="navbar-live-actions flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setActiveTab('live')}
+        aria-current={activeTab === 'live' ? 'page' : undefined}
+        className="navbar-live-action navbar-live-list relative inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-xs uppercase tracking-wider shadow-[0_4px_16px_rgba(220,38,38,0.55)] border-t border-red-300/60 active:translate-y-0.5 transition-all"
+        title="Assistir partidas ao vivo agora"
+      >
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+        </span>
+        <span className="drop-shadow-sm">🔴 AO VIVO</span>
+      </button>
+      <button
+        type="button"
+        onClick={openBroadcastStudio}
+        className="navbar-live-action navbar-live-studio inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#030E1F] hover:bg-[#071D3D] text-cyan-200 border border-cyan-500/30 font-bold text-xs shadow-md active:translate-y-0.5 transition-all"
+        title="Abrir estúdio de transmissão ao vivo"
+      >
+        <Radio size={14} className="text-[#12C7BB]" />
+        <span>Transmitir</span>
+      </button>
+    </div>
+  );
 
   // General Platform Navigation Items
   const navItems: { id: typeof activeTab; label: string; isArena?: boolean }[] = [

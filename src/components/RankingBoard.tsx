@@ -12,7 +12,9 @@ import {
   calculateFutevoleiMatchPoints,
   extractAvailableRankingDimensions,
   filterAndRankAthletesByScope,
+  getRankingPromotionSuggestion,
 } from '../services/rankingValidator';
+import { getInactivityDays, INACTIVITY_DAYS } from '../services/rankingActivity';
 import { AthleteLevelBadge } from './AthleteLevelBadge';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import { Top10WhatsAppShareModal } from './Top10WhatsAppShareModal';
@@ -555,33 +557,57 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                     categoryRankMap.get(`${athlete.id}_${athlete.level}`) || index + 1;
                   const isCatLeader = categoryRank === 1;
 
+                  // Evolution calculation: 0-100 XP & Consistency Lock
+                  const promo = getRankingPromotionSuggestion(
+                    athlete.points || 0,
+                    athlete.titlesCount || 0,
+                    athlete.level,
+                    wins,
+                    matchesPlayed
+                  );
+                  const xpPercent = promo.progressPercent;
+                  const hasConsistencyLock = (matchesPlayed >= 5 && winRateNumber >= 60) || ((athlete.titlesCount || 0) >= 1);
+
+                  // Inactivity tracking
+                  const inactDays = getInactivityDays(athlete.lastMatchAt);
+                  const isResetDue = inactDays !== null && inactDays >= INACTIVITY_DAYS;
+                  const isWarningDue = inactDays !== null && inactDays >= 25 && inactDays < INACTIVITY_DAYS;
+
+                  // Top 3 Row Styling
+                  const rowBg =
+                    index === 0
+                      ? 'bg-amber-950/25 border-l-4 border-l-amber-400'
+                      : index === 1
+                      ? 'bg-slate-800/30 border-l-4 border-l-slate-300'
+                      : index === 2
+                      ? 'bg-amber-900/20 border-l-4 border-l-amber-600'
+                      : 'hover:bg-[#0B254E]/40 border-l-4 border-l-transparent';
+
                   return (
                     <tr
                       key={athlete.id}
-                      className={`hover:bg-[#0B254E]/50 transition-colors ${
-                        index === 0 ? 'bg-[#0B254E]/25' : ''
-                      }`}
+                      className={`transition-colors border-b border-[#145A9B]/20 ${rowBg}`}
                     >
                       {/* # Position */}
                       <td className="py-3.5 px-4 font-black">
                         {index === 0 ? (
-                          <span className="w-7 h-7 rounded-md bg-amber-400 text-slate-950 flex items-center justify-center font-black text-xs">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-slate-950 flex items-center justify-center font-black text-xs shadow-md shadow-amber-500/20 border border-amber-200">
                             1º
-                          </span>
+                          </div>
                         ) : index === 1 ? (
-                          <span className="w-7 h-7 rounded-md bg-slate-200 text-slate-900 flex items-center justify-center font-black text-xs">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-200 to-slate-400 text-slate-900 flex items-center justify-center font-black text-xs shadow-md shadow-slate-400/20 border border-white/60">
                             2º
-                          </span>
+                          </div>
                         ) : index === 2 ? (
-                          <span className="w-7 h-7 rounded-md bg-amber-700/80 text-amber-100 flex items-center justify-center font-black text-xs">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-600 to-amber-800 text-amber-100 flex items-center justify-center font-black text-xs shadow-md shadow-amber-700/20 border border-amber-500/50">
                             3º
-                          </span>
+                          </div>
                         ) : (
                           <span className="text-slate-300 font-bold pl-1.5">{index + 1}º</span>
                         )}
                       </td>
 
-                      {/* Athlete Name */}
+                      {/* Athlete Name + Evolution & Status */}
                       <td className="py-3.5 px-4">
                         <div className="font-extrabold text-white text-sm flex items-center gap-2">
                           <span>{athlete.name}</span>
@@ -599,15 +625,56 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
-                          {isCatLeader && <Trophy className="w-3 h-3 text-amber-400" />}
-                          #{categoryRank} na categoria {ATHLETE_LEVEL_LABELS[athlete.level]}
-                        </span>
+
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                            {isCatLeader && <Trophy className="w-3 h-3 text-amber-400" />}
+                            #{categoryRank} na categoria {ATHLETE_LEVEL_LABELS[athlete.level]}
+                          </span>
+
+                          {/* Activity / Inactivity Status */}
+                          {isResetDue ? (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-950/80 text-rose-300 border border-rose-700/50">
+                              ⚠️ Inativo (+30d) · Nível Resetado
+                            </span>
+                          ) : isWarningDue ? (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-600/50">
+                              ⏳ Inativo ({inactDays}d) · Risco Reset
+                            </span>
+                          ) : inactDays !== null ? (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">
+                              ✓ Ativo ({inactDays}d)
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-cyan-950/60 text-cyan-300 border border-cyan-800/40">
+                              Novo
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      {/* Category */}
-                      <td className="py-3.5 px-4">
+                      {/* Category & XP Progress Bar */}
+                      <td className="py-3.5 px-4 min-w-[160px]">
                         <AthleteLevelBadge level={athlete.level} size="sm" />
+                        
+                        {/* XP Progress to Next Level (0 to 100 XP) */}
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center justify-between text-[10px] text-slate-300 font-semibold">
+                            <span className="flex items-center gap-1 text-cyan-300">
+                              <Sparkles className="w-3 h-3 text-cyan-400" />
+                              {xpPercent} XP
+                            </span>
+                            <span className={`text-[10px] font-bold ${hasConsistencyLock ? 'text-emerald-400' : 'text-slate-400'}`} title={hasConsistencyLock ? 'Trava de consistência satisfeita' : 'Requer 5 jogos com 60% win rate ou título'}>
+                              {hasConsistencyLock ? '🔒 Consistência OK' : '🔓 Trava pendente'}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-[#030B17] overflow-hidden border border-cyan-950">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-[#FF6B00] transition-all duration-500"
+                              style={{ width: `${Math.min(100, Math.max(3, xpPercent))}%` }}
+                            />
+                          </div>
+                        </div>
                       </td>
 
                       {/* City / Arena */}
@@ -633,7 +700,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                       </td>
 
                       {/* Win Rate % with Visual Bar */}
-                      <td className="py-3.5 px-4 min-w-[150px]">
+                      <td className="py-3.5 px-4 min-w-[140px]">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="font-extrabold text-white text-sm">
                             {winRateFormatted}%
@@ -681,7 +748,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         <button
                           type="button"
                           onClick={() => setActiveTab('register_dupla')}
-                          className="px-3 py-1.5 rounded-md bg-[#071D3D] hover:bg-[#0B254E] text-slate-200 border border-slate-700 font-bold text-[11px] transition-colors"
+                          className="px-3 py-1.5 rounded-lg bg-[#071D3D] hover:bg-[#0B254E] text-slate-200 border border-slate-700 font-bold text-[11px] transition-transform active:translate-y-0.5 shadow-sm"
                           title="Inscrever este atleta no campeonato"
                         >
                           Inscrever →

@@ -50,11 +50,58 @@ export const Top10WhatsAppShareModal: React.FC<Props> = ({ isOpen, onClose, topA
         const fit = (value: string, width: number) => { let text = value; while (ctx.measureText(text).width > width && text.length > 1) text = text.slice(0, -2) + '…'; return text; };
         topAthletes.slice(0, 10).forEach((athlete, index) => {
           const y = 190 + index * 95;
-          ctx.fillStyle = index === 0 ? '#163343' : '#092338'; ctx.beginPath(); ctx.roundRect(48, y, 984, 84, 12); ctx.fill();
-          ctx.fillStyle = index === 0 ? '#fbbf24' : '#94a3b8'; ctx.font = 'bold 30px sans-serif'; ctx.fillText(String(index + 1), 76, y + 50);
-          ctx.fillStyle = '#ffffff'; ctx.font = 'bold 27px sans-serif'; ctx.fillText(fit(athlete.name, 620), 140, y + 35);
-          ctx.fillStyle = '#94a3b8'; ctx.font = '20px sans-serif'; ctx.fillText(ATHLETE_LEVEL_LABELS[athlete.level], 140, y + 63);
-          ctx.textAlign = 'right'; ctx.fillStyle = '#67e8f9'; ctx.font = 'bold 28px sans-serif'; ctx.fillText((athlete.points || 0).toLocaleString('pt-BR') + ' pts', 1000, y + 50); ctx.textAlign = 'left';
+          // Card background with podium distinction: 1º Ouro, 2º Prata, 3º Bronze
+          if (index === 0) {
+            ctx.fillStyle = '#2a210d'; // Warm gold dark tint
+          } else if (index === 1) {
+            ctx.fillStyle = '#1c2430'; // Slate silver tint
+          } else if (index === 2) {
+            ctx.fillStyle = '#261a12'; // Bronze tint
+          } else {
+            ctx.fillStyle = '#092338';
+          }
+          ctx.beginPath();
+          ctx.roundRect(48, y, 984, 84, 12);
+          ctx.fill();
+
+          // Stroke border for top 3
+          if (index === 0) {
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          } else if (index === 1) {
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          } else if (index === 2) {
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+
+          // Rank Number & Badge
+          const rankColors = ['#fbbf24', '#e2e8f0', '#f59e0b', '#94a3b8'];
+          ctx.fillStyle = rankColors[Math.min(index, 3)];
+          ctx.font = 'bold 30px sans-serif';
+          ctx.fillText(String(index + 1) + 'º', 70, y + 52);
+
+          // Name
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 27px sans-serif';
+          ctx.fillText(fit(athlete.name, 620), 140, y + 35);
+
+          // Category & Titles
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '20px sans-serif';
+          const titlesStr = (athlete.titlesCount || 0) > 0 ? ` · 🏆 ${athlete.titlesCount}` : '';
+          ctx.fillText(ATHLETE_LEVEL_LABELS[athlete.level] + titlesStr, 140, y + 64);
+
+          // Points
+          ctx.textAlign = 'right';
+          ctx.fillStyle = index === 0 ? '#fbbf24' : '#67e8f9';
+          ctx.font = 'bold 28px sans-serif';
+          ctx.fillText((athlete.points || 0).toLocaleString('pt-BR') + ' pts', 1000, y + 52);
+          ctx.textAlign = 'left';
         });
         if (!topAthletes.length) { ctx.fillStyle = '#94a3b8'; ctx.font = '28px sans-serif'; ctx.fillText('Nenhum atleta neste filtro.', 60, 250); }
         ctx.strokeStyle = '#284359'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(48, 1170, 984, 100, 12); ctx.stroke();

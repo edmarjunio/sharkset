@@ -116,6 +116,9 @@ interface AppContextType {
   classStudents: ClassStudent[];
   userProfile: { name: string; phone: string; level: AthleteLevel };
   setUserProfile: (profile: { name: string; phone: string; level: AthleteLevel }) => void;
+  focusMode: boolean;
+  setFocusMode: (mode: boolean | ((prev: boolean) => boolean)) => void;
+  toggleFocusMode: () => void;
   createBooking: (slotId: string, sport: SportType, customerName: string, customerPhone: string) => Booking;
   cancelBooking: (bookingId: string) => WaitlistEntry | null;
   joinWaitlist: (slotId: string, sport: SportType, customerName: string, customerPhone: string) => WaitlistEntry;
@@ -374,10 +377,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
-  const setUserProfile = (profile: { name: string; phone: string; level: AthleteLevel }) => {
-    setUserProfileState(profile);
-    localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+  // Focus Mode state (auto-activated in scheduler or broadcasts, or toggled manually)
+  const [focusMode, setFocusModeState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sharkset_focus_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const setFocusMode = (mode: boolean | ((prev: boolean) => boolean)) => {
+    setFocusModeState((prev) => {
+      const next = typeof mode === 'function' ? mode(prev) : mode;
+      try {
+        localStorage.setItem('sharkset_focus_mode', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   };
+
+  const toggleFocusMode = () => setFocusMode((prev) => !prev);
+
+  // Auto-activate focus mode on active broadcast studio
+  useEffect(() => {
+    if (activeLiveBroadcastBookingId) {
+      setFocusMode(true);
+    }
+  }, [activeLiveBroadcastBookingId]);
 
   // Bookings state
   const [bookings, setBookings] = useState<Booking[]>(() => {
@@ -1811,6 +1839,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         classStudents,
         userProfile,
         setUserProfile,
+        focusMode,
+        setFocusMode,
+        toggleFocusMode,
         createBooking,
         cancelBooking,
         joinWaitlist,
