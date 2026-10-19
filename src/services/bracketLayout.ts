@@ -63,12 +63,35 @@ export function layoutBracket(matches: BracketMatch[]) {
       y: margin + (bottom ? halfHeight + middleGap : 0) + (index + .5) * halfHeight / group.length - CARD_HEIGHT / 2,
     });
   });
+  // Align each later round with its actual incoming branch, including contracted BYEs.
+  // Keep card order, side, region and graph destinations intact.
+  const edges = bracketEdges(matches);
+  const matchById = new Map(matches.map(match => [match.id, match]));
+  for (const stage of ['winners', 'losers'] as const) {
+    const rounds = [...new Set(matches.filter(match => match.stage === stage).map(match => match.round))].sort((a, b) => a - b);
+    for (const round of rounds) for (const [key, group] of rows) {
+      if (group[0].stage !== stage || group[0].round !== round) continue;
+      const lower = margin + (key.includes('bottom') ? halfHeight + middleGap : 0);
+      const upper = lower + halfHeight - CARD_HEIGHT;
+      const gap = CARD_HEIGHT + 60;
+      let lastY = lower - gap;
+      group.forEach((match, index) => {
+        const incoming = edges.filter(edge => edge.to === match.id && edge.outcome === 'winner' &&
+          matchById.get(edge.from)?.stage === stage && regions.get(edge.from) === regions.get(match.id) &&
+          (matchById.get(edge.from)?.round || 0) < round).map(edge => positions.get(edge.from)!.y);
+        const point = positions.get(match.id)!;
+        const desired = incoming.length ? incoming.reduce((sum, y) => sum + y, 0) / incoming.length : point.y;
+        point.y = Math.max(lastY + gap, Math.min(desired, upper - (group.length - index - 1) * gap));
+        lastY = point.y;
+      });
+    }
+  }
   matches.filter(m => m.stage === 'semifinals').sort((a, b) => a.matchNumber - b.matchNumber).forEach((match, i) => positions.set(match.id, {
     x: centerX, y: margin + halfHeight / 2 - CARD_HEIGHT / 2 + (i ? halfHeight + middleGap : 0),
   }));
   // Independent decisions share the middle band: Gold Final on the left, Top 5 Podium in the center, Bronze 3rd place on the right.
   matches.filter(m => !positions.has(m.id)).forEach((match) => positions.set(match.id, {
-    x: centerX + (match.stage === 'third_place' ? 420 : -420),
+    x: centerX + (match.stage === 'third_place' ? stepX : -stepX),
     y: margin + halfHeight + (middleGap - CARD_HEIGHT) / 2,
   }));
   // Free space between the two decision cards (and their local lines) reserved for the Top 5 podium.

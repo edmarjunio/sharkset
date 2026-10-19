@@ -55,11 +55,11 @@ export const SharksetLogo: React.FC<SharksetLogoProps> = ({
   return (
     <span className={`inline-flex items-center gap-2.5 shrink-0 ${className}`}>
       <img
-        src="/brand/logo.png"
+        src="/brand/sharkset-logo-transparent.png"
         alt="SHARKSET"
         width={px}
         height={px}
-        className="rounded-full object-contain shrink-0"
+        className="rounded-full object-contain shrink-0 shark-logo-elevated"
         decoding="async"
       />
       {showText && (

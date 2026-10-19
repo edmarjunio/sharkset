@@ -43,6 +43,7 @@ export const Navbar: React.FC = () => {
   }, []);
 
   const isScrolled = scrollY > 25;
+  const goHome = () => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   const activeBookingsCount = bookings.filter((b) => b.status === 'confirmed').length;
   const notifiedWaitlistCount =
@@ -71,11 +72,11 @@ export const Navbar: React.FC = () => {
 
   // General Platform Navigation Items
   const navItems: { id: typeof activeTab; label: string; isArena?: boolean }[] = [
+    { id: 'home', label: 'INÍCIO' },
     { id: 'tournaments', label: 'CAMPEONATOS' },
     { id: 'arenas_directory', label: 'ARENAS', isArena: true },
     { id: 'ranking_athletes', label: 'RANKINGS' },
     { id: 'shark_academy', label: 'COMUNIDADE' },
-    { id: 'home', label: 'AO VIVO' },
     { id: 'register_dupla', label: 'INSCRIÇÕES' },
   ];
 
@@ -147,7 +148,7 @@ export const Navbar: React.FC = () => {
           ===================================================================== */}
       <div className="hidden lg:block max-w-[1600px] mx-auto px-4 sm:px-6 py-2 transition-all duration-300">
         <div className="flex items-start gap-4 lg:gap-5">
-          
+
           {/* Logo Column (Desktop) */}
           <div className="shrink-0 flex items-center justify-center pt-0.5">
             {isArenaWhiteLabelSite && tenant.logoUrl ? (
@@ -183,7 +184,7 @@ export const Navbar: React.FC = () => {
                 title="SHARKSET Oficial"
               >
                 <SharksetLogo
-                  variant="coin3d"
+                  variant={isScrolled ? 'default' : 'coin3d'}
                   customPx={isScrolled ? 36 : 124}
                   className="transition-all duration-300"
                 />
@@ -193,12 +194,13 @@ export const Navbar: React.FC = () => {
 
           {/* Content Column: Linha 1 (Navegação + Ações) e Linha 2 (Busca) */}
           <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
-            
+
             {/* Linha 1: Botões de navegação + Ações */}
-            <div className="flex items-center justify-between gap-2">
-              <nav aria-label="Navegação desktop" className="flex items-center gap-1.5 py-0.5">
-                {isArenaPage ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <nav aria-label="Navegação desktop" className="flex flex-wrap items-center gap-1.5 py-0.5">
+            {isArenaPage ? (
                   <>
+                    <button type="button" onClick={goHome} className="min-h-9 px-3 py-2 rounded-xl text-xs font-black hover:bg-white/10 whitespace-nowrap">INÍCIO</button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('arenas_directory')}
@@ -217,7 +219,7 @@ export const Navbar: React.FC = () => {
                           type="button"
                           aria-current={isActive ? 'page' : undefined}
                           onClick={() => setArenaSubTab(item.id)}
-                          className={`relative px-3 py-1.5 text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer rounded-xl ${
+                          className={`relative min-h-9 px-3 py-2 text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer rounded-xl ${
                             isActive
                               ? 'text-white bg-white/15 shadow-xs'
                               : 'text-slate-300 hover:text-white hover:bg-white/5'
@@ -249,8 +251,8 @@ export const Navbar: React.FC = () => {
                         key={item.id}
                         type="button"
                         aria-current={isActive ? 'page' : undefined}
-                        onClick={() => setActiveTab(item.id)}
-                        className={`relative px-3 py-1.5 text-xs font-extrabold tracking-wider uppercase transition-colors whitespace-nowrap cursor-pointer rounded-xl ${
+                        onClick={() => item.id === 'home' ? goHome() : setActiveTab(item.id)}
+                        className={`relative min-h-9 px-3 py-2 text-xs font-extrabold tracking-wider uppercase transition-colors whitespace-nowrap cursor-pointer rounded-xl ${
                           isActive
                             ? 'text-white bg-white/10'
                             : 'text-slate-300 hover:text-white hover:bg-white/5'
@@ -258,9 +260,7 @@ export const Navbar: React.FC = () => {
                         style={isActive ? { color: activeAccentHex } : undefined}
                       >
                         <span className="flex items-center gap-1.5">
-                          {item.id === 'home' && (
-                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                          )}
+
                           {item.label}
                         </span>
                         {isActive && (
@@ -375,13 +375,13 @@ export const Navbar: React.FC = () => {
           - Linha 3: Campo de busca centralizado
           ===================================================================== */}
       <div className="lg:hidden max-w-2xl mx-auto px-3 sm:px-4 py-2 flex flex-col items-center gap-2">
-        
+
         {/* LINHA 1 (Topo Mobile):
             ESQUERDA: Logo
             ENTRE OS DOIS: Botão AO VIVO pulsante vermelho bem destacado + Botão de Notificação
             DIREITA: Perfil do usuário */}
         <div className="w-full flex items-center justify-between gap-2">
-          
+
           {/* ESQUERDA: LOGO (elevada com profundidade parecida com os botões, sem borda) */}
           <div className="flex items-center shrink-0">
             {isArenaWhiteLabelSite && tenant.logoUrl ? (
@@ -405,13 +405,13 @@ export const Navbar: React.FC = () => {
                 title="SHARKSET Início"
               >
                 {/* Logo 2D elevada com profundidade estilo botão, sem borda */}
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-b from-slate-800 to-slate-900 shadow-[0_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-center p-1 active:translate-y-0.5 transition-all">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-transparent active:translate-y-0.5 transition-all">
                   <img
-                    src="/brand/logo.png"
+                    src="/brand/sharkset-logo-transparent.png"
                     alt="SHARKSET"
                     width={40}
                     height={40}
-                    className="w-full h-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                    className="w-full h-full rounded-full object-contain shark-logo-elevated"
                   />
                 </div>
               </button>
@@ -488,6 +488,7 @@ export const Navbar: React.FC = () => {
             aria-label="Navegação móvel com botões sempre à mostra"
             className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 w-full"
           >
+            {isArenaPage && <button type="button" onClick={goHome} className="lg:hidden min-h-10 px-3 py-2 rounded-xl border border-slate-700 bg-slate-900 text-[11px] font-black">INÍCIO</button>}
             {isArenaPage ? (
               arenaNavItems.map((item) => {
                 const isActive = effectiveArenaSubTab === item.id;
@@ -496,7 +497,7 @@ export const Navbar: React.FC = () => {
                     key={item.id}
                     type="button"
                     onClick={() => setArenaSubTab(item.id)}
-                    className={`py-2 px-1 text-[11px] font-black tracking-wide uppercase transition-all rounded-xl text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs border ${
+                    className={`min-h-10 py-2.5 px-2 text-[11px] font-black tracking-wide uppercase transition-all rounded-xl text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs border ${
                       isActive
                         ? 'text-white border-transparent shadow-md font-black'
                         : 'text-slate-200 bg-slate-900/90 hover:bg-slate-800 border-slate-800'
@@ -525,9 +526,7 @@ export const Navbar: React.FC = () => {
                     }`}
                     style={isActive ? { backgroundColor: activeAccentHex } : undefined}
                   >
-                    {item.id === 'home' && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                    )}
+
                     <span className="truncate">{item.label}</span>
                   </button>
                 );

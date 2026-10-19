@@ -354,6 +354,8 @@ export const SmartNotificationBanner: React.FC = () => {
     }
   };
 
+  if (!notificationDrawerOpen) return null;
+
   return (
     <section className="aquarium-glass bg-[#041529] border-b border-[#145A9B]/40 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-2.5">

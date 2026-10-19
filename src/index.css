@@ -889,3 +889,6 @@ body {
   border-left: 6px solid var(--arena-accent, #fbbf24) !important;
 }
 
+
+/* Original logo on small/scrolled navigation: transparent surface and subtle relief. */
+.shark-logo-elevated { background: transparent; border: 0; filter: drop-shadow(0 3px 3px rgb(0 0 0 / .45)); }

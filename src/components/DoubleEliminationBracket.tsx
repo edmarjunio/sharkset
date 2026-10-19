@@ -1,3 +1,4 @@
+import { matchPhaseLabel } from '../services/bracketPresentation';
 import { TournamentOperationsPanel } from './TournamentOperationsPanel';
 import React, { useState, useMemo, useEffect } from 'react';
 import gsap from 'gsap';
@@ -255,7 +256,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     setManualKnockoutToggle(true);
     setBracketViewMode('chaveamento');
     triggerToast(
-      '⚡ Fase Semifinal ativada! Jogos classificatórios passados foram minimizados e a tabela exibe o Mata-Mata (Semifinais, Grande Final e Disputa de 3º Lugar).'
+      '⚡ Fase Semifinal ativada! Jogos classificatórios passados foram minimizados e a tabela exibe o Mata-Mata (Semifinais, Grande Final e DISPUTA DE 3º).'
     );
   };
 
@@ -699,7 +700,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     updateTournamentConfig(activeTournament.id, { semiFormat: newFormat });
     triggerToast(
       newFormat === 'semi_direta'
-        ? 'Formato alterado para Semifinal Direta (Padrão Futevôlei: Semifinais + Grande Final + Disputa de 3º Lugar)!'
+        ? 'Formato alterado para Semifinal Direta (Padrão Futevôlei: Semifinais + Grande Final + DISPUTA DE 3º)!'
         : 'Formato alterado para Semi com Chance (Padrão Challonge: perdedor da semi cai pra repescagem)!'
     );
   };
@@ -768,6 +769,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
             >
               Jogo {match.matchNumber}
             </span>
+            {match.stage !== 'winners' && match.stage !== 'losers' && <span className="font-black text-xs">{matchPhaseLabel(match)}</span>}
             {isLive && (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-black uppercase shrink-0 shadow-xs">
                 <span className="w-2 h-2 rounded-full bg-white animate-ping" />
@@ -1927,7 +1929,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                 <h2 className="text-base font-bold text-[#5BC3FA] flex items-center gap-2">
                   <Trophy className="w-4 h-4 text-[#12C7BB]" />
                   {activeTournament.semiFormat === 'semi_direta'
-                    ? 'Mata-Mata Final: Semifinais, Grande Final & Disputa de 3º Lugar'
+                    ? 'Mata-Mata Final: Semifinais, Grande Final & DISPUTA DE 3º'
                     : 'Grande Final (Campeão Vencedores vs Campeão Repescagem)'}
                 </h2>
               </div>
@@ -1936,19 +1938,19 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-3">
                     <div className="text-xs font-bold text-[#5BC3FA] uppercase tracking-wide px-1">
-                      Semifinais Diretas (Mata-Mata)
+                      SEMI FINAL
                     </div>
                     {semiMatches.map((m) => renderMatchCard(m))}
                   </div>
                   <div className="space-y-3">
                     <div className="text-xs font-bold text-[#12C7BB] uppercase tracking-wide px-1">
-                      🏆 Grande Final (1º e 2º Lugar)
+                      🏆 FINAL
                     </div>
                     {grandFinalMatches.map((m) => renderMatchCard(m))}
                   </div>
                   <div className="space-y-3">
                     <div className="text-xs font-bold text-slate-300 uppercase tracking-wide px-1">
-                      🥉 Disputa de 3º Lugar
+                      🥉 DISPUTA DE 3º
                     </div>
                     {thirdPlaceMatches.map((m) => renderMatchCard(m))}
                   </div>
@@ -2286,7 +2288,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                   Edição Livre de Partida (Nada Congelado)
                 </span>
                 <h3 className="text-base font-bold text-white">
-                  Jogo {editingMatch.matchNumber} · {editingMatch.stageName}
+                  Jogo {editingMatch.matchNumber} · {matchPhaseLabel(editingMatch)}
                 </h3>
               </div>
               <button

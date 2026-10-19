@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import type { Express } from 'express';
 import { registerBookingRoutes } from '../server/bookings';
 import { arenaDate } from '../src/services/bookingAvailability';
+import { EventEmitter } from 'node:events';
 
 function routes(database?: Parameters<typeof registerBookingRoutes>[1]) {
   const handlers = new Map<string, Function>();
@@ -63,4 +64,34 @@ test('an incomplete active reservation fails closed instead of showing free time
   const result = await call('GET /api/booking/availability', { tenantId: 'valid', date });
   assert.equal(result.status, 503);
   assert.equal(result.data.cells, undefined);
+});
+
+test('live availability observes real changes, redacts private data and releases subscriptions on disconnect', async () => {
+  const handlers = new Map<string, Function>();
+  const listeners: (() => void)[] = [];
+  let unsubscribed = 0;
+  const date = arenaDate();
+  const database: any = storedAgenda([{ tenantId: 'valid', courtId: 'court', date, startTime: '18:00', endTime: '19:00', status: 'confirmed', customerName: 'PRIVATE' }])();
+  const collection = database.collection;
+  database.collection = (name: string) => {
+    const result = collection(name);
+    const subscribe = (next: () => void) => { listeners.push(next); return () => { unsubscribed++; }; };
+    if (name === 'arenas') { const doc = result.doc; result.doc = () => ({ ...doc(), onSnapshot: subscribe }); }
+    else result.onSnapshot = subscribe;
+    return result;
+  };
+  registerBookingRoutes({ get: (path: string, handler: Function) => handlers.set(path, handler), post() {} } as unknown as Express, () => database);
+  const req = Object.assign(new EventEmitter(), { query: { tenantId: 'valid', date } });
+  const output: string[] = [];
+  const res = { setHeader() {}, flushHeaders() {}, write(value: string) { output.push(value); }, end() { req.emit('close'); } };
+  handlers.get('/api/booking/stream')!(req, res);
+  try {
+    assert.equal(listeners.length, 3);
+    listeners.forEach(notify => notify());
+    await new Promise(resolve => setTimeout(resolve, 150));
+    assert.ok(output.some(message => message.includes('event: availability\n')));
+    assert.equal(output.join('').includes('PRIVATE'), false);
+    assert.ok(output.join('').includes('reserved'));
+  } finally { req.emit('close'); }
+  assert.equal(unsubscribed, 3);
 });

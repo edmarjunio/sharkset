@@ -1,3 +1,4 @@
+import { FreeSlotsDateTimeFilter } from './components/FreeSlotsDateTimeFilter';
 import React from 'react';
 import { AquariumBackground } from './components/AquariumBackground';
 import { AppProvider, useApp } from './context/AppContext';
@@ -61,6 +62,7 @@ const MainContent: React.FC = () => {
 
       {/* Top Dashboard Visual Notification / Badge for Vacant Court in Next 2h + Smart Push Center (D-2 Tuition) */}
       <SmartNotificationBanner />
+      <FreeSlotsDateTimeFilter homeTop />
 
       {/* Uninterrupted Live Broadcast Hub (Full on Home, Picture-in-Picture Floating Dock on other tabs) */}
       {activeTab !== 'home' && <PersistentLiveStreamDock />}

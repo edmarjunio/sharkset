@@ -5,7 +5,7 @@
 - A página inicial apresenta horários disponíveis, transmissões publicadas ao vivo, arenas e campeonatos, nessa ordem.
 - A data é compartilhada entre a página inicial, o diretório, a agenda da arena e a revisão do horário. O seletor oferece hoje e os próximos seis dias; a agenda da arena respeita também o limite retornado pelo servidor.
 - O horário é opcional, inicia vazio e filtra pelo início exato quando preenchido.
-- O cartão oferece acesso à agenda completa. Cada horário livre abre sua própria revisão com arena, quadra, início, fim, preço e esporte. Os controles são independentes.
+- A faixa no topo agrupa arenas próximas e, dentro delas, horários por quadra. O cartão abre a página da arena; cada horário livre abre sua revisão de pagamento. Os controles são independentes.
 - A agenda distingue livre, reservado, aula, bloqueado e indisponível. O diálogo nativo oferece fechamento por Escape e contenção de foco.
 - A disponibilidade considera intervalos sobrepostos, arena, quadra, data, aulas recorrentes, bloqueios, preços por dia e reservas pendentes válidas. A consulta pública não contém nomes de clientes, telefones ou identificadores de pagamento.
 - A localização é solicitada por ação do usuário na página inicial. Quando indisponível, a interface identifica as distâncias de referência.
@@ -49,3 +49,17 @@ Os testes de servidor usam respostas controladas; não substituem validação co
 O projeto foi recebido na `main` em `05b631f`, com merge de `af6681f` em andamento. A atualização remota foi bloqueada por permissão de escrita nos metadados do Git. A criação de branch e de cópia Git isolada também não foi possível. As mudanças permanecem sem commit; o arquivo `CourtScheduler.tsx` teve os marcadores de conflito resolvidos preservando abas e seções dos dois lados, mas o índice Git continua marcado como não resolvido. É necessário revisar e concluir esse merge antes de publicar ou integrar uma branch de desenvolvimento.
 
 Não foram modificados os motores de campeonato, resultados ou ranking nesta implementação. As alterações já existentes nesses arquivos pertencem ao estado recebido do repositório.
+
+## Ajustes da interface solicitados em 19/10
+
+- Faixa compacta no topo, sem o grande cartão de aluguel. Somente seleção de arena e hora inicial/final na faixa da home; sem filtros preenchidos, são mostradas as próximas quatro horas. O diretório mantém sua consulta por data.
+- Cartão da arena abre sua página de agendamentos; botão de horário abre o checkout daquele intervalo, preservando todos os dados.
+- Ao sair da home ou rolar além da faixa, um carrossel lateral apresenta horários de pico livres e mudanças de ocupado/bloqueado/aula para livre observadas durante a sessão. Uma primeira consulta não é anunciada como uma liberação nova. O carrossel tem controles de anterior, próximo, pausa e fechamento.
+- A atualização em tempo real usa SSE e assinaturas do Firestore no servidor. O servidor projeta somente disponibilidade pública; o navegador não recebe dados pessoais de reservas. A consulta HTTP periódica permanece como alternativa de recuperação. É necessário configurar o Firebase Admin e as agendas reais.
+- Adicionado INÍCIO na navegação geral e nas páginas de arena, tanto em celular como desktop. Ajustados espaçamentos da navegação e do seletor de campeonatos.
+- Logo transparente original importada para public/brand/sharkset-logo-transparent.png, sem alterar seus bytes; usada no celular e na barra reduzida, com fundo do contêiner transparente e sombra leve.
+- A tabela mantém o mesmo grafo e os mesmos resultados. As fases agora exibem FINAL, SEMI FINAL e DISPUTA DE 3º. Final e terceiro lugar foram alinhados às colunas vizinhas; rodadas posteriores seguem o eixo vertical dos confrontos de origem.
+
+Validação desta atualização: TypeScript aprovado e 48 testes aprovados com `node --import tsx --test --test-concurrency=1 tests/*.test.ts`. A execução paralela anterior passou em 47 de 48 testes e falhou por falta de memória no teste de campeonatos grandes; esse teste passou isoladamente e na suíte sequencial completa. A validação visual no navegador continua pendente porque o navegador disponível não alcança o servidor local. O PNG aplicado foi comparado byte a byte com o anexo e seu canal alfa foi verificado.
+
+Reinicie o servidor local para carregar a nova rota SSE. Não houve deploy ou publicação de regras remotas nesta atualização.

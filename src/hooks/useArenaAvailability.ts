@@ -6,6 +6,7 @@ import { addDays, arenaDate, buildArenaAvailability, type AvailabilityCell } fro
 // Demo data must be explicitly enabled; never fall back after a server error.
 import { BOOKING_DEMO } from '../services/bookingMode';
 export { BOOKING_DEMO };
+const EMPTY_CELLS: AvailabilityCell[] = [];
 export function useArenaAvailability(arena: TenantConfig, date: string, refreshKey = 0) {
   const { bookings, slots, tenant } = useApp();
   const queryKey = `${arena.id}:${date}`;
@@ -30,10 +31,28 @@ export function useArenaAvailability(arena: TenantConfig, date: string, refreshK
       }
     };
     void load();
+    const stream = new EventSource('/api/booking/stream?tenantId=' + encodeURIComponent(arena.id) + '&date=' + encodeURIComponent(date));
+    stream.addEventListener('availability', event => {
+      if (controller.signal.aborted) return;
+      try {
+        const result = JSON.parse((event as MessageEvent).data);
+        if (!Array.isArray(result.cells)) return;
+        sequence++;
+        setState({ queryKey, cells: result.cells, loading: false, error: '', maxDate: result.maxDate });
+      } catch { setState(prev => ({ ...prev, queryKey, cells: EMPTY_CELLS, loading: false, error: 'Resposta inválida da agenda.' })); }
+    });
+    stream.addEventListener('availability-error', event => {
+      if (controller.signal.aborted) return;
+      sequence++;
+      let error = 'Não foi possível atualizar a agenda.';
+      try { error = JSON.parse((event as MessageEvent).data).error || error; } catch {}
+      setState(prev => ({ ...prev, queryKey, cells: EMPTY_CELLS, loading: false, error }));
+    });
+    stream.onerror = () => { void load(); };
     const timer = window.setInterval(load, 60000);
     const onFocus = () => { void load(); };
     window.addEventListener('focus', onFocus);
-    return () => { controller.abort(); window.clearInterval(timer); window.removeEventListener('focus', onFocus); };
+    return () => { controller.abort(); stream.close(); window.clearInterval(timer); window.removeEventListener('focus', onFocus); };
   }, [arena, date, bookings, slots, tenant.id, refreshKey]);
-  return state.queryKey === queryKey ? state : { ...state, cells: [], loading: true, error: '' };
+  return state.queryKey === queryKey ? state : { ...state, cells: EMPTY_CELLS, loading: true, error: '' };
 }

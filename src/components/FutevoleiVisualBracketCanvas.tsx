@@ -1,3 +1,4 @@
+import { matchPhaseLabel } from '../services/bracketPresentation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { BracketMatch, BracketSource, MatchSet, SemiFormat, TeamPair } from '../types';
@@ -246,23 +247,8 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
   }
 
   function getMatchDisplayTitle(match: BracketMatch): string {
-    if (match.stage === 'semifinals') {
-      const semis = matches
-        .filter((m) => m.stage === 'semifinals')
-        .sort((a, b) => a.matchNumber - b.matchNumber);
-      const isSecond = semis[1]?.id === match.id;
-      return `Semifinal ${isSecond ? 'B' : 'A'} · Jogo ${match.matchNumber}`;
-    }
-    if (match.stage === 'grand_final' || match.stage === 'super_final') {
-      return `Disputa de 1º/2º · Jogo ${match.matchNumber}`;
-    }
-    if (match.stage === 'third_place') {
-      return `Disputa de 3º/4º · Jogo ${match.matchNumber}`;
-    }
-    if (match.stage === 'winners') {
-      return `Principal R${match.round} · Jogo ${match.matchNumber}`;
-    }
-    return `Repescagem R${match.round} · Jogo ${match.matchNumber}`;
+    if (['semifinals', 'grand_final', 'super_final', 'third_place'].includes(match.stage)) return matchPhaseLabel(match);
+    return (match.stage === 'winners' ? 'Principal' : 'Repescagem') + ' R' + match.round + ' · Jogo ' + match.matchNumber;
   }
 
   function isMatchLive(match: BracketMatch): boolean {
@@ -683,7 +669,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
 
       {/* BRACKET CONTENT: COLUMNS OR INFINITY SCROLL PANORAMA */}
       {view === 'columns' ? (
-        <div className="flex gap-4 overflow-auto pb-6">
+        <div className="flex items-start gap-4 overflow-auto pb-6">
           {rounds.map((key) => {
             const roundMatches = matches.filter((match) => `${match.stage}:${match.round}` === key);
             const first = roundMatches[0];
@@ -698,7 +684,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                       : 'bg-sky-950/80 border-sky-400/40 text-sky-200'
                   }`}
                 >
-                  {first?.stageName || key}
+                  {first ? matchPhaseLabel(first) : key}
                 </div>
                 {roundMatches.map((match) => (
                   <div key={match.id} style={{ height: CARD_HEIGHT }}>
@@ -1415,7 +1401,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
             <div className="flex items-center justify-between border-b border-white/15 pb-3">
               <div>
                 <span className="text-[11px] font-black uppercase text-cyan-300">
-                  Jogo #{quickModalMatch.matchNumber} · {quickModalMatch.stageName}
+                  Jogo #{quickModalMatch.matchNumber} · {matchPhaseLabel(quickModalMatch)}
                 </span>
                 <h3 className="text-base font-extrabold text-white">
                   Lançar Resultado Rápido
