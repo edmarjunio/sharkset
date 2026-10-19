@@ -344,37 +344,21 @@ body {
   color: #fff4ea !important;
 }
 
-/* Top-5 podium in the middle band of the bracket */
+/* Top-5 podium in the middle band of the bracket (Formatted in Game Card Standard) */
+.shark-site-background .bracket-podium,
 .bracket-podium {
   position: absolute;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 20px;
-  background: rgba(3, 14, 28, 0.9);
-  border: 1.5px solid rgba(250, 204, 21, 0.55);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
-  color: #fff;
-  pointer-events: none;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 1rem;
+  background: linear-gradient(155deg, rgba(20, 26, 38, 0.95) 0%, rgba(12, 17, 26, 0.98) 55%, rgba(6, 10, 16, 0.96) 100%) !important;
+  border: 2.5px solid #facc15 !important;
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.4), 0 12px 34px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 249, 196, 0.35) !important;
+  color: #fff !important;
+  box-sizing: border-box;
 }
-.bracket-podium-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 6px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 800;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.06);
-}
-.bracket-podium-row small { display: block; font-size: 10px; font-weight: 600; opacity: .75; }
-.bracket-podium-row.place-1 { background: linear-gradient(90deg, #f5c518, #a67c00); color: #2b1d00; border-color: #fff1a8; min-height: 60px; font-size: 14px; }
-.bracket-podium-row.place-2 { background: linear-gradient(90deg, #e5e7eb, #8b95a5); color: #111827; border-color: #fff; }
-.bracket-podium-row.place-3 { background: linear-gradient(90deg, #e0a070, #9a5a2e); color: #2a1306; border-color: #f4c9a0; }
-.bracket-podium-medal { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
 
 /* Live Match Highlight — Strong Red Border + Glowing Pulse */
 @keyframes liveBorderPulse {

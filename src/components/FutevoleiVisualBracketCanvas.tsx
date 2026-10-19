@@ -1188,37 +1188,197 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                 })}
               </svg>
 
-              {/* TOP 5 PODIUM — middle of the bracket, filled only from official (completed) results */}
-              <div
-                className="bracket-podium"
-                aria-label="Pódio: 5 primeiros colocados"
-                style={{ left: layout.podium.x, top: layout.podium.y, width: layout.podium.width, height: layout.podium.height }}
-              >
-                <div className="text-center text-[11px] font-black uppercase tracking-widest text-amber-300">
-                  🏆 Pódio · 5 primeiros colocados
-                </div>
-                {([
-                  { place: 1, medal: '🥇', label: 'Campeões', teams: podium.first ? [podium.first] : [] },
-                  { place: 2, medal: '🥈', label: 'Vice-campeões', teams: podium.second ? [podium.second] : [] },
-                  { place: 3, medal: '🥉', label: '3º lugar', teams: podium.third ? [podium.third] : [] },
-                  { place: 4, medal: '4º', label: '4º lugar', teams: podium.fourth ? [podium.fourth] : [] },
-                  { place: 5, medal: '5º', label: podium.fifth.length > 1 ? '5º lugar (empate)' : '5º lugar', teams: podium.fifth },
-                ] as const).map((row) => (
-                  <div key={row.place} className={`bracket-podium-row ${row.place <= 3 ? `place-${row.place}` : ''}`}>
-                    <span className="bracket-podium-medal">{row.medal}</span>
-                    <div className="min-w-0 flex-1">
-                      <small>{row.label}</small>
-                      {row.teams.length > 0 ? (
-                        row.teams.map((team) => (
-                          <span key={team.id} className="block truncate">{formatParticipantName(team)}</span>
-                        ))
+              {/* TOP 5 PODIUM — middle of the bracket, formatted strictly to match game card visual standards */}
+              {(() => {
+                const finalMatch = matches.find((m) => m.stage === 'grand_final' || m.stage === 'super_final');
+                const thirdMatch = matches.find((m) => m.stage === 'third_place');
+                const isTournamentFinished = Boolean(podium.first && podium.second && podium.third);
+
+                const rows = [
+                  {
+                    place: 1,
+                    badge: '🥇 1º',
+                    badgeColor: 'bg-yellow-400 text-slate-950 font-black shadow-xs',
+                    tag: 'OURO',
+                    tagColor: podium.first
+                      ? 'bg-yellow-400/25 text-yellow-300 border border-yellow-400/60'
+                      : 'bg-black/40 text-yellow-400/70 border border-white/15',
+                    team: podium.first,
+                    displayName: podium.first ? formatParticipantName(podium.first) : 'A definir',
+                    originLabel: podium.first
+                      ? 'Campeão Oficial · Troféu de Ouro'
+                      : finalMatch
+                      ? `Vencedor J#${finalMatch.matchNumber} · Final`
+                      : 'Vencedor da Final',
+                    rowClass: podium.first
+                      ? 'bg-yellow-500/20 text-white font-extrabold border-b-2 border-yellow-400 ring-1 ring-yellow-400/50'
+                      : 'bg-black/30 text-white/80 font-semibold border-b-2 border-white/20',
+                  },
+                  {
+                    place: 2,
+                    badge: '🥈 2º',
+                    badgeColor: 'bg-slate-200 text-slate-900 font-black shadow-xs',
+                    tag: 'PRATA',
+                    tagColor: podium.second
+                      ? 'bg-slate-300/25 text-slate-200 border border-slate-300/60'
+                      : 'bg-black/40 text-slate-300/70 border border-white/15',
+                    team: podium.second,
+                    displayName: podium.second ? formatParticipantName(podium.second) : 'A definir',
+                    originLabel: podium.second
+                      ? 'Vice-Campeão · Troféu de Prata'
+                      : finalMatch
+                      ? `Perdedor J#${finalMatch.matchNumber} · Final`
+                      : 'Perdedor da Final',
+                    rowClass: podium.second
+                      ? 'bg-slate-300/20 text-white font-extrabold border-b-2 border-slate-300 ring-1 ring-slate-300/40'
+                      : 'bg-black/25 text-white/75 font-semibold border-b-2 border-white/15',
+                  },
+                  {
+                    place: 3,
+                    badge: '🥉 3º',
+                    badgeColor: 'bg-amber-600 text-white font-black shadow-xs',
+                    tag: 'BRONZE',
+                    tagColor: podium.third
+                      ? 'bg-amber-600/30 text-amber-200 border border-amber-500/60'
+                      : 'bg-black/40 text-amber-400/70 border border-white/15',
+                    team: podium.third,
+                    displayName: podium.third ? formatParticipantName(podium.third) : 'A definir',
+                    originLabel: podium.third
+                      ? '3º Colocado · Troféu de Bronze'
+                      : thirdMatch
+                      ? `Vencedor J#${thirdMatch.matchNumber} · 3º/4º`
+                      : 'Vencedor Disputa 3º',
+                    rowClass: podium.third
+                      ? 'bg-amber-600/20 text-white font-extrabold border-b-2 border-amber-500 ring-1 ring-amber-500/40'
+                      : 'bg-black/25 text-white/75 font-semibold border-b-2 border-white/15',
+                  },
+                  {
+                    place: 4,
+                    badge: '4º',
+                    badgeColor: 'bg-slate-700 text-slate-200 font-black',
+                    tag: '4º',
+                    tagColor: 'bg-black/40 text-slate-300 border border-white/15',
+                    team: podium.fourth,
+                    displayName: podium.fourth ? formatParticipantName(podium.fourth) : 'A definir',
+                    originLabel: podium.fourth
+                      ? '4º Colocado · Semifinalista'
+                      : thirdMatch
+                      ? `Perdedor J#${thirdMatch.matchNumber} · 3º/4º`
+                      : 'Perdedor Disputa 3º',
+                    rowClass: podium.fourth
+                      ? 'bg-white/10 text-white font-semibold border-b-2 border-white/30'
+                      : 'bg-black/20 text-white/70 font-medium border-b-2 border-white/10',
+                  },
+                  {
+                    place: 5,
+                    badge: '5º',
+                    badgeColor: 'bg-slate-800 text-slate-300 font-black',
+                    tag: '5º',
+                    tagColor: 'bg-black/40 text-slate-400 border border-white/15',
+                    team: podium.fifth[0],
+                    displayName:
+                      podium.fifth.length > 0
+                        ? podium.fifth.map(formatParticipantName).join(' / ')
+                        : 'A definir',
+                    originLabel:
+                      podium.fifth.length > 1
+                        ? '5º Lugar (Empate Técnico)'
+                        : podium.fifth.length === 1
+                        ? '5º Colocado · Quartas de Final'
+                        : 'Quartas de Final',
+                    rowClass:
+                      podium.fifth.length > 0
+                        ? 'bg-white/10 text-white font-semibold border-b-2 border-white/25'
+                        : 'bg-black/20 text-white/60 font-medium border-b-2 border-white/10',
+                  },
+                ];
+
+                return (
+                  <article
+                    className="bracket-podium"
+                    aria-label="Pódio: 5 primeiros colocados"
+                    style={{
+                      left: layout.podium.x,
+                      top: layout.podium.y,
+                      width: layout.podium.width,
+                      height: layout.podium.height,
+                    }}
+                  >
+                    {/* Top Header: Game Card Pattern (Match Code pill + Title + Status badge) */}
+                    <div className="flex items-center justify-between gap-1.5 text-[11px] leading-tight h-[26px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="px-1.5 py-0.5 rounded-md font-black text-[10px] shrink-0 bg-yellow-400 text-slate-950 flex items-center gap-1 shadow-xs">
+                          <Trophy className="w-3 h-3 text-slate-950" />
+                          PÓDIO
+                        </span>
+                        <strong className="truncate text-white font-extrabold text-[11px] uppercase tracking-wide">
+                          5 Primeiros Colocados
+                        </strong>
+                      </div>
+
+                      {isTournamentFinished ? (
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/25 border border-emerald-400/40 text-emerald-200 text-[10px] font-bold shrink-0 flex items-center gap-1">
+                          ✓ Finalizado
+                        </span>
                       ) : (
-                        <span className="block opacity-60">A definir</span>
+                        <span className="px-1.5 py-0.5 rounded bg-black/40 border border-amber-400/30 text-amber-200 text-[10px] font-semibold shrink-0">
+                          Em disputa
+                        </span>
                       )}
                     </div>
-                  </div>
-                ))}
-              </div>
+
+                    {/* 5 Slot Rows: Strictly matching the 2-slot Game Card anatomy */}
+                    <div className="mt-1 space-y-[4px]">
+                      {rows.map((row) => (
+                        <div
+                          key={row.place}
+                          className={`h-[36px] flex items-center justify-between gap-1.5 px-2 rounded-lg transition-colors ${row.rowClass}`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] shrink-0 ${row.badgeColor}`}>
+                              {row.badge}
+                            </span>
+                            <div className="min-w-0 flex-1 leading-tight">
+                              <div className="flex items-center gap-1 min-w-0">
+                                {row.team && row.place === 1 && (
+                                  <Trophy className="w-3 h-3 text-amber-300 shrink-0" />
+                                )}
+                                <span
+                                  className={`truncate text-[11px] font-extrabold block ${
+                                    row.team ? 'text-white' : 'text-white/70'
+                                  }`}
+                                  title={row.displayName}
+                                >
+                                  {row.displayName}
+                                </span>
+                              </div>
+                              <span className="truncate text-[9px] text-white/75 font-medium block">
+                                {row.originLabel}
+                              </span>
+                            </div>
+                          </div>
+                          <strong
+                            className={`text-[10px] font-black tabular-nums shrink-0 px-1.5 py-0.5 rounded ${row.tagColor}`}
+                          >
+                            {row.tag}
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Destination/Official Award Bar: Matching Game Card Footer Pattern */}
+                    <div className="mt-1 flex items-center justify-between gap-1 px-1.5 py-0.5 rounded-md bg-black/40 text-[9.5px] leading-tight border border-white/10">
+                      <span className="font-extrabold text-amber-300 truncate flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                        Premiação Oficial
+                      </span>
+                      <span className="font-bold text-cyan-200 truncate shrink-0">
+                        Ranking SharkSet
+                      </span>
+                    </div>
+                  </article>
+                );
+              })()}
 
               {matches.map((match) => {
                 const pos = layout.positions.get(match.id)!;

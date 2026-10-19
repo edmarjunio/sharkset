@@ -57,6 +57,7 @@ import {
   Palette,
   Radio,
   Crown,
+  Zap,
 } from 'lucide-react';
 
 export const CourtScheduler: React.FC = () => {
@@ -147,6 +148,7 @@ export const CourtScheduler: React.FC = () => {
   const [selectedHourFilter, setSelectedHourFilter] = useState<string | null>(null);
   const [isOwnerView, setIsOwnerView] = useState<boolean>(false);
   const [selectedTournBracketId, setSelectedTournBracketId] = useState<string | null>(null);
+  const [selectedClassSportFilter, setSelectedClassSportFilter] = useState<'all' | SportType>('all');
 
   // Tournament Creation Form state
   const [showCreateTournModal, setShowCreateTournModal] = useState(false);
@@ -238,8 +240,10 @@ export const CourtScheduler: React.FC = () => {
   }, [tournaments, tenant.id]);
 
   // Effective active subtab
-  const effectiveSubTab: 'agendamentos' | 'campeonatos' | 'transmissoes' | 'ranking' | 'dono' =
-    arenaSubTab === 'campeonatos'
+  const effectiveSubTab: 'agendamentos' | 'aulas' | 'campeonatos' | 'transmissoes' | 'ranking' | 'dono' =
+    arenaSubTab === 'aulas'
+      ? 'aulas'
+      : arenaSubTab === 'campeonatos'
       ? 'campeonatos'
       : arenaSubTab === 'transmissoes'
       ? 'transmissoes'
@@ -298,6 +302,18 @@ export const CourtScheduler: React.FC = () => {
       };
     });
   }, [arenaClasses, arenaStudents]);
+
+  const todayAvailableSlotsCount = useMemo(() => {
+    return slotsForDate.filter((s) => s.isAvailable).length;
+  }, [slotsForDate]);
+
+  const classesWithSpotsCount = useMemo(() => {
+    return classesWithSpotsInfo.filter((c) => c.isAvailable).length;
+  }, [classesWithSpotsInfo]);
+
+  const totalClassSpotsRemaining = useMemo(() => {
+    return classesWithSpotsInfo.reduce((acc, c) => acc + c.spotsRemaining, 0);
+  }, [classesWithSpotsInfo]);
 
   // Handle clicking on a slot in the court agenda
   const handleSlotClick = (slot: TimeSlot, court: Court) => {
@@ -719,27 +735,39 @@ export const CourtScheduler: React.FC = () => {
                     id: 'agendamentos',
                     icon: Calendar,
                     label: `1. AGENDAMENTOS (${tenant.courts.length} Quadras)`,
-                    badge: 'Principal',
+                    badge: todayAvailableSlotsCount > 0 ? `${todayAvailableSlotsCount} Livres` : 'Principal',
+                    badgeBg: todayAvailableSlotsCount > 0 ? 'bg-emerald-400 text-slate-950' : 'bg-amber-400 text-slate-950',
+                  },
+                  {
+                    id: 'aulas',
+                    icon: GraduationCap,
+                    label: `2. AULAS & TREINOS (${arenaClasses.length})`,
+                    badge: classesWithSpotsCount > 0 ? `${classesWithSpotsCount} com Vaga` : undefined,
+                    badgeBg: 'bg-amber-400 text-slate-950',
                   },
                   {
                     id: 'campeonatos',
                     icon: Trophy,
-                    label: `2. CAMPEONATOS (${arenaTournaments.length})`,
+                    label: `3. CAMPEONATOS (${arenaTournaments.length})`,
+                    badge: arenaTournaments.length > 0 ? `${arenaTournaments.length} Ativos` : undefined,
+                    badgeBg: 'bg-sky-400 text-slate-950',
                   },
                   {
                     id: 'transmissoes',
                     icon: Radio,
-                    label: '3. TRANSMISSÕES AO VIVO',
+                    label: '4. TRANSMISSÕES AO VIVO',
+                    badge: 'AO VIVO',
+                    badgeBg: 'bg-red-500 text-white animate-pulse',
                   },
                   {
                     id: 'ranking',
                     icon: Crown,
-                    label: '4. RANKING DA ARENA',
+                    label: '5. RANKING DA ARENA',
                   },
                   {
                     id: 'dono',
                     icon: Settings,
-                    label: '5. ÁREA DO DONO (GESTÃO)',
+                    label: '6. ÁREA DO DONO (GESTÃO)',
                   },
                 ].map((tab) => {
                   const Icon = tab.icon;
@@ -756,17 +784,17 @@ export const CourtScheduler: React.FC = () => {
                         setArenaSubTab(tab.id as ArenaSubTab);
                         if (tab.id === 'dono') setIsOwnerView(true);
                       }}
-                      className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                      className={`px-3.5 py-2 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
                         isActive
                           ? 'text-white shadow-sm ring-2 ring-white/20'
                           : 'bg-white/10 text-slate-200 hover:text-white hover:bg-white/15 border border-white/10'
                       }`}
                       style={isActive ? { backgroundColor: activeBg } : undefined}
                     >
-                      <Icon className="w-4 h-4" />
-                      {tab.label}
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span>{tab.label}</span>
                       {tab.badge && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-400 text-slate-950 uppercase">
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${tab.badgeBg || 'bg-amber-400 text-slate-950'}`}>
                           {tab.badge}
                         </span>
                       )}
@@ -807,6 +835,150 @@ export const CourtScheduler: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* ARENA HIGHLIGHTS & QUICK PILLARS HUB (MUITO EVIDENTE)                 */}
+      {/* ===================================================================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* 1. AGENDAMENTOS */}
+        <div
+          onClick={() => setArenaSubTab('agendamentos')}
+          className={`p-4 sm:p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between gap-3 group shadow-xs hover:shadow-md ${
+            effectiveSubTab === 'agendamentos'
+              ? 'bg-gradient-to-br from-emerald-500/15 via-white to-white border-emerald-500 ring-2 ring-emerald-400/40'
+              : 'bg-white border-slate-200 hover:border-emerald-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+              {todayAvailableSlotsCount > 0 ? `${todayAvailableSlotsCount} livres hoje` : 'Esgotado'}
+            </span>
+          </div>
+
+          <div>
+            <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-700 transition-colors">
+              1. Agendamentos
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {tenant.courts.length} quadras · ⚽ Futevôlei foco principal, Beach e Vôlei
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-black text-emerald-700">
+            <span>Ver Horários & Grade</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </div>
+
+        {/* 2. AULAS & TREINOS */}
+        <div
+          onClick={() => setArenaSubTab('aulas')}
+          className={`p-4 sm:p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between gap-3 group shadow-xs hover:shadow-md ${
+            effectiveSubTab === 'aulas'
+              ? 'bg-gradient-to-br from-indigo-500/15 via-white to-white border-indigo-500 ring-2 ring-indigo-400/40'
+              : 'bg-white border-slate-200 hover:border-indigo-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            {classesWithSpotsCount > 0 ? (
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider animate-pulse">
+                🔥 {classesWithSpotsCount} turmas com vaga
+              </span>
+            ) : (
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                Turmas Lotadas
+              </span>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-base font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+              2. Aulas & Treinos
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Limite pré-definido pelo dono · {totalClassSpotsRemaining} vagas restantes no total
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-black text-indigo-700">
+            <span>Garantir Minha Vaga</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </div>
+
+        {/* 3. CAMPEONATOS */}
+        <div
+          onClick={() => setArenaSubTab('campeonatos')}
+          className={`p-4 sm:p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between gap-3 group shadow-xs hover:shadow-md ${
+            effectiveSubTab === 'campeonatos'
+              ? 'bg-gradient-to-br from-amber-500/15 via-white to-white border-amber-500 ring-2 ring-amber-400/40'
+              : 'bg-white border-slate-200 hover:border-amber-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black">
+              <Trophy className="w-5 h-5" />
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider">
+              {arenaTournaments.length} Torneios
+            </span>
+          </div>
+
+          <div>
+            <h3 className="text-base font-black text-slate-900 group-hover:text-amber-800 transition-colors">
+              3. Campeonatos
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Inscrições online, validação de categorias e chaves ao vivo
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-black text-amber-800">
+            <span>Ver Torneios & Chaves</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </div>
+
+        {/* 4. TRANSMISSÕES AO VIVO */}
+        <div
+          onClick={() => setArenaSubTab('transmissoes')}
+          className={`p-4 sm:p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between gap-3 group shadow-xs hover:shadow-md ${
+            effectiveSubTab === 'transmissoes'
+              ? 'bg-gradient-to-br from-red-500/15 via-white to-white border-red-500 ring-2 ring-red-400/40'
+              : 'bg-white border-slate-200 hover:border-red-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center font-black">
+              <Radio className="w-5 h-5" />
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+              AO VIVO
+            </span>
+          </div>
+
+          <div>
+            <h3 className="text-base font-black text-slate-900 group-hover:text-red-600 transition-colors">
+              4. Transmissões
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Câmeras oficiais 1080p · Placar sincronizado em tempo real
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-black text-red-600">
+            <span>Assistir Agora</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </div>
       </div>
@@ -1339,464 +1511,314 @@ export const CourtScheduler: React.FC = () => {
       </div>
       )}
 
-      {/* Obsolete Aulas Section - fully integrated into SUB-TAB 5 (Área do Dono) */}
-      {false && (
+      {/* ===================================================================== */}
+      {/* SUB-TAB 2: AULAS & TREINOS (EVIDÊNCIA MÁXIMA DE VAGAS PARA O CLIENTE) */}
+      {/* ===================================================================== */}
+      {effectiveSubTab === 'aulas' && (
         <div className="space-y-6">
-          {/* Busca Regional por Horário ("Quero Terça e Quinta 7 às 8") */}
-          <RegionalAvailabilityFinder />
-
-          {/* Top Due-Date & 2-Days-Before Automatic Notification Radar Banner */}
-          {(() => {
-            const studentsDueToday = findStudentsWithTuitionDueToday(arenaStudents, todayStr);
-            const studentsDueIn2Days = findStudentsWithTuitionDueIn2Days(arenaStudents, todayStr);
-            return (
-              <div className="aquarium-glass bg-slate-950 text-white border border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="px-2.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black uppercase text-[10px]">
-                      MOTOR AUTOMÁTICO DE MENSALIDADES (D-2 & HOJE)
+          {/* Header & Spotlight Banner */}
+          <div className="aquarium-glass bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white border border-indigo-900/40 rounded-3xl p-6 sm:p-8 shadow-md">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-2 max-w-2xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-indigo-400" />
+                    Aulas & Treinamentos Oficiais
+                  </span>
+                  {classesWithSpotsCount > 0 ? (
+                    <span className="px-3 py-1 rounded-full bg-emerald-500 text-slate-950 text-xs font-black uppercase tracking-wider flex items-center gap-1 animate-pulse">
+                      <Zap className="w-3.5 h-3.5" />
+                      {classesWithSpotsCount} {classesWithSpotsCount === 1 ? 'Turma com Vagas Abertas' : 'Turmas com Vagas Abertas'}
                     </span>
-                    <span className="font-bold text-emerald-400">
-                      Disparo automático via WhatsApp/Push 2 dias antes do vencimento com Link Direto de Renovação
+                  ) : (
+                    <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold">
+                      Lista de Espera Ativa
                     </span>
-                  </div>
-                  <h2 className="text-lg font-black text-white">
-                    📲 {studentsDueIn2Days.length} Aluno(s) Vencem em 2 Dias (Link de Renovação) · 🔔 {studentsDueToday.length} Vencem Hoje
-                  </h2>
-                  <p className="text-xs text-slate-300">
-                    O sistema identifica automaticamente a data de vencimento de cada aluno e envia 2 dias antes o aviso com <strong>link direto para renovação via PIX/Cartão</strong>.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => {
-                      const targets = studentsDueIn2Days.length > 0 ? studentsDueIn2Days : arenaStudents.slice(0, 1);
-                      targets.forEach((s) => {
-                        const notif = buildTuitionDueIn2DaysNotification(s, tenant.name);
-                        pushSmartNotification(notif);
-                      });
-                      triggerToast(
-                        `📲 Disparo Automático (2 Dias Antes) enviado via WhatsApp/Push com Link Direto de Renovação para ${targets.map((t) => t.studentName).join(', ')}!`
-                      );
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs cursor-pointer flex items-center gap-1.5 shadow-sm"
-                  >
-                    <BellRing className="w-4 h-4" />
-                    Disparar Aviso 2 Dias Antes + Link Renovação ({studentsDueIn2Days.length || 1})
-                  </button>
-                  {studentsDueToday.length > 0 && (
-                    <button
-                      onClick={() => {
-                        studentsDueToday.forEach((s) => notifyStudentTuitionDue(s.id));
-                        triggerToast(
-                          `🔔 Notificação de vencimento enviada via Push + WhatsApp para ${studentsDueToday.length} aluno(s) que vencem hoje!`
-                        );
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs cursor-pointer flex items-center gap-1.5 shadow-sm"
-                    >
-                      <BellRing className="w-4 h-4" />
-                      Notificar Vencendo Hoje ({studentsDueToday.length})
-                    </button>
                   )}
                 </div>
+
+                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  Evolua seu jogo na {tenant.name}
+                </h2>
+                <p className="text-sm text-slate-300">
+                  Turmas com quantidade limite pré-definida de alunos para máxima atenção e rendimento.
+                  Foco principal no <strong className="text-amber-300">Futevôlei</strong>, além de Beach Tennis e Vôlei de Praia.
+                </p>
+              </div>
+
+              {/* Dynamic Stats Pill */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-white/5 border border-white/10 rounded-2xl p-4 shrink-0">
+                <div className="text-center">
+                  <span className="text-2xl sm:text-3xl font-black text-white block">
+                    {arenaClasses.length}
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-400">Turmas Totais</span>
+                </div>
+                <div className="text-center border-x border-white/10 px-3">
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-400 block">
+                    {totalClassSpotsRemaining}
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-300">Vagas Livres</span>
+                </div>
+                <div className="text-center col-span-2 sm:col-span-1">
+                  <span className="text-2xl sm:text-3xl font-black text-amber-400 block">
+                    {arenaStudents.length}
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-400">Alunos Ativos</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Filters: Sport & Coach */}
+          <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Sport Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">
+                Esporte:
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedClassSportFilter('all')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedClassSportFilter === 'all'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Todos ({classesWithSpotsInfo.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedClassSportFilter('futevolei')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedClassSportFilter === 'futevolei'
+                    ? 'bg-amber-400 text-slate-950 shadow-xs ring-2 ring-amber-300'
+                    : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
+                }`}
+              >
+                ⚽ Futevôlei (Foco Principal)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedClassSportFilter('beach_tennis')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedClassSportFilter === 'beach_tennis'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                🎾 Beach Tennis
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedClassSportFilter('volei_praia')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedClassSportFilter === 'volei_praia'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                🏐 Vôlei de Praia
+              </button>
+            </div>
+
+            {/* Coach Dropdown Filter */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-slate-500 whitespace-nowrap">
+                Professor:
+              </label>
+              <select
+                value={selectedCoachFilter}
+                onChange={(e) => setSelectedCoachFilter(e.target.value)}
+                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+              >
+                <option value="all">Todos os Professores</option>
+                {Array.from(new Set(classesWithSpotsInfo.map((c) => c.cls.coach).filter(Boolean))).map((coach) => (
+                  <option key={coach} value={coach}>
+                    {coach}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Classes Cards Grid */}
+          {(() => {
+            const displayClasses = classesWithSpotsInfo.filter(({ cls }) => {
+              const sportMatches = selectedClassSportFilter === 'all' || cls.sport === selectedClassSportFilter;
+              const coachMatches = selectedCoachFilter === 'all' || cls.coach === selectedCoachFilter;
+              return sportMatches && coachMatches;
+            });
+
+            if (displayClasses.length === 0) {
+              return (
+                <div className="aquarium-glass bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-3">
+                  <GraduationCap className="w-12 h-12 text-slate-300 mx-auto" />
+                  <h3 className="text-base font-bold text-slate-700">
+                    Nenhuma turma encontrada para o filtro selecionado
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Tente selecionar outro esporte ou ver todas as turmas para encontrar sua aula ideal.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedClassSportFilter('all');
+                      setSelectedCoachFilter('all');
+                    }}
+                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer hover:bg-slate-800"
+                  >
+                    Limpar Filtros
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {displayClasses.map(({ court, cls, maxStudents, enrolled, spotsRemaining, isAvailable }) => {
+                  const percentFilled = Math.min(100, Math.round((enrolled / maxStudents) * 100));
+                  const isAlmostFull = spotsRemaining > 0 && spotsRemaining <= 2;
+
+                  return (
+                    <div
+                      key={cls.id}
+                      className={`aquarium-glass rounded-3xl border p-5 shadow-xs transition-all flex flex-col justify-between gap-4 relative overflow-hidden group hover:shadow-md ${
+                        isAvailable
+                          ? isAlmostFull
+                            ? 'bg-gradient-to-b from-amber-50/70 via-white to-white border-amber-300 ring-1 ring-amber-300/60'
+                            : 'bg-white border-slate-200 hover:border-emerald-400'
+                          : 'bg-slate-50/70 border-slate-200 opacity-90'
+                      }`}
+                    >
+                      {/* Top Header: Sport Badge + Spots Urgency Badge */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 text-[11px] font-black uppercase tracking-tight flex items-center gap-1">
+                          {cls.sport === 'futevolei' && '⚽ Futevôlei'}
+                          {cls.sport === 'beach_tennis' && '🎾 Beach Tennis'}
+                          {cls.sport === 'volei_praia' && '🏐 Vôlei'}
+                          {!cls.sport && '⚽ Futevôlei'}
+                        </span>
+
+                        {isAvailable ? (
+                          isAlmostFull ? (
+                            <span className="px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs animate-bounce">
+                              🔥 ÚLTIMA${spotsRemaining > 1 ? 'S' : ''} ${spotsRemaining} VAGA${spotsRemaining > 1 ? 'S' : ''}!
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                              🟢 TEM VAGA (${spotsRemaining} livres)
+                            </span>
+                          )
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-wider">
+                            🔒 Lotação Máxima
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Class Title & Details */}
+                      <div className="space-y-1.5">
+                        <h3 className="text-lg font-black text-slate-900 group-hover:text-emerald-700 transition-colors leading-snug">
+                          {cls.title}
+                        </h3>
+
+                        <div className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Prof. <strong className="text-slate-900">{cls.coach}</strong></span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
+                          <span className="flex items-center gap-1 bg-slate-100 px-2.5 py-0.5 rounded-lg font-mono font-bold text-slate-700">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            {cls.startTime} - {cls.endTime}
+                          </span>
+                          <span className="bg-slate-100 px-2.5 py-0.5 rounded-lg font-semibold text-slate-700">
+                            {court.name}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Capacity Bar & Limit (Dono pré-definido) */}
+                      <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-500 font-semibold">
+                            Lotação ({enrolled}/{maxStudents} alunos)
+                          </span>
+                          <span className={`font-black ${isAvailable ? (isAlmostFull ? 'text-amber-600' : 'text-emerald-700') : 'text-slate-500'}`}>
+                            {isAvailable ? `${spotsRemaining} vagas restantes` : 'Fila de espera'}
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                          <div
+                            className={`h-full transition-all rounded-full ${
+                              !isAvailable
+                                ? 'bg-slate-400'
+                                : isAlmostFull
+                                ? 'bg-amber-500'
+                                : 'bg-emerald-500'
+                            }`}
+                            style={{ width: `${percentFilled}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Pricing & CTA */}
+                      <div className="pt-2 border-t border-slate-100 flex items-end justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-semibold block uppercase">Mensalidade</span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-black text-slate-900 font-mono">
+                              R$ {cls.monthlyPrice}
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-medium">/mês</span>
+                          </div>
+                          {cls.dailyPrice && (
+                            <span className="text-[10px] text-slate-500 block">
+                              Avulsa: R$ {cls.dailyPrice}
+                            </span>
+                          )}
+                        </div>
+
+                        {isAvailable ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedClassForEnroll({ courtId: court.id, classConfig: cls });
+                              setEnrollAuthorRole('aluno');
+                              setStudentName(userProfile.name);
+                              setStudentPhone(userProfile.phone);
+                            }}
+                            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs cursor-pointer shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Garantir Minha Vaga
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              triggerToast(
+                                `📋 Você foi registrado na Lista de Espera da turma "${cls.title}". Avisaremos pelo WhatsApp ${userProfile.phone} assim que liberar uma vaga!`
+                              );
+                            }}
+                            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-all flex items-center gap-1.5"
+                          >
+                            Fila de Espera
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })()}
 
-          {/* Active Classes Cards with Dual Enrollment Buttons (Aluno Self-Enroll vs Professor/Dono Enroll) */}
-          <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">
-                  Turmas & Aulas Ativas na {tenant.name}
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Escolha se deseja se inscrever como <strong>Aluno</strong> ou matricular um aluno como <strong>Professor / Dono da Arena</strong>.
-                </p>
-              </div>
-              <span className="text-xs font-bold text-emerald-700">
-                Vínculo imediato à turma + início da mensalidade no ato da inscrição
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {arenaClasses.map(({ court, cls }) => {
-                const enrolledInClass = arenaStudents.filter((s) => s.classId === cls.id);
-                const paidInClass = enrolledInClass.filter((s) => s.paymentStatus === 'pago').length;
-                return (
-                  <div
-                    key={cls.id}
-                    className="border border-slate-200 rounded-2xl p-4 flex flex-col justify-between space-y-4 bg-slate-50/50 hover:border-slate-300 transition-all"
-                  >
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-900 font-black">
-                          {cls.startTime} às {cls.endTime}
-                        </span>
-                        <span className="text-slate-500 font-semibold">
-                          {court.name.split(' - ')[0]}
-                        </span>
-                      </div>
-                      <h3 className="text-base font-black text-slate-950">{cls.title}</h3>
-                      <p className="text-xs text-slate-600">
-                        Professor: <strong className="text-slate-900">{cls.coachName}</strong> ·{' '}
-                        <strong>
-                          {enrolledInClass.length}/{cls.maxStudents} alunos
-                        </strong>{' '}
-                        ({paidInClass} em dia)
-                      </p>
-                      <div className="pt-1 text-xs text-slate-800 font-mono">
-                        Mensalidade: <strong>R$ {cls.monthlyPrice}/mês</strong> · Aula avulsa:{' '}
-                        <strong>R$ {cls.dailyPrice}</strong>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pt-2 border-t border-slate-200/70">
-                      <button
-                        onClick={() => {
-                          setEnrollAuthorRole('aluno');
-                          setBillingType('mensal');
-                          setEnrollDateStr(todayStr);
-                          setSelectedClassForEnroll({ courtId: court.id, classConfig: cls });
-                        }}
-                        className="w-full py-2.5 px-3 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
-                      >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        Sou Aluno: Inscrever-me nesta Turma
-                      </button>
-
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          onClick={() => {
-                            setEnrollAuthorRole('professor');
-                            setBillingType('mensal');
-                            setEnrollDateStr(todayStr);
-                            setSelectedClassForEnroll({ courtId: court.id, classConfig: cls });
-                          }}
-                          className="py-2 px-2.5 text-[11px] font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Prof: Matricular
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEnrollAuthorRole('dono');
-                            setBillingType('mensal');
-                            setEnrollDateStr(todayStr);
-                            setSelectedClassForEnroll({ courtId: court.id, classConfig: cls });
-                          }}
-                          className="py-2 px-2.5 text-[11px] font-bold text-slate-800 bg-slate-200 hover:bg-slate-300 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Dono: Matricular
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {arenaClasses.length === 0 && (
-                <div className="col-span-full py-6 text-center text-xs text-slate-400">
-                  Nenhum horário de aula configurado nesta arena. Adicione horários na aba "Configurar Quadras & Valores".
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Professor & Arena Owner Control Panel: Students, Classes, Due Dates & Monthly Fees */}
-          <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div>
-                <span className="text-[11px] font-black uppercase tracking-wider text-amber-700">
-                  PAINEL DO PROFESSOR & DONO DA ARENA
-                </span>
-                <h2 className="text-lg font-black text-slate-900">
-                  Controle de Alunos, Vínculo de Turmas e Vencimento de Mensalidades
-                </h2>
-                <p className="text-xs text-slate-500">
-                  A mensalidade inicia no dia da inscrição. No dia do vencimento, o sistema dispara notificação Push e WhatsApp para o aluno.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-4 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
-                <div>
-                  <span className="text-slate-500 block">Recebido (Pago):</span>
-                  <span className="font-mono font-black text-sm text-emerald-700 tabular-nums">
-                    R${' '}
-                    {arenaStudents
-                      .filter((s) => s.paymentStatus === 'pago')
-                      .reduce((acc, s) => acc + s.amount, 0)
-                      .toFixed(2)}
-                  </span>
-                </div>
-                <div className="h-6 w-px bg-slate-200" />
-                <div>
-                  <span className="text-slate-500 block">A Receber / Vencendo:</span>
-                  <span className="font-mono font-black text-sm text-amber-700 tabular-nums">
-                    R${' '}
-                    {arenaStudents
-                      .filter((s) => s.paymentStatus === 'pendente')
-                      .reduce((acc, s) => acc + s.amount, 0)
-                      .toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Filters for Professor & Owner */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
-                <button
-                  onClick={() => setClassManagementRoleFilter('todos')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                    classManagementRoleFilter === 'todos'
-                      ? 'bg-slate-950 text-white'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Todos os Alunos ({arenaStudents.length})
-                </button>
-                <button
-                  onClick={() => setClassManagementRoleFilter('vencendo_hoje')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                    classManagementRoleFilter === 'vencendo_hoje'
-                      ? 'bg-amber-400 text-slate-950'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  🔔 Vencendo Hoje ({findStudentsWithTuitionDueToday(arenaStudents, todayStr).length})
-                </button>
-                <button
-                  onClick={() => setClassManagementRoleFilter('professor')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                    classManagementRoleFilter === 'professor'
-                      ? 'bg-slate-950 text-white'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Visão do Professor
-                </button>
-                <button
-                  onClick={() => setClassManagementRoleFilter('dono')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                    classManagementRoleFilter === 'dono'
-                      ? 'bg-slate-950 text-white'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Visão Financeira do Dono
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs">
-                <span className="font-bold text-slate-600">Filtrar Professor:</span>
-                <select
-                  value={selectedCoachFilter}
-                  onChange={(e) => setSelectedCoachFilter(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                >
-                  <option value="all">Todos os Professores</option>
-                  {Array.from(new Set(arenaStudents.map((s) => s.coachName))).map((coach) => (
-                    <option key={coach} value={coach}>
-                      {coach}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                    <th className="py-3 px-3">Aluno & Origem Matrícula</th>
-                    <th className="py-3 px-3">Turma Vinculada & Professor</th>
-                    <th className="py-3 px-3">Início (Inscrição) & Vencimento</th>
-                    <th className="py-3 px-3">Valor</th>
-                    <th className="py-3 px-3">Status da Mensalidade</th>
-                    <th className="py-3 px-3 text-right">Controle do Professor & Dono</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {arenaStudents
-                    .filter((stu) => {
-                      if (selectedCoachFilter !== 'all' && stu.coachName !== selectedCoachFilter) {
-                        return false;
-                      }
-                      if (classManagementRoleFilter === 'vencendo_hoje') {
-                        const cycle = calculateStudentTuitionCycle(stu.enrolledAt, todayStr);
-                        const isDue =
-                          stu.paymentStatus === 'pendente' &&
-                          (stu.nextDueDate === todayStr || cycle.isDueToday);
-                        return isDue;
-                      }
-                      return true;
-                    })
-                    .map((stu) => {
-                      const isPaid = stu.paymentStatus === 'pago';
-                      const cycle = calculateStudentTuitionCycle(stu.enrolledAt, todayStr);
-                      const effectiveDueDay = stu.dueDayOfMonth || cycle.dueDayOfMonth;
-                      const effectiveNextDue = stu.nextDueDate || cycle.nextDueDate;
-                      const isDueToday =
-                        !isPaid &&
-                        stu.billingType === 'mensal' &&
-                        (effectiveNextDue === todayStr || effectiveDueDay === new Date().getDate());
-
-                      const renewalLink = buildDirectTuitionRenewalLink(stu);
-                      const waBillingMsg = `Olá ${stu.studentName}! Lembrete oficial da ${tenant.name}: sua mensalidade da turma "${stu.classTitle}" (${stu.coachName}) tem vencimento em ${effectiveNextDue} no valor de R$ ${stu.amount.toFixed(2)}. Link direto para renovação em 1 clique: ${renewalLink}`;
-                      const waUrl = `https://wa.me/55${stu.studentPhone.replace(/\D/g, '')}?text=${encodeURIComponent(waBillingMsg)}`;
-
-                      const roleLabel =
-                        stu.enrolledByRole === 'professor'
-                          ? `Inscrito pelo Professor (${stu.enrolledByName || stu.coachName})`
-                          : stu.enrolledByRole === 'dono'
-                          ? 'Inscrito pelo Dono da Arena'
-                          : 'Auto-Inscrição pelo Aluno';
-
-                      return (
-                        <tr
-                          key={stu.id}
-                          className={`transition-colors ${
-                            isDueToday ? 'bg-amber-50/70 hover:bg-amber-50' : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          <td className="py-3.5 px-3">
-                            <span className="font-black text-slate-900 block text-xs">
-                              {stu.studentName}
-                            </span>
-                            <span className="text-slate-500 font-mono text-[11px] block">
-                              {stu.studentPhone}
-                            </span>
-                            <span className="text-[10px] font-semibold text-slate-500">
-                              {roleLabel}
-                            </span>
-                          </td>
-
-                          <td className="py-3.5 px-3">
-                            <span className="font-bold text-slate-900 block">{stu.classTitle}</span>
-                            <span className="text-slate-500 text-[11px]">
-                              Prof: <strong>{stu.coachName}</strong> · {stu.classTime}
-                            </span>
-                          </td>
-
-                          <td className="py-3.5 px-3">
-                            <span className="font-semibold text-slate-800 block">
-                              Início na inscrição: <strong className="font-mono">{stu.enrolledAt}</strong>
-                            </span>
-                            {stu.billingType === 'mensal' ? (
-                              <span className="text-[11px] text-slate-600 block">
-                                Vence todo <strong>dia {effectiveDueDay}</strong> · Próximo:{' '}
-                                <strong className="font-mono">{effectiveNextDue}</strong>
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-slate-500 block">Diária Avulsa</span>
-                            )}
-                          </td>
-
-                          <td className="py-3.5 px-3 font-mono font-black text-slate-900 tabular-nums">
-                            R$ {stu.amount.toFixed(2)}
-                          </td>
-
-                          <td className="py-3.5 px-3">
-                            {isPaid ? (
-                              <span className="font-black text-emerald-700 block">
-                                ✓ Em Dia (Pago)
-                              </span>
-                            ) : isDueToday ? (
-                              <div>
-                                <span className="font-black text-rose-600 block">
-                                  🔔 VENCE HOJE!
-                                </span>
-                                <span className="text-[10px] text-slate-500">
-                                  {stu.lastDueNotificationAt
-                                    ? `Notificado às ${stu.lastDueNotificationAt}`
-                                    : 'Disparo de vencimento ativo'}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="font-bold text-amber-700 block">
-                                ⏳ Pendente
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="py-3.5 px-3 text-right">
-                            <div className="flex flex-wrap items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => {
-                                  toggleClassStudentPayment(stu.id);
-                                  triggerToast(
-                                    isPaid
-                                      ? `Status de ${stu.studentName} alterado para Pendente.`
-                                      : `✅ Pagamento de ${stu.studentName} confirmado! Próximo ciclo renovado para +30 dias.`
-                                  );
-                                }}
-                                className={`px-2.5 py-1.5 rounded-lg font-bold cursor-pointer transition-colors ${
-                                  isPaid
-                                    ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                    : 'bg-emerald-700 text-white hover:bg-emerald-800'
-                                }`}
-                              >
-                                {isPaid ? 'Reabrir' : 'Dar Baixa (Pago)'}
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  notifyStudentTuitionDue(stu.id);
-                                  triggerToast(
-                                    `🔔 Notificação de vencimento enviada para o aluno ${stu.studentName} (Push + WhatsApp)!`
-                                  );
-                                }}
-                                className="px-2.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black cursor-pointer transition-colors flex items-center gap-1"
-                                title="Enviar notificação pro aluno avisando sobre o vencimento da mensalidade"
-                              >
-                                <BellRing className="w-3.5 h-3.5" />
-                                Notificar Vencimento
-                              </button>
-
-                              {!isDueToday && (
-                                <button
-                                  onClick={() => {
-                                    simulateStudentDueToday(stu.id);
-                                    triggerToast(
-                                      `📅 Vencimento de ${stu.studentName} simulado para HOJE (${todayStr}) e notificação enviada ao aluno!`
-                                    );
-                                  }}
-                                  className="px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold cursor-pointer transition-colors text-[11px]"
-                                  title="Simular que hoje é o dia do vencimento deste aluno e disparar notificação"
-                                >
-                                  Simular Vence Hoje
-                                </button>
-                              )}
-
-                              <a
-                                href={waUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
-                                title="Cobrar / Avisar vencimento via WhatsApp"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5" />
-                              </a>
-
-                              <button
-                                onClick={() => removeStudentFromClass(stu.id)}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
-                                title="Remover aluno da turma"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Busca Regional por Horário ("Quero Terça e Quinta 7 às 8") */}
+          <RegionalAvailabilityFinder />
         </div>
       )}
 

@@ -72,7 +72,14 @@ export function layoutBracket(matches: BracketMatch[]) {
     y: margin + halfHeight + (middleGap - CARD_HEIGHT) / 2,
   }));
   // Free space between the two decision cards (and their local lines) reserved for the Top 5 podium.
-  const podium = { x: centerX - 20, y: margin + halfHeight + 8, width: CARD_WIDTH + 80, height: middleGap - 16 };
+  const podiumWidth = 310;
+  const podiumHeight = 270;
+  const podium = {
+    x: centerX - 15,
+    y: margin + halfHeight + (middleGap - podiumHeight) / 2,
+    width: podiumWidth,
+    height: podiumHeight,
+  };
   return { positions, width, height, centerX, podium };
 }
 
