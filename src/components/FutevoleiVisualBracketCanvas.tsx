@@ -451,7 +451,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
             </span>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0" hidden={props.readOnly}>
+          <div className="flex items-center gap-1 shrink-0" style={props.readOnly ? { display: 'none' } : undefined}>
             {isReady && onQuickOfficialize && (
               <button
                 type="button"

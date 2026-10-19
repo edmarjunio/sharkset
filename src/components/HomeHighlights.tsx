@@ -1,10 +1,8 @@
+import { LiveDirectory } from './LiveDirectory';
 import { HomeRanking } from './HomeRanking';
-import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
 import { useBookingLocation, validCoordinates } from '../store/useBookingLocation';
 import { calculateHaversineDistance } from '../utils/geoUtils';
-import React, { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useBookingSelection } from '../store/useBookingSelection';
 import type { Tournament } from '../types';
@@ -19,7 +17,7 @@ export const HomeHighlights: React.FC = () => {
   const labels = { running: 'Em execução', upcoming: 'Próximos', finished: 'Finalizados' };
   const ordered = useMemo(() => [...tournaments].sort((a, b) => ['running', 'upcoming', 'finished'].indexOf(stage(a)) - ['running', 'upcoming', 'finished'].indexOf(stage(b)) || a.date.localeCompare(b.date)), [tournaments, matchesByTournament]);
   return <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8 text-white">
-    <LiveGames />
+    <LiveDirectory compact />
     <HomeRanking />
     <section className="space-y-3" aria-labelledby="nearby-arenas-title">
       <div className="flex justify-between gap-3"><h2 id="nearby-arenas-title" className="font-black text-xl">Arenas próximas</h2><button onClick={() => setActiveTab('arenas_directory')} className="text-cyan-300">Localizar arenas →</button></div>
@@ -38,14 +36,3 @@ export const HomeHighlights: React.FC = () => {
     </section>
   </div>;
 };
-function LiveGames() {
-  const [games, setGames] = useState<{id: string; title: string}[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  useEffect(() => onSnapshot(query(collection(db, 'broadcasts'), where('isLive', '==', true)), snapshot => {
-    setGames(snapshot.docs.filter(d => { try { return new URL(d.data().videoUrl).protocol === 'https:'; } catch { return false; } }).map(d => ({ id: d.id, title: String(d.data().title || 'Transmissão ao vivo') }))); setLoading(false); setError('');
-  }, () => { setGames([]); setLoading(false); setError('Não foi possível consultar as transmissões.'); }), []);
-  return <section className="space-y-3" aria-labelledby="home-live-title"><h2 id="home-live-title" className="font-black text-xl">Jogos ao vivo</h2>
-    {loading ? <p role="status">Consultando transmissões…</p> : error ? <p role="alert">{error}</p> : games.length ? <div className="grid gap-3 sm:grid-cols-2">{games.map(g => <a key={g.id} href={'?broadcast=' + encodeURIComponent(g.id)} onClick={event => { if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); useBroadcastNavigation.getState().open({ kind: 'published', id: g.id }); } }} className="rounded-2xl bg-slate-950 border border-red-800 p-4"><span className="text-red-400 font-bold">AO VIVO · </span>{g.title}<span className="block text-cyan-300">Assistir →</span></a>)}</div> : <p className="text-slate-400">Nenhuma transmissão em execução.</p>}
-  </section>;
-}

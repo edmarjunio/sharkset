@@ -1,3 +1,6 @@
+import { LiveDirectory } from './components/LiveDirectory';
+import { BroadcastWatchScreen } from './components/BroadcastWatchScreen';
+import { useBroadcastNavigation } from './store/useBroadcastNavigation';
 import { FreeSlotsDateTimeFilter } from './components/FreeSlotsDateTimeFilter';
 import React from 'react';
 import { AquariumBackground } from './components/AquariumBackground';
@@ -18,7 +21,6 @@ import { TenantSelectorModal } from './components/TenantSelectorModal';
 import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
-import { FreeBroadcastPanel } from './components/FreeBroadcastPanel';
 
 const MainContent: React.FC = () => {
   const {
@@ -33,10 +35,10 @@ const MainContent: React.FC = () => {
     activeTab === 'scheduler';
 
   const arenaPalette = tenant.brandPalette;
-  const broadcastId = new URLSearchParams(window.location.search).get('broadcast');
-  if (broadcastId && /^[\w-]{1,64}$/.test(broadcastId)) {
-    return <main className="shark-site-background min-h-screen p-4"><AquariumBackground /><div className="max-w-5xl mx-auto"><FreeBroadcastPanel broadcastId={broadcastId} /></div></main>;
-  }
+  React.useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('broadcast');
+    if (id && /^[\w-]{1,64}$/.test(id)) useBroadcastNavigation.getState().open({ kind: 'published', id });
+  }, []);
 
   return (
     <div
@@ -69,6 +71,7 @@ const MainContent: React.FC = () => {
 
       <main className="site-content flex-1 min-w-0">
         {activeTab === 'home' && <HomeHighlights />}
+        {activeTab === 'live' && <LiveDirectory />}
         {activeTab === 'tournaments' && <DoubleEliminationBracket />}
         {activeTab === 'scheduler' && <CourtScheduler />}
         {activeTab === 'ranking_athletes' && <RankingBoard />}
@@ -153,6 +156,7 @@ export default function App() {
   return (
     <AppProvider>
       <MainContent />
+      <BroadcastWatchScreen />
     </AppProvider>
   );
 }

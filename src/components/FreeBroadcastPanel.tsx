@@ -1,3 +1,4 @@
+import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
 import React, { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -51,6 +52,7 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
           <p className="text-center text-white p-6">{canEdit ? 'Conecte o vídeo para publicar.' : 'A transmissão ainda não começou.'}</p>}
         <div className="p-3"><BroadcastOverlay state={broadcast} team1={broadcast.team1} team2={broadcast.team2} /></div>
       </div>
+      <button onClick={() => useBroadcastNavigation.getState().open({ kind: 'published', id })} className="rounded-xl bg-cyan-700 text-white px-4 py-2 font-bold">Assistir / tela cheia</button>
       {canEdit && <fieldset disabled={busy} className="space-y-3">
         <BroadcastOverlay state={broadcast} team1={broadcast.team1} team2={broadcast.team2} onChange={save} />
         <label className="block text-sm">Endereço HTTPS do vídeo ao vivo

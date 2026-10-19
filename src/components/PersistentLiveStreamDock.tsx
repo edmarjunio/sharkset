@@ -1,3 +1,4 @@
+import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { HISTORICAL_LEGEND_VIDEOS, INITIAL_LIVE_CHAT } from '../data/initialData';
@@ -44,7 +45,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
       });
     });
     return list.sort(
-      (a, b) => (b.match.spectatorsCount || 150) - (a.match.spectatorsCount || 150)
+      (a, b) => a.match.matchNumber - b.match.matchNumber
     );
   }, [matchesByTournament, tournaments]);
 
@@ -149,7 +150,8 @@ export const PersistentLiveStreamDock: React.FC = () => {
       : activeLegend.title;
     const expandPlayer = () => {
       setIsTheaterExpanded(false);
-      setActiveTab('home');
+      if (streamMode === 'live' && activeLiveEntry) useBroadcastNavigation.getState().open({ kind: 'match', id: activeLiveEntry.match.id, tournamentId: activeLiveEntry.match.tournamentId });
+      else setActiveTab('home');
     };
 
     return (
@@ -306,7 +308,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
                   <span className="px-2.5 py-1 rounded-lg bg-[#030B17]/85 text-[#12C7BB] text-xs font-extrabold flex items-center gap-1.5 backdrop-blur-xs border border-[#145A9B]">
                     <Users className="w-3.5 h-3.5" />
                     {streamMode === 'live'
-                      ? `${activeLiveEntry?.match.spectatorsCount || 342} espectadores simultâneos`
+                      ? 'Acompanhar jogo'
                       : `${activeLegend.viewsCount} visualizações`}
                   </span>
                 </div>
@@ -437,7 +439,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
                             <span>#{idx + 1} MAIS VISTO</span>
                             <span>·</span>
                             <span className="text-[#12C7BB]">
-                              {match.spectatorsCount || 210} assistindo
+                              Acompanhar jogo
                             </span>
                           </div>
                           <div className="text-xs font-extrabold text-white truncate mt-0.5">

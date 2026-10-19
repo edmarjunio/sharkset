@@ -60,19 +60,10 @@ export const Navbar: React.FC = () => {
 
   const arenaPalette = tenant.brandPalette;
 
-  const handleOpenLiveBroadcastStudio = () => {
-    const firstActive = bookings.find((b) => b.status === 'confirmed');
-    if (firstActive) {
-      setActiveLiveBroadcastBookingId(firstActive.id);
-    } else {
-      setActiveTab('scheduler');
-      setArenaSubTab('transmissoes');
-    }
-  };
-
   // General Platform Navigation Items
   const navItems: { id: typeof activeTab; label: string; isArena?: boolean }[] = [
     { id: 'home', label: 'INÍCIO' },
+    { id: 'live', label: '🔴 LIVE' },
     { id: 'tournaments', label: 'CAMPEONATOS' },
     { id: 'arenas_directory', label: 'ARENAS', isArena: true },
     { id: 'ranking_athletes', label: 'RANKINGS' },
@@ -201,6 +192,7 @@ export const Navbar: React.FC = () => {
             {isArenaPage ? (
                   <>
                     <button type="button" onClick={goHome} className="min-h-9 px-3 py-2 rounded-xl text-xs font-black hover:bg-white/10 whitespace-nowrap">INÍCIO</button>
+                    <button type="button" onClick={() => setActiveTab('live')} className="min-h-9 px-3 py-2 rounded-xl text-xs font-black text-red-300 hover:bg-white/10 whitespace-nowrap">🔴 LIVE</button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('arenas_directory')}
@@ -279,7 +271,7 @@ export const Navbar: React.FC = () => {
               <div className="flex items-center gap-2.5 shrink-0 ml-auto">
                 <button
                   type="button"
-                  onClick={handleOpenLiveBroadcastStudio}
+                  onClick={() => setActiveTab('live')}
                   className="px-3 py-1.5 rounded-full bg-slate-900/90 hover:bg-slate-800 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer border border-slate-700/80 shadow-xs transition-all whitespace-nowrap"
                   title="Iniciar transmissão ao vivo"
                 >
@@ -422,9 +414,9 @@ export const Navbar: React.FC = () => {
           <div className="flex-1 flex items-center justify-center px-1">
             <button
               type="button"
-              onClick={handleOpenLiveBroadcastStudio}
+              onClick={() => setActiveTab('live')}
               className="relative px-3 sm:px-4 py-1.5 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs sm:text-[13px] tracking-wider uppercase flex items-center gap-1.5 shadow-[0_0_18px_rgba(239,68,68,0.7)] ring-2 ring-red-400/80 cursor-pointer transition-all active:scale-95 animate-pulse"
-              title="Assistir ou Transmitir Jogos Ao Vivo"
+              title="Ver transmissões ao vivo"
               aria-label="Ao Vivo"
             >
               <span className="relative flex h-2.5 w-2.5">
@@ -432,7 +424,7 @@ export const Navbar: React.FC = () => {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white shadow-xs" />
               </span>
               <Radio className="w-3.5 h-3.5 text-white" />
-              <span className="font-black drop-shadow-sm">AO VIVO</span>
+              <span className="font-black drop-shadow-sm">LIVE</span>
             </button>
           </div>
 
@@ -486,7 +478,7 @@ export const Navbar: React.FC = () => {
         <div className="w-full">
           <nav
             aria-label="Navegação móvel com botões sempre à mostra"
-            className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 w-full"
+            className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 w-full"
           >
             {isArenaPage && <button type="button" onClick={goHome} className="lg:hidden min-h-10 px-3 py-2 rounded-xl border border-slate-700 bg-slate-900 text-[11px] font-black">INÍCIO</button>}
             {isArenaPage ? (

@@ -1,5 +1,7 @@
 import type { Express } from 'express';
 import { adminDatabase, authenticatedUser } from './firebaseAdmin';
+import { FieldPath } from 'firebase-admin/firestore';
+import { liveDistance, matchesLiveLocation, type LiveLocation } from '../src/services/liveDirectory';
 
 function validScoreboard(data: Record<string, unknown>) {
   return ['score1', 'score2', 'sets1', 'sets2', 'elapsedSeconds'].every(key =>
@@ -9,7 +11,41 @@ function validScoreboard(data: Record<string, unknown>) {
     (data.clockStartedAt === null || (Number.isSafeInteger(data.clockStartedAt) && Number(data.clockStartedAt) <= Date.now()));
 }
 
-export function registerBroadcastRoutes(app: Express) {
+export function registerBroadcastRoutes(app: Express, getDatabase = adminDatabase) {
+  app.get('/api/broadcasts', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const mode = String(req.query.mode || 'nearby');
+    const city = typeof req.query.city === 'string' ? req.query.city.trim() : '';
+    const state = typeof req.query.state === 'string' ? req.query.state.trim() : '';
+    const lat = req.query.lat === undefined ? NaN : Number(req.query.lat);
+    const lng = req.query.lng === undefined ? NaN : Number(req.query.lng);
+    const cursor = req.query.cursor;
+    if (!['nearby', 'city', 'all'].includes(mode) || (mode === 'city' && (!city || city.length > 100 || state.length > 50)) ||
+      (mode === 'nearby' && (!Number.isFinite(lat) || Math.abs(lat) > 90 || !Number.isFinite(lng) || Math.abs(lng) > 180)) ||
+      (cursor !== undefined && (typeof cursor !== 'string' || !/^[\w-]{1,128}$/.test(cursor)))) {
+      res.status(400).json({ error: 'Informe uma localização ou filtro válido.' }); return;
+    }
+    try {
+      const db = getDatabase();
+      let pageQuery = db.collection('broadcasts').where('isLive', '==', true).orderBy(FieldPath.documentId()).limit(12);
+      if (cursor) pageQuery = pageQuery.startAfter(cursor);
+      const page = await pageQuery.get();
+      const arenaIds = [...new Set(page.docs.map(item => item.data().arenaId).filter((id): id is string => typeof id === 'string' && /^[\w-]{1,64}$/.test(id)))];
+      const arenas = arenaIds.length ? await db.getAll(...arenaIds.map(id => db.collection('arenas').doc(id))) : [];
+      const arenaMap = new Map(arenas.map(item => [item.id, item.data()]));
+      const items = page.docs.flatMap(item => {
+        const data = item.data();
+        const arena = arenaMap.get(data.arenaId);
+        const location: LiveLocation = arena || {};
+        if (typeof data.videoUrl !== 'string' || !/^https:\/\//i.test(data.videoUrl) || !matchesLiveLocation(location, { mode, city, state, lat, lng })) return [];
+        return [{ id: item.id, title: String(data.title || 'Transmissão ao vivo'), city: location.city || '', state: location.state || '',
+          arenaName: arena?.name || '', distanceKm: mode === 'nearby' ? liveDistance(location, lat, lng) : null }];
+      });
+      res.json({ items, nextCursor: page.size === 12 ? page.docs[page.docs.length - 1].id : null });
+    } catch {
+      res.status(503).json({ error: 'Não foi possível consultar as transmissões. Tente novamente.' });
+    }
+  });
   app.post('/api/broadcasts', async (req, res) => {
     try {
       const user = await authenticatedUser(req);

@@ -64,6 +64,7 @@ import { applyRankedActivity, resetInactiveProgress } from '../services/rankingA
 
 export type MainTab =
   | 'home'
+  | 'live'
   | 'tournaments'
   | 'scheduler'
   | 'register_dupla'
