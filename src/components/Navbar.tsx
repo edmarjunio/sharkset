@@ -36,9 +36,9 @@ export const Navbar: React.FC = () => {
     waitlist.filter((w) => w.status === 'notified').length + waitlistNotifications.length;
   const unreadSmartCount = smartNotifications.filter((n) => !n.read).length;
 
-  // Check if we are viewing the Arena page with White-Label Arena Branding enabled
+  // Strictly scope White-Label Arena Branding to the Arena page ('scheduler') only
   const isArenaWhiteLabelSite =
-    (activeTab === 'scheduler' || Boolean(tenant.whiteLabelEnabled)) &&
+    activeTab === 'scheduler' &&
     Boolean(tenant.whiteLabelEnabled && tenant.logoUrl && tenant.brandPalette);
 
   const arenaPalette = tenant.brandPalette;
@@ -62,7 +62,7 @@ export const Navbar: React.FC = () => {
   ];
 
   const activeAccentHex =
-    isArenaWhiteLabelSite && arenaPalette ? arenaPalette.primary : '#FF6B00';
+    isArenaWhiteLabelSite && arenaPalette ? arenaPalette.accent || arenaPalette.primary : '#FF6B00';
 
   return (
     <header
@@ -70,7 +70,8 @@ export const Navbar: React.FC = () => {
       style={
         isArenaWhiteLabelSite && arenaPalette
           ? {
-              borderBottomColor: `${arenaPalette.primary}33`,
+              backgroundColor: arenaPalette.headerBg,
+              borderBottomColor: `${arenaPalette.primary}66`,
             }
           : undefined
       }
@@ -78,20 +79,23 @@ export const Navbar: React.FC = () => {
       {/* Top White-Label Ribbon when Arena Custom Site Mode is Active */}
       {isArenaWhiteLabelSite && arenaPalette && (
         <div
-          className="w-full px-4 py-1 text-[11px] font-black tracking-wider uppercase flex items-center justify-between"
+          className="w-full px-4 py-1 text-[11px] font-black tracking-wider uppercase flex items-center justify-between border-b border-white/10"
           style={{
-            backgroundColor: arenaPalette.headerBg,
+            backgroundColor: arenaPalette.primary,
             color: '#FFFFFF',
           }}
         >
           <div className="flex items-center gap-2 truncate">
             <MapPin className="w-3 h-3 shrink-0" style={{ color: arenaPalette.accent }} />
             <span className="truncate">
-              SITE OFICIAL: {tenant.name} ({tenant.city}/{tenant.state})
+              SITE OFICIAL EXCLUSIVO DA ARENA: {tenant.name} ({tenant.city}/{tenant.state})
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="px-2 py-0.5 rounded bg-white/10 text-[10px] font-black tracking-widest text-white/90 border border-white/15">
+            <span className="hidden sm:inline text-[10px] font-bold text-white/90">
+              ⚽ Foco: Futevôlei · Em breve abas p/ outros esportes
+            </span>
+            <span className="px-2 py-0.5 rounded bg-black/25 text-[10px] font-black tracking-widest text-white border border-white/20">
               DESENVOLVIDO POR SHARKSET
             </span>
           </div>
@@ -99,7 +103,7 @@ export const Navbar: React.FC = () => {
       )}
 
       <div className="navbar-top w-full px-3 sm:px-6 flex flex-wrap items-center justify-between gap-4 py-3">
-        {/* LEFT: Super Large Brand Logo (Either Arena's White-Label Logo OR Extra-Large SHARKSET Logo) */}
+        {/* LEFT: Super Large Brand Logo (Either Arena's White-Label Logo on Arena Page OR Extra-Large SHARKSET 3D Coin Logo) */}
         <div className="flex items-center gap-3 shrink-0">
           {isArenaWhiteLabelSite && tenant.logoUrl ? (
             <div className="flex items-center gap-3">
@@ -112,17 +116,17 @@ export const Navbar: React.FC = () => {
                 <img
                   src={tenant.logoUrl}
                   alt={tenant.name}
-                  className="aquarium-glass w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-contain bg-slate-900 p-1.5 border-2 shadow-md transition-transform group-hover:scale-105 shrink-0"
-                  style={{ borderColor: arenaPalette?.primary || '#FF6B00' }}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover bg-slate-950 p-1 border-2 shadow-xl transition-transform group-hover:scale-105 shrink-0"
+                  style={{ borderColor: arenaPalette?.accent || arenaPalette?.primary || '#FF6B00' }}
                 />
                 <div className="hidden xl:block">
-                  <div
-                    className="text-lg font-black tracking-tight leading-tight"
-                    style={{ color: arenaPalette?.headerBg || '#0F172A' }}
-                  >
+                  <div className="text-lg font-black tracking-tight leading-tight text-white drop-shadow-xs">
                     {tenant.name}
                   </div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mt-0.5">
+                  <div
+                    className="text-[10px] font-extrabold uppercase tracking-widest mt-0.5"
+                    style={{ color: arenaPalette?.accent || '#FBBF24' }}
+                  >
                     DESENVOLVIDO POR SHARKSET
                   </div>
                 </div>
@@ -135,11 +139,10 @@ export const Navbar: React.FC = () => {
                 e.preventDefault();
                 setActiveTab('home');
               }}
-              className="flex items-center gap-2.5 group cursor-pointer transition-transform hover:scale-[1.03] shrink-0"
+              className="navbar-coin-anchor flex items-center gap-2.5 group cursor-pointer shrink-0"
               title="SHARKSET Oficial"
             >
-              {/* Extra-Large Logo as requested: "Quero a logo maior do que na imagem que enviei, quero bem grande a logo marca" */}
-              <SharksetLogo size="2xl" className="[&>img]:w-24 [&>img]:h-24 sm:[&>img]:w-36 sm:[&>img]:h-36" />
+              <SharksetLogo size="2xl" variant="coin3d" />
             </a>
           )}
         </div>

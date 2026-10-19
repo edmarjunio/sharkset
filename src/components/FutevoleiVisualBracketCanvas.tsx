@@ -58,7 +58,6 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
     localStorage.getItem('sharkset_bracket_view') === 'columns' ? 'columns' : 'panorama'
   );
   const [search, setSearch] = useState('');
-  const [showRelegationPaths, setShowRelegationPaths] = useState(false);
   const [quickModalMatchId, setQuickModalMatchId] = useState<string | null>(null);
   const [quickSets, setQuickSets] = useState<MatchSet[]>([{ score1: 18, score2: 14 }]);
   const [quickError, setQuickError] = useState<string | null>(null);
@@ -73,6 +72,11 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
   const slotOrigins = useMemo(() => bracketSlotOrigins(matches), [matches]);
   const matchById = useMemo(() => new Map(matches.map((m) => [m.id, m])), [matches]);
   const identity = matches.map((match) => match.id).join('|');
+
+  // Exact vertical Y centers inside the 220px card for Slot 1 (top line), Slot 2 (bottom line), and Fork Midpoint
+  const SLOT1_Y = 66;
+  const SLOT2_Y = 116;
+  const MID_Y = (SLOT1_Y + SLOT2_Y) / 2; // 91
 
   const quickModalMatch = useMemo(
     () => (quickModalMatchId ? matchById.get(quickModalMatchId) || null : null),
@@ -191,12 +195,72 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
     return () => element.removeEventListener('wheel', onWheel);
   }, [zoom, view, props.isFullscreen, layout.width]);
 
-  function describeSourceSlot(source?: BracketSource): string {
-    if (!source) return 'A definir';
-    if (source.kind === 'team') return formatParticipantName(source.team);
-    const originMatch = matchById.get(source.matchId);
-    if (!originMatch) return 'Aguardando definição';
-    return `${source.kind === 'winner' ? 'VENCEDOR' : 'PERDEDOR'} DO JOGO ${originMatch.matchNumber}`;
+  function getSlotSourceInfo(
+    match: BracketMatch,
+    slotIndex: 0 | 1
+  ): {
+    code: string;
+    originLabel: string;
+    displayName: string;
+    kind: 'team' | 'winner' | 'loser' | 'unknown';
+  } {
+    const pair = slotIndex === 0 ? match.team1 : match.team2;
+    const rawSource =
+      (slotIndex === 0 ? match.source1 : match.source2) ??
+      slotOrigins.get(`${match.id}:${slotIndex}`);
+
+    if (rawSource?.kind === 'team') {
+      const seedNum = rawSource.team?.seed ?? pair?.seed ?? slotIndex + 1;
+      return {
+        code: `${seedNum}º`,
+        originLabel: `Cabeça #${seedNum} · Entrada Principal`,
+        displayName: pair ? formatParticipantName(pair) : formatParticipantName(rawSource.team),
+        kind: 'team',
+      };
+    }
+
+    if (rawSource && (rawSource.kind === 'winner' || rawSource.kind === 'loser')) {
+      const originMatch = matchById.get(rawSource.matchId);
+      const num = originMatch?.matchNumber;
+      const isWin = rawSource.kind === 'winner';
+      const code = num ? `${isWin ? 'V' : 'P'}${num}` : isWin ? 'V?' : 'P?';
+      const originLabel = num
+        ? `${isWin ? 'Vencedor' : 'Perdedor'} do Jogo ${num} (${code})`
+        : 'Aguardando definição';
+      return {
+        code,
+        originLabel,
+        displayName: pair ? formatParticipantName(pair) : originLabel.toUpperCase(),
+        kind: rawSource.kind,
+      };
+    }
+
+    return {
+      code: pair ? `#${pair.seed}` : '—',
+      originLabel: pair ? `Dupla #${pair.seed}` : 'A definir',
+      displayName: pair ? formatParticipantName(pair) : 'A definir',
+      kind: pair ? 'team' : 'unknown',
+    };
+  }
+
+  function getMatchDisplayTitle(match: BracketMatch): string {
+    if (match.stage === 'semifinals') {
+      const semis = matches
+        .filter((m) => m.stage === 'semifinals')
+        .sort((a, b) => a.matchNumber - b.matchNumber);
+      const isSecond = semis[1]?.id === match.id;
+      return `Semifinal ${isSecond ? 'B' : 'A'} · Jogo ${match.matchNumber}`;
+    }
+    if (match.stage === 'grand_final' || match.stage === 'super_final') {
+      return `Disputa de 1º/2º · Jogo ${match.matchNumber}`;
+    }
+    if (match.stage === 'third_place') {
+      return `Disputa de 3º/4º · Jogo ${match.matchNumber}`;
+    }
+    if (match.stage === 'winners') {
+      return `Principal R${match.round} · Jogo ${match.matchNumber}`;
+    }
+    return `Repescagem R${match.round} · Jogo ${match.matchNumber}`;
   }
 
   function isMatchLive(match: BracketMatch): boolean {
@@ -214,6 +278,10 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
     const isLive = isMatchLive(match);
     const isReady = Boolean(match.team1 && match.team2 && !blocked);
     const outgoing = edges.filter((edge) => edge.from === match.id);
+    const winnerEdge = outgoing.find((e) => e.outcome === 'winner');
+    const loserEdge = outgoing.find((e) => e.outcome === 'loser');
+    const winnerDestMatch = winnerEdge ? matchById.get(winnerEdge.to) : undefined;
+    const loserDestMatch = loserEdge ? matchById.get(loserEdge.to) : undefined;
 
     const stageCardClass =
       match.stage === 'winners'
@@ -224,32 +292,33 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
 
     const stageBadgeClass =
       match.stage === 'winners'
-        ? 'bg-emerald-500 text-slate-950'
+        ? 'bg-emerald-400 text-slate-950'
         : match.stage === 'losers'
         ? 'bg-amber-400 text-slate-950'
         : 'bg-sky-400 text-slate-950';
 
-    const team1Label = match.team1 ? formatParticipantName(match.team1) : describeSourceSlot(match.source1 ?? slotOrigins.get(`${match.id}:0`));
-    const team2Label = match.team2 ? formatParticipantName(match.team2) : describeSourceSlot(match.source2 ?? slotOrigins.get(`${match.id}:1`));
+    const slot1 = getSlotSourceInfo(match, 0);
+    const slot2 = getSlotSourceInfo(match, 1);
     const team1Won = isCompleted && match.winnerId === match.team1?.id;
     const team2Won = isCompleted && match.winnerId === match.team2?.id;
+    const displayTitle = getMatchDisplayTitle(match);
 
     return (
       <article
         key={match.id}
         data-match-id={match.id}
-        className={`rounded-2xl p-2.5 h-full flex flex-col justify-between overflow-hidden transition-all ${stageCardClass} ${
+        className={`relative rounded-2xl px-2.5 py-2 h-full overflow-hidden transition-all ${stageCardClass} ${
           isLive ? 'bracket-card-live' : ''
         } ${search && matchingIds.has(match.id) ? 'ring-3 ring-cyan-300' : ''}`}
       >
-        {/* Top Header: Match Number + Stage + Live/Status Badge */}
-        <div className="flex items-center justify-between gap-1.5 text-[11px] leading-tight">
+        {/* Top Header: Match Number + Stage + Live/Status Badge (y: 8..34) */}
+        <div className="flex items-center justify-between gap-1.5 text-[11px] leading-tight h-[28px]">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className={`px-1.5 py-0.5 rounded-md font-black text-[10px] shrink-0 ${stageBadgeClass}`}>
-              J#{match.matchNumber}
+              J#{match.matchNumber} · V{match.matchNumber}
             </span>
-            <strong className="truncate text-white font-bold" title={match.stageName}>
-              {match.stageName}
+            <strong className="truncate text-white font-extrabold text-[11px]" title={displayTitle}>
+              {displayTitle}
             </strong>
           </div>
 
@@ -264,48 +333,65 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
               Decisão necessária
             </span>
           ) : isCompleted ? (
-            <span className="px-1.5 py-0.5 rounded bg-black/30 text-emerald-200 text-[10px] font-bold shrink-0">
+            <span className="px-1.5 py-0.5 rounded bg-black/35 text-emerald-200 text-[10px] font-bold shrink-0">
               ✓ Encerrado
             </span>
           ) : isReady ? (
-            <span className="px-1.5 py-0.5 rounded bg-black/25 text-cyan-200 text-[10px] font-semibold shrink-0">
+            <span className="px-1.5 py-0.5 rounded bg-black/30 text-cyan-200 text-[10px] font-semibold shrink-0">
               Pronto
             </span>
           ) : (
-            <span className="px-1.5 py-0.5 rounded bg-black/20 text-white/70 text-[10px] shrink-0">
+            <span className="px-1.5 py-0.5 rounded bg-black/25 text-white/75 text-[10px] shrink-0">
               Aguardando
             </span>
           )}
         </div>
 
-        {/* Teams & Scores */}
-        <div className="my-1 space-y-1">
-          {[1, 2].map((teamIdx) => {
-            const pair = teamIdx === 1 ? match.team1 : match.team2;
-            const label = teamIdx === 1 ? team1Label : team2Label;
-            const won = teamIdx === 1 ? team1Won : team2Won;
-            const scoreVal = teamIdx === 1 ? match.score1 : match.score2;
+        {/* Two Bracket Slot Lines — Positioned so centers are at SLOT1_Y=66 and SLOT2_Y=116 */}
+        <div className="mt-1.5 space-y-[6px]">
+          {([0, 1] as const).map((slotIdx) => {
+            const pair = slotIdx === 0 ? match.team1 : match.team2;
+            const info = slotIdx === 0 ? slot1 : slot2;
+            const won = slotIdx === 0 ? team1Won : team2Won;
+            const scoreVal = slotIdx === 0 ? match.score1 : match.score2;
+            const codeBadgeColor =
+              info.kind === 'loser'
+                ? 'bg-amber-400/95 text-slate-950'
+                : info.kind === 'winner'
+                ? 'bg-cyan-300 text-slate-950'
+                : 'bg-white/20 text-white';
+
             return (
               <div
-                key={teamIdx}
-                className={`flex items-center justify-between gap-2 px-2 py-1 rounded-lg text-xs ${
+                key={slotIdx}
+                className={`h-[44px] flex items-center justify-between gap-1.5 px-2 rounded-lg border-b-2 transition-colors ${
                   won
-                    ? 'bg-white/20 text-white font-extrabold ring-1 ring-white/50'
+                    ? 'bg-white/22 text-white font-extrabold border-emerald-300 ring-1 ring-white/50'
                     : pair
-                    ? 'bg-black/25 text-white/95 font-medium'
-                    : 'bg-black/20 text-white font-semibold text-[11px]'
+                    ? 'bg-black/30 text-white/95 font-semibold border-white/35'
+                    : 'bg-black/25 text-white font-semibold border-white/25'
                 }`}
               >
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  {won && <Trophy className="w-3 h-3 text-amber-300 shrink-0" />}
-                  {pair && !won && (
-                    <span className="text-[10px] opacity-75 shrink-0">#{pair.seed}</span>
-                  )}
-                  <span className={pair ? 'truncate' : 'whitespace-normal leading-tight'} title={label}>
-                    {label}
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-black shrink-0 ${codeBadgeColor}`}
+                    title={info.originLabel}
+                  >
+                    {info.code}
                   </span>
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <div className="flex items-center gap-1 min-w-0">
+                      {won && <Trophy className="w-3 h-3 text-amber-300 shrink-0" />}
+                      <span className="truncate text-[11px] font-extrabold block" title={info.displayName}>
+                        {info.displayName}
+                      </span>
+                    </div>
+                    <span className="truncate text-[9.5px] text-white/75 font-medium block">
+                      {pair ? info.originLabel : `Vaga reservada · ${info.code}`}
+                    </span>
+                  </div>
                 </div>
-                <strong className="text-xs font-black tabular-nums shrink-0 px-1.5 py-0.5 rounded bg-black/30">
+                <strong className="text-xs font-black tabular-nums shrink-0 px-1.5 py-0.5 rounded bg-black/40 border border-white/15">
                   {scoreVal ?? '—'}
                 </strong>
               </div>
@@ -313,64 +399,70 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
           })}
         </div>
 
-        {/* Sub-info: Sets / Court + Routing Destinations */}
-        <div className="flex items-center justify-between gap-1 text-[10px] leading-tight opacity-90">
-          <span className="truncate text-white/85">
-            {match.resultMode === 'walkover'
-              ? 'W.O. · sem pontos de set'
-              : match.sets?.map((set) => `${set.score1}–${set.score2}`).join(' / ') ||
-                `${match.courtName || 'Quadra 1'} · ${match.scheduledTime || 'A seguir'}`}
+        {/* Destination Routing Bar: Who goes where when Winning (V) or Losing (P) */}
+        <div className="mt-1.5 flex items-center justify-between gap-1 px-1.5 py-1 rounded-md bg-black/30 text-[9.5px] leading-tight">
+          <span className="font-extrabold text-cyan-200 truncate">
+            {winnerDestMatch
+              ? `Vence (V${match.matchNumber}) ➔ Jogo #${winnerDestMatch.matchNumber}`
+              : match.stage === 'grand_final' || match.stage === 'super_final'
+              ? `Vence (V${match.matchNumber}) ➔ 🏆 Campeão`
+              : match.stage === 'third_place'
+              ? `Vence (V${match.matchNumber}) ➔ 🥉 3º Lugar`
+              : `Vence ➔ Classificado`}
           </span>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {outgoing.map((edge) => {
-              const destNum = matchById.get(edge.to)?.matchNumber;
-              return (
-                <span
-                  key={edge.outcome}
-                  className="font-bold"
-                  style={{ color: edge.outcome === 'winner' ? '#a5f3fc' : '#fde68a' }}
-                >
-                  {edge.outcome === 'winner' ? 'Vence' : 'Perde'}→#{destNum}
-                </span>
-              );
-            })}
-          </div>
+          <span className="font-bold text-amber-200 truncate shrink-0">
+            {loserDestMatch
+              ? `Perde (P${match.matchNumber}) ➔ Jogo #${loserDestMatch.matchNumber}`
+              : match.stage === 'grand_final' || match.stage === 'super_final'
+              ? `Perde ➔ 🥈 Vice`
+              : match.stage === 'third_place'
+              ? `Perde ➔ 4º Lugar`
+              : `Perde ➔ Eliminado`}
+          </span>
         </div>
 
-        {/* Action Bar: Easy 1-click controls */}
-        <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-white/15">
-          {isReady && !isCompleted && onToggleLiveMatch ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleLiveMatch(match);
-              }}
-              className={`px-2 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all ${
-                isLive
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'bg-black/30 hover:bg-red-600/80 text-white/90'
-              }`}
-              title={isLive ? 'Desativar destaque Ao Vivo' : 'Destacar este jogo como AO VIVO (borda vermelha)'}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-white animate-ping' : 'bg-red-400'}`} />
-              {isLive ? 'Ao Vivo' : 'Iniciar Ao Vivo'}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (props.isFullscreen) props.onToggleFullscreen?.();
-                onOpenMatchEditor(match);
-              }}
-              className="px-2 py-1 rounded-lg bg-black/30 hover:bg-black/45 text-white text-[10px] font-bold"
-            >
-              Editar
-            </button>
-          )}
+        {/* Action Bar: Court info + Easy 1-click controls */}
+        <div className="mt-1.5 flex items-center justify-between gap-1.5 pt-1 border-t border-white/15">
+          <div className="flex items-center gap-1 min-w-0">
+            {isReady && !isCompleted && onToggleLiveMatch ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleLiveMatch(match);
+                }}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold flex items-center gap-1 transition-all shrink-0 ${
+                  isLive
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'bg-black/35 hover:bg-red-600/80 text-white/90'
+                }`}
+                title={isLive ? 'Desativar destaque Ao Vivo' : 'Destacar este jogo como AO VIVO (borda vermelha)'}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-white animate-ping' : 'bg-red-400'}`} />
+                {isLive ? 'Ao Vivo' : 'Iniciar Ao Vivo'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (props.isFullscreen) props.onToggleFullscreen?.();
+                  onOpenMatchEditor(match);
+                }}
+                className="px-2 py-0.5 rounded-md bg-black/35 hover:bg-black/50 text-white text-[10px] font-bold shrink-0"
+              >
+                Editar
+              </button>
+            )}
+            <span className="text-[9.5px] text-white/80 truncate">
+              {match.resultMode === 'walkover'
+                ? 'W.O. · sem pontos de set'
+                : match.sets?.map((set) => `${set.score1}–${set.score2}`).join(' / ') ||
+                  `${match.courtName || 'Q1'}`}
+            </span>
+          </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {isReady && onQuickOfficialize && (
               <button
                 type="button"
@@ -378,10 +470,10 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                   e.stopPropagation();
                   openQuickModal(match);
                 }}
-                className="px-2.5 py-1 rounded-lg bg-[#FF6B00] hover:bg-[#e55f00] text-white text-[10px] font-black shadow-xs"
+                className="px-2 py-0.5 rounded-md bg-[#FF6B00] hover:bg-[#e55f00] text-white text-[10px] font-black shadow-xs"
                 title="Lançar ou corrigir resultado rapidamente"
               >
-                {isCompleted ? 'Corrigir Placar' : '⚡ Lançar Placar'}
+                {isCompleted ? 'Corrigir' : '⚡ Lançar'}
               </button>
             )}
             <button
@@ -392,7 +484,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                 if (props.isFullscreen) props.onToggleFullscreen?.();
                 onOpenRefereeModal(match.id);
               }}
-              className="px-2 py-1 rounded-lg bg-black/35 hover:bg-black/55 disabled:opacity-40 text-white text-[10px] font-bold"
+              className="px-2 py-0.5 rounded-md bg-black/40 hover:bg-black/60 disabled:opacity-40 text-white text-[10px] font-bold"
               title="Abrir painel do árbitro / detalhes"
             >
               Placar
@@ -580,13 +672,6 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
       </div>
 
       {/* BRACKET CONTENT: COLUMNS OR INFINITY SCROLL PANORAMA */}
-      {view === 'panorama' && (
-        <label className="inline-flex items-center gap-2 text-xs text-amber-200 cursor-pointer">
-          <input type="checkbox" checked={showRelegationPaths}
-            onChange={(event) => setShowRelegationPaths(event.target.checked)} />
-          Mostrar ligações de entrada na repescagem
-        </label>
-      )}
       {view === 'columns' ? (
         <div className="flex gap-4 overflow-auto pb-6">
           {rounds.map((key) => {
@@ -723,53 +808,370 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                       viewBox="0 0 10 10"
                       refX="9"
                       refY="5"
-                      markerWidth="7"
-                      markerHeight="7"
+                      markerWidth="6.5"
+                      markerHeight="6.5"
                       orient="auto-start-reverse"
                     >
                       <path
                         d="M0 0 L10 5 L0 10 z"
-                        fill={outcome === 'winner' ? '#67e8f9' : '#fbbf24'}
+                        fill={outcome === 'winner' ? '#34d399' : '#fbbf24'}
                       />
                     </marker>
                   ))}
                 </defs>
-                {edges.map((edge, index) => {
-                  const from = layout.positions.get(edge.from),
-                    to = layout.positions.get(edge.to);
+
+                {/* 1. Per-Match Classic Bracket Forks (] on Winners/Final, [ on Losers/3rd Place) & Local Entry Stubs (Sxx / Pxx) */}
+                {matches.map((match) => {
+                  const pos = layout.positions.get(match.id);
+                  if (!pos) return null;
+                  const ySlot1 = pos.y + SLOT1_Y;
+                  const ySlot2 = pos.y + SLOT2_Y;
+                  const yMid = pos.y + MID_Y;
+                  const s1 = getSlotSourceInfo(match, 0);
+                  const s2 = getSlotSourceInfo(match, 1);
+                  const isDimmed = Boolean(search && !matchingIds.has(match.id));
+
+                  if (match.stage === 'winners') {
+                    const xRight = pos.x + CARD_WIDTH;
+                    const xFork = xRight + 18;
+                    return (
+                      <g key={`fork-${match.id}`} opacity={isDimmed ? 0.22 : 0.95}>
+                        {/* Seed entry lines on Round 1 left side */}
+                        {([0, 1] as const).map((slotIdx) => {
+                          const info = slotIdx === 0 ? s1 : s2;
+                          if (info.kind !== 'team') return null;
+                          const ySlot = slotIdx === 0 ? ySlot1 : ySlot2;
+                          return (
+                            <g key={`seed-${slotIdx}`}>
+                              <path
+                                d={`M${pos.x - 36},${ySlot} H${pos.x}`}
+                                fill="none"
+                                stroke="#34d399"
+                                strokeWidth={2}
+                              />
+                              <rect
+                                x={pos.x - 42}
+                                y={ySlot - 9}
+                                width={30}
+                                height={18}
+                                rx={4}
+                                fill="#022c22"
+                                stroke="#34d399"
+                                strokeWidth={1.2}
+                              />
+                              <text
+                                x={pos.x - 27}
+                                y={ySlot + 3.5}
+                                textAnchor="middle"
+                                fill="#a7f3d0"
+                                fontSize="9.5"
+                                fontWeight="800"
+                              >
+                                {info.code}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* Right Bracket Fork ] joining Slot 1 and Slot 2 -> V# */}
+                        <path
+                          d={`M${xRight},${ySlot1} H${xFork} V${ySlot2} H${xRight}`}
+                          fill="none"
+                          stroke="#34d399"
+                          strokeWidth={2.5}
+                        />
+                        <rect
+                          x={xFork - 14}
+                          y={yMid - 9}
+                          width={32}
+                          height={18}
+                          rx={5}
+                          fill="#022c22"
+                          stroke="#34d399"
+                          strokeWidth={1.3}
+                        />
+                        <text
+                          x={xFork + 2}
+                          y={yMid + 3.5}
+                          textAnchor="middle"
+                          fill="#6ee7b7"
+                          fontSize="9.5"
+                          fontWeight="900"
+                        >
+                          V{match.matchNumber}
+                        </text>
+                      </g>
+                    );
+                  }
+
+                  if (match.stage === 'losers') {
+                    const xLeft = pos.x;
+                    const xFork = xLeft - 18;
+                    const xRight = pos.x + CARD_WIDTH;
+                    return (
+                      <g key={`fork-${match.id}`} opacity={isDimmed ? 0.22 : 0.95}>
+                        {/* Local Horizontal Entry Stubs for Losers dropping from Winners (P01..P22) */}
+                        {([0, 1] as const).map((slotIdx) => {
+                          const info = slotIdx === 0 ? s1 : s2;
+                          if (info.kind !== 'loser') return null;
+                          const ySlot = slotIdx === 0 ? ySlot1 : ySlot2;
+                          return (
+                            <g key={`pdrop-${slotIdx}`}>
+                              <path
+                                d={`M${xRight + 46},${ySlot} H${xRight}`}
+                                fill="none"
+                                stroke="#fbbf24"
+                                strokeWidth={2.2}
+                                markerEnd="url(#arrow-loser)"
+                              />
+                              <rect
+                                x={xRight + 16}
+                                y={ySlot - 9}
+                                width={34}
+                                height={18}
+                                rx={5}
+                                fill="#451a03"
+                                stroke="#fbbf24"
+                                strokeWidth={1.3}
+                              />
+                              <text
+                                x={xRight + 33}
+                                y={ySlot + 3.5}
+                                textAnchor="middle"
+                                fill="#fde68a"
+                                fontSize="9.5"
+                                fontWeight="900"
+                              >
+                                {info.code}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* Left Bracket Fork [ joining Slot 1 and Slot 2 -> V# */}
+                        <path
+                          d={`M${xLeft},${ySlot1} H${xFork} V${ySlot2} H${xLeft}`}
+                          fill="none"
+                          stroke="#fbbf24"
+                          strokeWidth={2.5}
+                        />
+                        <rect
+                          x={xFork - 18}
+                          y={yMid - 9}
+                          width={32}
+                          height={18}
+                          rx={5}
+                          fill="#451a03"
+                          stroke="#fbbf24"
+                          strokeWidth={1.3}
+                        />
+                        <text
+                          x={xFork - 2}
+                          y={yMid + 3.5}
+                          textAnchor="middle"
+                          fill="#fde68a"
+                          fontSize="9.5"
+                          fontWeight="900"
+                        >
+                          V{match.matchNumber}
+                        </text>
+                      </g>
+                    );
+                  }
+
+                  if (match.stage === 'grand_final' || match.stage === 'super_final') {
+                    const xLeft = pos.x;
+                    const xRight = pos.x + CARD_WIDTH;
+                    const xFork = xRight + 16;
+                    return (
+                      <g key={`fork-${match.id}`} opacity={isDimmed ? 0.22 : 0.95}>
+                        {/* Incoming V27 & V28 local lines on the left of Final */}
+                        {([0, 1] as const).map((slotIdx) => {
+                          const info = slotIdx === 0 ? s1 : s2;
+                          const ySlot = slotIdx === 0 ? ySlot1 : ySlot2;
+                          return (
+                            <g key={`final-in-${slotIdx}`}>
+                              <path
+                                d={`M${xLeft - 42},${ySlot} H${xLeft}`}
+                                fill="none"
+                                stroke="#38bdf8"
+                                strokeWidth={2.2}
+                              />
+                              <rect
+                                x={xLeft - 46}
+                                y={ySlot - 9}
+                                width={34}
+                                height={18}
+                                rx={5}
+                                fill="#082f49"
+                                stroke="#38bdf8"
+                                strokeWidth={1.3}
+                              />
+                              <text
+                                x={xLeft - 29}
+                                y={ySlot + 3.5}
+                                textAnchor="middle"
+                                fill="#bae6fd"
+                                fontSize="9.5"
+                                fontWeight="900"
+                              >
+                                {info.code}
+                              </text>
+                            </g>
+                          );
+                        })}
+                        {/* Output Champion Bracket Fork on the right of Final */}
+                        <path
+                          d={`M${xRight},${ySlot1} H${xFork} V${ySlot2} H${xRight} M${xFork},${yMid} H${xFork + 58}`}
+                          fill="none"
+                          stroke="#fbbf24"
+                          strokeWidth={2.8}
+                        />
+                        <rect
+                          x={xFork + 8}
+                          y={yMid - 11}
+                          width={74}
+                          height={22}
+                          rx={6}
+                          fill="#451a03"
+                          stroke="#fbbf24"
+                          strokeWidth={1.5}
+                        />
+                        <text
+                          x={xFork + 45}
+                          y={yMid + 4}
+                          textAnchor="middle"
+                          fill="#fde68a"
+                          fontSize="9.5"
+                          fontWeight="900"
+                        >
+                          V{match.matchNumber} · CAMPEÃO
+                        </text>
+                      </g>
+                    );
+                  }
+
+                  if (match.stage === 'third_place') {
+                    const xLeft = pos.x;
+                    const xRight = pos.x + CARD_WIDTH;
+                    const xFork = xLeft - 16;
+                    return (
+                      <g key={`fork-${match.id}`} opacity={isDimmed ? 0.22 : 0.95}>
+                        {/* Incoming P27 & P28 local lines on the right of 3rd Place */}
+                        {([0, 1] as const).map((slotIdx) => {
+                          const info = slotIdx === 0 ? s1 : s2;
+                          const ySlot = slotIdx === 0 ? ySlot1 : ySlot2;
+                          return (
+                            <g key={`third-in-${slotIdx}`}>
+                              <path
+                                d={`M${xRight + 42},${ySlot} H${xRight}`}
+                                fill="none"
+                                stroke="#fbbf24"
+                                strokeWidth={2.2}
+                              />
+                              <rect
+                                x={xRight + 12}
+                                y={ySlot - 9}
+                                width={34}
+                                height={18}
+                                rx={5}
+                                fill="#451a03"
+                                stroke="#fbbf24"
+                                strokeWidth={1.3}
+                              />
+                              <text
+                                x={xRight + 29}
+                                y={ySlot + 3.5}
+                                textAnchor="middle"
+                                fill="#fde68a"
+                                fontSize="9.5"
+                                fontWeight="900"
+                              >
+                                {info.code}
+                              </text>
+                            </g>
+                          );
+                        })}
+                        {/* Output 3rd Place Bracket Fork on the left of 3rd Place */}
+                        <path
+                          d={`M${xLeft},${ySlot1} H${xFork} V${ySlot2} H${xLeft} M${xFork},${yMid} H${xFork - 58}`}
+                          fill="none"
+                          stroke="#38bdf8"
+                          strokeWidth={2.8}
+                        />
+                        <rect
+                          x={xFork - 82}
+                          y={yMid - 11}
+                          width={74}
+                          height={22}
+                          rx={6}
+                          fill="#082f49"
+                          stroke="#38bdf8"
+                          strokeWidth={1.5}
+                        />
+                        <text
+                          x={xFork - 45}
+                          y={yMid + 4}
+                          textAnchor="middle"
+                          fill="#bae6fd"
+                          fontSize="9.5"
+                          fontWeight="900"
+                        >
+                          V{match.matchNumber} · 3º LUGAR
+                        </text>
+                      </g>
+                    );
+                  }
+
+                  return null;
+                })}
+
+                {/* 2. Continuous Winner Progression Lines Between Rounds & Into Semifinals */}
+                {edges.map((edge) => {
+                  // Only draw continuous tree lines for winner progressions (never cross-bracket loser drops or Final/3rd place)
+                  if (edge.outcome !== 'winner') return null;
+                  const from = layout.positions.get(edge.from);
+                  const to = layout.positions.get(edge.to);
                   if (!from || !to) return null;
-                  const origin = matchById.get(edge.from),
-                    match = matchById.get(edge.to)!;
-                  // Decisions remain independent in the reference geometry.
-                  if (match.stage === 'grand_final' || match.stage === 'third_place') return null;
-                  const crossBracket = origin?.stage === 'winners' && match.stage === 'losers';
-                  if (crossBracket && !showRelegationPaths) return null;
-                  const right = from.x < to.x,
-                    x1 = from.x + (right ? 280 : 0),
-                    x2 = to.x + (right ? 0 : 280);
-                  const y1 = from.y + CARD_HEIGHT / 2,
-                    y2 = to.y + CARD_HEIGHT / 2,
-                    middle = (x1 + x2) / 2;
-                  const central = from.x === to.x;
-                  const route = crossBracket
-                    ? `M${from.x + 280},${y1} H${from.x + 315} V${25 + (index % 10) * 7} H${to.x + 325} V${y2} H${to.x + 280}`
-                    : central
-                    ? `M${from.x + 280},${y1} H${from.x + 315 + edge.slot * 15} V${y2} H${to.x + 280}`
-                    : `M${x1},${y1} H${middle} V${y2} H${x2}`;
+                  const origin = matchById.get(edge.from);
+                  const match = matchById.get(edge.to);
+                  if (!origin || !match) return null;
+                  if (match.stage === 'grand_final' || match.stage === 'super_final' || match.stage === 'third_place') {
+                    return null;
+                  }
+
+                  const goingRight = from.x < to.x;
+                  // Start from the tip of the origin match's bracket fork (] on right or [ on left)
+                  const x1 = goingRight ? from.x + CARD_WIDTH + 18 : from.x - 18;
+                  const y1 = from.y + MID_Y;
+
+                  // End at the exact receiving slot of the target match (or side midpoint for Semifinal convergence)
+                  const x2 = goingRight ? to.x : to.x + CARD_WIDTH;
+                  const y2 =
+                    match.stage === 'semifinals'
+                      ? to.y + MID_Y
+                      : to.y + (edge.slot === 0 ? SLOT1_Y : SLOT2_Y);
+
+                  const middleX = (x1 + x2) / 2;
+                  const route =
+                    Math.abs(y1 - y2) < 1
+                      ? `M${x1},${y1} H${x2}`
+                      : `M${x1},${y1} H${middleX} V${y2} H${x2}`;
+
+                  const isLosersSide = origin.stage === 'losers';
                   return (
                     <path
-                      key={`${edge.from}-${edge.outcome}`}
+                      key={`${edge.from}-${edge.outcome}-${edge.to}`}
                       d={route}
                       fill="none"
-                      stroke={edge.outcome === 'loser' || origin?.stage === 'losers' ? '#fbbf24' : '#67e8f9'}
-                      strokeWidth={2}
+                      stroke={isLosersSide ? '#fbbf24' : '#34d399'}
+                      strokeWidth={2.5}
                       vectorEffect="non-scaling-stroke"
-                      strokeDasharray={edge.outcome === 'loser' ? '7 5' : undefined}
-                      markerEnd={`url(#arrow-${edge.outcome === 'loser' || origin?.stage === 'losers' ? 'loser' : 'winner'})`}
+                      markerEnd={`url(#arrow-${isLosersSide ? 'loser' : 'winner'})`}
                       opacity={
                         search && !matchingIds.has(edge.from) && !matchingIds.has(edge.to)
                           ? 0.2
-                          : 0.85
+                          : 0.92
                       }
                     />
                   );

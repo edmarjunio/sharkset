@@ -39,10 +39,20 @@ const MainContent: React.FC = () => {
 
   return (
     <div
-      className="shark-site-background min-h-screen flex flex-col text-slate-900 pb-16 md:pb-8 transition-colors"
+      className={`shark-site-background min-h-screen flex flex-col text-slate-900 pb-16 md:pb-8 transition-colors ${
+        isArenaWhiteLabel ? 'arena-whitelabel-mode' : ''
+      }`}
       style={
         isArenaWhiteLabel && arenaPalette
-          ? { backgroundColor: arenaPalette.surfaceBg }
+          ? ({
+              '--arena-primary': arenaPalette.primary,
+              '--arena-secondary': arenaPalette.secondary,
+              '--arena-accent': arenaPalette.accent,
+              '--arena-header-bg': arenaPalette.headerBg,
+              '--arena-surface-bg': arenaPalette.surfaceBg,
+              '--arena-text': arenaPalette.textPrimary,
+              backgroundColor: arenaPalette.headerBg,
+            } as React.CSSProperties)
           : undefined
       }
     >

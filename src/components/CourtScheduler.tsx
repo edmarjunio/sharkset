@@ -69,6 +69,7 @@ export const CourtScheduler: React.FC = () => {
     dismissWaitlistNotification,
     cancelBooking,
     selectedSport,
+    setSelectedSport,
     createBooking,
     userProfile,
     setUserProfile,
@@ -501,18 +502,45 @@ export const CourtScheduler: React.FC = () => {
         }}
       >
         <div className="grid grid-cols-1 lg:grid-cols-12">
-          {/* Arena Photo Banner + Custom Arena Logo Spotlight */}
-          <div className="lg:col-span-4 relative min-h-[210px] bg-slate-900">
-            <img
-              src={
-                tenant.imageUrl ||
-                'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=1000&q=85'
-              }
-              alt={tenant.name}
-              className="w-full h-full object-cover opacity-85"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/35 to-transparent" />
-            <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+          {/* Arena Main Photo Banner — Uses the uploaded Arena Logo as the Main Hero Photo when active */}
+          <div
+            className="lg:col-span-4 relative min-h-[230px] bg-slate-950 overflow-hidden flex items-center justify-center"
+            style={
+              tenant.whiteLabelEnabled && tenant.brandPalette
+                ? {
+                    background: `radial-gradient(circle at 50% 45%, ${tenant.brandPalette.primary}66 0%, ${tenant.brandPalette.headerBg} 75%, #05070b 100%)`,
+                  }
+                : undefined
+            }
+          >
+            {tenant.logoUrl ? (
+              <>
+                {/* Blurred ambient backdrop of the Arena Logo */}
+                <img
+                  src={tenant.logoUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover opacity-35 blur-xl scale-110 pointer-events-none"
+                />
+                {/* Main Hero Photo = Arena Logo */}
+                <img
+                  src={tenant.logoUrl}
+                  alt={`Logo Principal ${tenant.name}`}
+                  className="relative z-10 w-full h-full max-h-[250px] object-contain p-4 drop-shadow-2xl transition-transform duration-300 hover:scale-[1.03]"
+                />
+              </>
+            ) : (
+              <img
+                src={
+                  tenant.imageUrl ||
+                  'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=1000&q=85'
+                }
+                alt={tenant.name}
+                className="w-full h-full object-cover opacity-85"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-slate-950/40 pointer-events-none" />
+            <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between gap-2">
               <button
                 onClick={() => setActiveTab('arenas_directory')}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950/90 hover:bg-slate-900 text-white text-xs font-black border border-white/15 cursor-pointer"
@@ -521,29 +549,30 @@ export const CourtScheduler: React.FC = () => {
                 Todas Arenas
               </button>
 
-              <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 backdrop-blur-md text-[10px] font-black tracking-widest uppercase text-white/90 border border-white/15">
+              <span
+                className="px-2.5 py-1 rounded-lg backdrop-blur-md text-[10px] font-black tracking-widest uppercase text-white border border-white/20"
+                style={{
+                  backgroundColor:
+                    tenant.whiteLabelEnabled && tenant.brandPalette
+                      ? `${tenant.brandPalette.primary}dd`
+                      : 'rgba(2, 6, 23, 0.85)',
+                }}
+              >
                 DESENVOLVIDO POR SHARKSET
               </span>
             </div>
 
-            {/* Prominent Arena Custom Logo if uploaded/active */}
-            <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
+            {/* Bottom status bar on the Hero Photo */}
+            <div className="absolute bottom-3 left-3 right-3 z-20 flex items-end justify-between gap-3">
               {tenant.logoUrl ? (
-                <div className="flex items-center gap-3">
-                  <img
-                    src={tenant.logoUrl}
-                    alt={`Logo ${tenant.name}`}
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain bg-white/15 backdrop-blur-md p-1.5 border-2 shadow-xl"
-                    style={{
-                      borderColor: tenant.brandPalette?.primary || '#FF6B00',
-                    }}
-                  />
-                  <div className="text-xs text-white">
-                    <span className="px-2 py-0.5 rounded bg-white/20 text-[10px] font-black uppercase block w-fit mb-1">
-                      Site Oficial da Arena
-                    </span>
-                    <span className="font-black text-amber-300">★ {tenant.rating.toFixed(1)}</span>
-                  </div>
+                <div className="flex items-center justify-between w-full text-xs text-white bg-black/55 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15">
+                  <span
+                    className="font-black uppercase tracking-wider text-[10px]"
+                    style={{ color: tenant.brandPalette?.accent || '#FBBF24' }}
+                  >
+                    ★ Logo Oficial · Paleta Ativa na Página
+                  </span>
+                  <span className="font-black text-amber-300">★ {tenant.rating.toFixed(1)}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-between w-full text-xs text-white">
@@ -788,23 +817,84 @@ export const CourtScheduler: React.FC = () => {
       {/* ===================================================================== */}
       {arenaSubTab === 'agenda' && (
         <div className="space-y-5">
-          {/* Ultra-Intuitive 2-Step Strip */}
-          <div className="bg-emerald-950 text-white rounded-2xl p-4 border border-emerald-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Ultra-Intuitive 2-Step Strip + Sports Focus Notice */}
+          <div
+            className="text-white rounded-2xl p-4 border flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+            style={{
+              backgroundColor:
+                tenant.whiteLabelEnabled && tenant.brandPalette
+                  ? tenant.brandPalette.headerBg
+                  : '#022c22',
+              borderColor:
+                tenant.whiteLabelEnabled && tenant.brandPalette
+                  ? tenant.brandPalette.primary
+                  : '#047857',
+            }}
+          >
             <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 font-black text-sm flex items-center justify-center shrink-0">
+              <span
+                className="w-8 h-8 rounded-xl text-slate-950 font-black text-sm flex items-center justify-center shrink-0"
+                style={{
+                  backgroundColor:
+                    tenant.whiteLabelEnabled && tenant.brandPalette
+                      ? tenant.brandPalette.accent
+                      : '#fbbf24',
+                }}
+              >
                 1
               </span>
-              <div className="text-xs">
-                <strong className="text-amber-300 block text-sm">Toque em qualquer horário verde abaixo para agendar e pagar</strong>
-                <span className="text-emerald-200">
-                  Sem cadastro complicado: escolha o horário, pague via PIX ou Cartão em 1 clique e sua quadra está reservada!
+              <div className="text-xs space-y-0.5">
+                <strong className="text-amber-300 block text-sm">
+                  Toque em qualquer horário livre abaixo para agendar Futevôlei, Beach Tennis ou Vôlei
+                </strong>
+                <span className="text-slate-200 block">
+                  ⚽ <strong>Foco Principal: Futevôlei</strong> · Agendamentos liberados também para{' '}
+                  <strong>🎾 Beach Tennis</strong> e <strong>🏐 Vôlei de Praia</strong> (em breve abriremos abas exclusivas para outros esportes!).
                 </span>
               </div>
             </div>
-            <span className="text-xs font-mono font-bold text-amber-300 shrink-0">
-              Confirmação Imediata
-            </span>
+
+            {/* Sport Selector Pills (Futevôlei Focus + Beach Tennis + Vôlei + Upcoming Tabs Badge) */}
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedSport(selectedSport === 'futevolei' ? 'all' : 'futevolei')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedSport === 'futevolei' || selectedSport === 'all'
+                    ? 'bg-[#FF6B00] text-white shadow-sm ring-2 ring-amber-300/60'
+                    : 'bg-white/10 text-white/80 hover:bg-white/20'
+                }`}
+              >
+                ⚽ Futevôlei (Foco Principal)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedSport(selectedSport === 'beach_tennis' ? 'all' : 'beach_tennis')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedSport === 'beach_tennis'
+                    ? 'bg-amber-500 text-slate-950'
+                    : 'bg-white/10 text-white/85 hover:bg-white/20'
+                }`}
+              >
+                🎾 Beach Tennis
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedSport(selectedSport === 'volei_praia' ? 'all' : 'volei_praia')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedSport === 'volei_praia'
+                    ? 'bg-sky-400 text-slate-950'
+                    : 'bg-white/10 text-white/85 hover:bg-white/20'
+                }`}
+              >
+                🏐 Vôlei de Praia
+              </button>
+              <span className="px-2.5 py-1 rounded-lg bg-black/35 border border-white/15 text-[10px] font-extrabold text-amber-200">
+                🚀 Em breve: Abas p/ Outros Esportes
+              </span>
+            </div>
           </div>
+
           {/* Court Selector & Sport Filter */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Individual Court Tabs */}

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
+import { generateWeeklySlots } from '../data/initialData';
+import type { Court, TenantConfig, TimeSlot } from '../types';
 import {
   buildBooking15MinReminderNotification,
   buildMatch10PointsRemainingNotification,
@@ -10,6 +12,7 @@ import {
   findBookingsStartingSoon,
   findStudentsWithTuitionDueToday,
   findVacantSlotsInNext2Hours,
+  timeStrToMinutes,
 } from '../services/smartAlertEngine';
 import {
   Bell,
@@ -24,12 +27,25 @@ import {
   Zap,
   CheckCheck,
   Cloud,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { signInWithGooglePopup, signOutFirebase } from '../lib/firebase';
+
+interface NearbyAvailableSlotItem {
+  arena: TenantConfig;
+  court: Court;
+  slot: TimeSlot;
+  minutesUntilStart: number;
+  isWithinNext2h: boolean;
+}
 
 export const SmartNotificationBanner: React.FC = () => {
   const {
     tenant,
+    setTenantId,
+    availableTenants,
     slots,
     bookings,
     waitlist,
@@ -54,10 +70,105 @@ export const SmartNotificationBanner: React.FC = () => {
     firebaseUserEmail,
   } = useSharkStore();
 
+  const [selectedArenaFilter, setSelectedArenaFilter] = useState<string>('all');
+  const [rotatingIndex, setRotatingIndex] = useState<number>(0);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+
   const vacantSlotsNext2h = React.useMemo(
     () => findVacantSlotsInNext2Hours(slots, tenant.courts, referenceClockTime),
     [slots, tenant.courts, referenceClockTime]
   );
+
+  // Gather ALL available slots across ALL nearby arenas in the upcoming hours (and fallback to all available slots if none in next 2h)
+  const nearbyArenaSlots = React.useMemo(() => {
+    const todayIso = new Date().toISOString().split('T')[0];
+    const nowMinutes = timeStrToMinutes(referenceClockTime);
+    const sortedArenas = [...availableTenants].sort((a, b) => a.distanceKm - b.distanceKm);
+
+    const nextHoursItems: NearbyAvailableSlotItem[] = [];
+    const fallbackItems: NearbyAvailableSlotItem[] = [];
+
+    for (const arena of sortedArenas) {
+      const rawArenaSlots =
+        arena.id === tenant.id ? slots : generateWeeklySlots(arena.courts);
+
+      const courtMap = new Map<string, Court>(arena.courts.map((c) => [c.id, c]));
+
+      for (const s of rawArenaSlots) {
+        if (s.slotType === 'class') continue;
+        // Check if booked in active bookings
+        const isBooked = bookings.some(
+          (b) =>
+            b.status === 'confirmed' &&
+            b.courtId === s.courtId &&
+            b.date === s.date &&
+            b.startTime === s.startTime
+        );
+        if (!s.isAvailable || isBooked) continue;
+        const court = courtMap.get(s.courtId);
+        if (!court) continue;
+
+        const slotMin = timeStrToMinutes(s.startTime);
+        const diff = slotMin - nowMinutes;
+
+        if (s.date === todayIso && diff > 0 && diff <= 240) {
+          nextHoursItems.push({
+            arena,
+            court,
+            slot: s,
+            minutesUntilStart: diff,
+            isWithinNext2h: diff <= 120,
+          });
+        } else if (s.date === todayIso && diff > 240) {
+          fallbackItems.push({
+            arena,
+            court,
+            slot: s,
+            minutesUntilStart: diff,
+            isWithinNext2h: false,
+          });
+        } else if (s.date >= todayIso) {
+          fallbackItems.push({
+            arena,
+            court,
+            slot: s,
+            minutesUntilStart: diff > 0 ? diff : 1440 + diff,
+            isWithinNext2h: false,
+          });
+        }
+      }
+    }
+
+    // Interleave arenas so the ticker rotates across different nearby arenas and times
+    const sourceList = nextHoursItems.length > 0 ? nextHoursItems : fallbackItems;
+    sourceList.sort((a, b) => a.minutesUntilStart - b.minutesUntilStart || a.arena.distanceKm - b.arena.distanceKm);
+    return {
+      allItems: sourceList,
+      hasImmediateNextHours: nextHoursItems.length > 0,
+      sortedArenas,
+    };
+  }, [availableTenants, tenant.id, slots, bookings, referenceClockTime]);
+
+  const filteredRotatingItems = React.useMemo(() => {
+    if (selectedArenaFilter === 'all') return nearbyArenaSlots.allItems;
+    return nearbyArenaSlots.allItems.filter((item) => item.arena.id === selectedArenaFilter);
+  }, [nearbyArenaSlots.allItems, selectedArenaFilter]);
+
+  useEffect(() => {
+    setRotatingIndex(0);
+  }, [selectedArenaFilter, referenceClockTime]);
+
+  useEffect(() => {
+    if (isPaused || filteredRotatingItems.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setRotatingIndex((prev) => (prev + 1) % filteredRotatingItems.length);
+    }, 3500);
+    return () => window.clearInterval(timer);
+  }, [isPaused, filteredRotatingItems.length]);
+
+  const activeRotatingSlot =
+    filteredRotatingItems[rotatingIndex % Math.max(1, filteredRotatingItems.length)] ||
+    nearbyArenaSlots.allItems[0];
 
   const bookingsStartingIn15m = React.useMemo(
     () => findBookingsStartingSoon(bookings, referenceClockTime),
@@ -72,9 +183,19 @@ export const SmartNotificationBanner: React.FC = () => {
   const unreadCount = smartNotifications.filter((n) => !n.read).length;
   const primaryVacant = vacantSlotsNext2h[0];
 
-  const handleQuickFillVacantSlot = () => {
+  const handleBookArenaSlot = (targetArenaId: string) => {
+    setTenantId(targetArenaId);
     setArenaSubTab('agenda');
     setActiveTab('scheduler');
+  };
+
+  const handleQuickFillVacantSlot = () => {
+    if (activeRotatingSlot) {
+      handleBookArenaSlot(activeRotatingSlot.arena.id);
+    } else {
+      setArenaSubTab('agenda');
+      setActiveTab('scheduler');
+    }
   };
 
   const handleTriggerVacant2hPush = () => {
@@ -190,81 +311,212 @@ export const SmartNotificationBanner: React.FC = () => {
   return (
     <section className="aquarium-glass bg-[#041529] border-b border-[#145A9B]/40 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-2.5">
-        {/* TOP VISUAL BANNER: Vacant Court Slot in the Next 2 Hours */}
-        <div className="vacancy-promo flex flex-col lg:flex-row lg:items-center justify-between gap-5 p-5 sm:p-6 rounded-3xl border border-cyan-300/60">
-          <div className="flex flex-col items-start gap-3 text-sm sm:text-base">
-            <span className="inline-flex items-center gap-2 font-black uppercase tracking-wide text-amber-300 text-base sm:text-xl">
-              <Zap className="w-4 h-4 text-[#FF6B00] fill-[#FF6B00]" />
-              {vacantSlotsNext2h.length > 0
-                ? `${vacantSlotsNext2h.length} HORÁRIOS LIVRES · PRÓXIMAS 2H`
-                : 'AGENDA NAS PRÓXIMAS 2H:'}
-            </span>
-            <p className="text-white font-bold text-lg sm:text-2xl">Chame sua dupla. A próxima partida é aqui!</p>
-            <p className="text-cyan-100 text-sm">{tenant.name} · {tenant.city}</p>
-
-            {primaryVacant ? (
-              <div className="flex flex-wrap items-center gap-1.5 text-slate-100">
-                <span className="font-extrabold text-white">
-                  {primaryVacant.court.name.split(' - ')[0]}
-                </span>
-                <span className="text-amber-300 font-extrabold">
-                  às {primaryVacant.slot.startTime}
-                </span>
-                <span className="text-[#12C7BB] font-extrabold">
-                  (R$ {primaryVacant.slot.price.toFixed(0)})
-                </span>
-                <span className="text-slate-300 text-xs hidden md:inline">
-                  · em {primaryVacant.minutesUntilStart} min
-                </span>
-              </div>
-            ) : (
-              <span className="text-slate-200 font-semibold">
-                Todas as quadras das próximas 2h estão ocupadas. Ajuste o horário ao lado para consultar.
+        {/* TOP VISUAL BANNER: Rotating Available Court Slots Across All Nearby Arenas */}
+        <div
+          className="vacancy-promo flex flex-col gap-4 p-4 sm:p-5 rounded-3xl border border-cyan-300/60"
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+        >
+          {/* Row 1: Header + Arena Filter Chips + Controls */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 font-black uppercase tracking-wide text-amber-300 text-sm sm:text-base">
+                <Zap className="w-4 h-4 text-[#FF6B00] fill-[#FF6B00] animate-pulse" />
+                {nearbyArenaSlots.hasImmediateNextHours
+                  ? `⚡ ${nearbyArenaSlots.allItems.length} HORÁRIOS LIVRES NAS PRÓXIMAS HORAS · ${nearbyArenaSlots.sortedArenas.length} ARENAS PRÓXIMAS`
+                  : `⚡ ${nearbyArenaSlots.allItems.length} HORÁRIOS DISPONÍVEIS NAS ARENAS PRÓXIMAS`}
               </span>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {primaryVacant && (
-              <button
-                type="button"
-                onClick={handleQuickFillVacantSlot}
-                className="px-6 py-4 rounded-2xl bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold text-base transition-all cursor-pointer flex items-center gap-2 shadow-lg"
-              >
-                <Zap className="w-3.5 h-3.5 fill-white" />
-                Reservar Agora
-              </button>
-            )}
-
-            <div className="flex items-center gap-1.5 bg-[#030B17]/80 border border-slate-700/70 rounded-lg px-2.5 py-1 text-[11px]">
-              <Clock className="w-3 h-3 text-[#12C7BB]" />
-              <span className="text-slate-300 font-medium">Ref:</span>
-              <select
-                value={referenceClockTime}
-                onChange={(e) => setReferenceClockTime(e.target.value)}
-                className="bg-transparent text-white font-bold focus:outline-none cursor-pointer border-none p-0"
-                title="Horário de referência para radar de 2h e alerta de 15 min"
-              >
-                <option value="16:45" className="bg-[#030B17]">16:45</option>
-                <option value="17:45" className="bg-[#030B17]">17:45</option>
-                <option value="18:45" className="bg-[#030B17]">18:45</option>
-                <option value="19:45" className="bg-[#030B17]">19:45</option>
-              </select>
+              <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-[10px] font-extrabold text-cyan-200">
+                ⚽ Foco: Futevôlei · 🎾 Beach Tennis · 🏐 Vôlei
+              </span>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
-                notificationDrawerOpen
-                  ? 'bg-[#0987CE] text-white border-[#0987CE]'
-                  : 'bg-[#030B17]/80 hover:bg-[#0B254E] text-slate-200 border-slate-700/70'
-              }`}
-            >
-              <BellRing className="w-3.5 h-3.5 text-[#12C7BB]" />
-              <span>Alertas ({unreadCount})</span>
-            </button>
+            {/* Filter by Nearby Arena */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedArenaFilter('all')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                  selectedArenaFilter === 'all'
+                    ? 'bg-[#FF6B00] text-white shadow-xs'
+                    : 'bg-black/30 hover:bg-black/50 text-slate-200 border border-white/15'
+                }`}
+              >
+                Todas Arenas ({nearbyArenaSlots.allItems.length})
+              </button>
+              {nearbyArenaSlots.sortedArenas.map((arena) => {
+                const count = nearbyArenaSlots.allItems.filter((i) => i.arena.id === arena.id).length;
+                return (
+                  <button
+                    key={arena.id}
+                    type="button"
+                    onClick={() => setSelectedArenaFilter(arena.id)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      selectedArenaFilter === arena.id
+                        ? 'bg-cyan-400 text-slate-950 font-black shadow-xs'
+                        : 'bg-black/30 hover:bg-black/50 text-slate-200 border border-white/15'
+                    }`}
+                  >
+                    <MapPin className="w-3 h-3 text-amber-300 shrink-0" />
+                    <span className="truncate max-w-[130px]">{arena.name.replace('SHARK SET ', '')}</span>
+                    <span className="opacity-80">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
+
+          {/* Row 2: Active Rotating Spotlight Calling Clients to Rent */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-black/25 rounded-2xl p-3.5 sm:p-4 border border-white/15">
+            {activeRotatingSlot ? (
+              <div className="flex flex-col gap-1.5 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-slate-950 font-black text-[10px] uppercase tracking-wider">
+                    QUADRA LIVRE AGORA
+                  </span>
+                  <span className="text-xs font-extrabold text-cyan-200 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-amber-300" />
+                    {activeRotatingSlot.arena.name} · {activeRotatingSlot.arena.city}/{activeRotatingSlot.arena.state} ({activeRotatingSlot.arena.distanceKm.toFixed(1)} km)
+                  </span>
+                  <span className="text-[11px] text-slate-300 font-semibold">
+                    ({(rotatingIndex % filteredRotatingItems.length) + 1} de {filteredRotatingItems.length})
+                  </span>
+                </div>
+
+                <p className="text-white font-black text-base sm:text-xl leading-snug">
+                  Chame sua dupla e venha jogar! Horário disponível para alugar agora:
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2 text-sm sm:text-base">
+                  <span className="font-black text-white bg-white/15 px-2.5 py-0.5 rounded-lg">
+                    {activeRotatingSlot.court.name}
+                  </span>
+                  <span className="text-amber-300 font-black text-base sm:text-lg">
+                    às {activeRotatingSlot.slot.startTime} – {activeRotatingSlot.slot.endTime}
+                  </span>
+                  <span className="text-[#12C7BB] font-black text-base sm:text-lg">
+                    R$ {activeRotatingSlot.slot.price.toFixed(0)}
+                  </span>
+                  <span className="text-slate-200 text-xs font-semibold bg-black/35 px-2 py-0.5 rounded-md">
+                    {activeRotatingSlot.minutesUntilStart <= 180
+                      ? `Começa em ${activeRotatingSlot.minutesUntilStart} min`
+                      : `Próximo horário livre hoje`}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-slate-200 font-semibold">
+                Consultando horários livres nas arenas próximas...
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {filteredRotatingItems.length > 1 && (
+                <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/15">
+                  <button
+                    type="button"
+                    aria-label="Horário anterior"
+                    onClick={() =>
+                      setRotatingIndex(
+                        (prev) => (prev - 1 + filteredRotatingItems.length) % filteredRotatingItems.length
+                      )
+                    }
+                    className="p-1.5 rounded-lg hover:bg-white/15 text-white cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Próximo horário"
+                    onClick={() =>
+                      setRotatingIndex((prev) => (prev + 1) % filteredRotatingItems.length)
+                    }
+                    className="p-1.5 rounded-lg hover:bg-white/15 text-white cursor-pointer"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {activeRotatingSlot && (
+                <button
+                  type="button"
+                  onClick={() => handleBookArenaSlot(activeRotatingSlot.arena.id)}
+                  className="px-5 py-3 rounded-2xl bg-[#FF6B00] hover:bg-[#e66000] text-white font-black text-sm sm:text-base transition-all cursor-pointer flex items-center gap-2 shadow-lg"
+                >
+                  <Zap className="w-4 h-4 fill-white" />
+                  Alugar Este Horário
+                </button>
+              )}
+
+              <div className="flex items-center gap-1.5 bg-[#030B17]/80 border border-slate-700/70 rounded-xl px-2.5 py-2 text-[11px]">
+                <Clock className="w-3.5 h-3.5 text-[#12C7BB]" />
+                <span className="text-slate-300 font-semibold">Hora:</span>
+                <select
+                  value={referenceClockTime}
+                  onChange={(e) => setReferenceClockTime(e.target.value)}
+                  className="bg-transparent text-white font-bold focus:outline-none cursor-pointer border-none p-0"
+                  title="Horário de referência para radar de quadras vagas"
+                >
+                  <option value="16:45" className="bg-[#030B17]">16:45</option>
+                  <option value="17:45" className="bg-[#030B17]">17:45</option>
+                  <option value="18:45" className="bg-[#030B17]">18:45</option>
+                  <option value="19:45" className="bg-[#030B17]">19:45</option>
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                  notificationDrawerOpen
+                    ? 'bg-[#0987CE] text-white border-[#0987CE]'
+                    : 'bg-[#030B17]/80 hover:bg-[#0B254E] text-slate-200 border-slate-700/70'
+                }`}
+              >
+                <BellRing className="w-3.5 h-3.5 text-[#12C7BB]" />
+                <span>Alertas ({unreadCount})</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Row 3: Quick Ticker Strip of All Available Horários Across Nearby Arenas */}
+          {filteredRotatingItems.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 shrink-0">
+                Horários rodando:
+              </span>
+              {filteredRotatingItems.slice(0, 14).map((item, idx) => {
+                const isCurrent = idx === rotatingIndex % filteredRotatingItems.length;
+                return (
+                  <button
+                    key={`${item.arena.id}-${item.slot.id}`}
+                    type="button"
+                    onClick={() => {
+                      setRotatingIndex(idx);
+                      handleBookArenaSlot(item.arena.id);
+                    }}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 border ${
+                      isCurrent
+                        ? 'bg-amber-400 text-slate-950 border-amber-200 font-black shadow-xs scale-[1.02]'
+                        : 'bg-black/35 hover:bg-black/55 text-white border-white/15'
+                    }`}
+                    title={`Clique para alugar ${item.court.name} em ${item.arena.name} às ${item.slot.startTime}`}
+                  >
+                    <span>{item.arena.name.replace('SHARK SET ', '')}</span>
+                    <span className="opacity-75">·</span>
+                    <span>{item.court.name.split(' - ')[0]}</span>
+                    <span className={isCurrent ? 'text-slate-950 font-black' : 'text-amber-300 font-extrabold'}>
+                      {item.slot.startTime}
+                    </span>
+                    <span className={isCurrent ? 'text-emerald-950 font-black' : 'text-emerald-300'}>
+                      R${item.slot.price.toFixed(0)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* EXPANDABLE SMART PUSH NOTIFICATION DRAWER */}

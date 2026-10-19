@@ -431,10 +431,10 @@ body {
 
 /* One continuous underwater scene, behind the glass interface. */
 .shark-site-background::before, .shark-site-background::after { content: none; }
-.aquarium-world { background: #04648a; }
+.aquarium-world { background: #011f3f; }
 .aquarium-scenery {
   position: absolute; inset: -2%;
-  background: url('/brand/deep-ocean.jpg') center center / cover no-repeat;
+  background: url('/brand/ocean-bg.jpg') center top / cover no-repeat;
   animation: aquarium-current 24s ease-in-out infinite alternate;
 }
 .aquarium-depth {
@@ -564,5 +564,285 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .aquarium-world * { animation: none !important; }
   .aquarium-swimmer { left: 55%; top: 40%; }
+}
+
+
+/* =========================================================================
+   3D Coin Logo Medallion — Exact Reference Coin Shape & Exact Logo Colors
+   ========================================================================= */
+.shark-site-background header.site-navbar.aquarium-glass {
+  overflow: visible !important;
+  z-index: 50;
+  border-bottom: 2px solid rgba(88, 213, 255, 0.58) !important;
+  box-shadow: 0 8px 28px rgba(0, 10, 24, 0.5) !important;
+}
+
+.site-navbar .navbar-top {
+  grid-template-columns: 176px minmax(0, 1fr) auto !important;
+  padding: 10px 24px 12px !important;
+  overflow: visible !important;
+}
+
+.site-navbar .navbar-top > div:first-child {
+  grid-row: 1 / 3 !important;
+  position: relative;
+  z-index: 65;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: visible !important;
+}
+
+.site-navbar .navbar-top > div:first-child .shark-coin-3d img.shark-coin-face {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+@keyframes sharkCoinFloat3D {
+  0% {
+    transform: rotateY(8deg) rotateX(3deg) translateZ(6px);
+  }
+  50% {
+    transform: rotateY(11deg) rotateX(4deg) translateZ(9px);
+  }
+  100% {
+    transform: rotateY(6deg) rotateX(2deg) translateZ(6px);
+  }
+}
+
+@keyframes sharkCoinShineSweep {
+  0%, 100% {
+    transform: translateX(-120%) rotate(25deg);
+    opacity: 0;
+  }
+  48%, 56% {
+    transform: translateX(120%) rotate(25deg);
+    opacity: 0.65;
+  }
+}
+
+.shark-coin-stage {
+  perspective: 1000px;
+  position: relative;
+  z-index: 65;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Overlaps the bottom division line of the topbar into the body of the site */
+  margin-top: 2px;
+  margin-bottom: -58px;
+  transform: translateY(22px);
+  filter: drop-shadow(-5px 16px 22px rgba(0, 8, 22, 0.82));
+}
+
+.shark-coin-3d {
+  position: relative;
+  width: 164px;
+  height: 164px;
+  border-radius: 9999px;
+  padding: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  transform: rotateY(9deg) rotateX(3deg);
+  animation: sharkCoinFloat3D 5s ease-in-out infinite alternate;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 280ms ease;
+  /* Exact SHARKSET Logo Blue & Cyan Palette */
+  background: linear-gradient(
+    135deg,
+    #66dcff 0%,
+    #1ca2f3 22%,
+    #0868c8 55%,
+    #054896 82%,
+    #032f68 100%
+  );
+  /* Front-facing 3D Cylindrical Coin Wall (subtle left-bottom 3D edge) */
+  box-shadow:
+    -1px 1px 0 #7ce2ff,
+    -2px 1.5px 0 #38bdf8,
+    -3px 2px 0 #0c77dd,
+    -4px 3px 0 #085eb8,
+    -5px 3.5px 0 #064b98,
+    -6px 4px 0 #043978,
+    -7px 5px 0 #032959,
+    -8px 6px 0 #021b3d,
+    -10px 14px 26px rgba(0, 8, 22, 0.88),
+    inset -2px -2px 5px rgba(2, 24, 56, 0.85),
+    inset 2px 2px 4px rgba(186, 242, 255, 0.9);
+}
+
+.navbar-coin-anchor:hover .shark-coin-3d {
+  animation-play-state: paused;
+  transform: rotateY(14deg) rotateX(5deg) translateZ(12px) scale(1.05);
+}
+
+/* Back & Mid 3D Cylinder Discs for Front-Facing 3D Depth */
+.shark-coin-edge-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: linear-gradient(145deg, #0759b0 0%, #032d63 55%, #011838 100%);
+  transform: translateZ(-7px) translateX(-4px) translateY(3px);
+  box-shadow: -2px 2px 0 #011430, 0 8px 20px rgba(0, 6, 18, 0.85);
+}
+
+.shark-coin-edge-mid {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: linear-gradient(145deg, #1282e3 0%, #054794 55%, #02234f 100%);
+  transform: translateZ(-3.5px) translateX(-2px) translateY(1.5px);
+}
+
+/* Raised Outer Coin Lip & Recessed Inner Dish in Logo Blue/Cyan/White */
+.shark-coin-rim {
+  position: absolute;
+  inset: 4px;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: radial-gradient(circle at 38% 32%, #0c6fd1 0%, #053e82 70%, #022047 100%);
+  border: 2.5px solid #e6f9ff;
+  box-shadow:
+    inset 4px -2px 8px rgba(1, 18, 44, 0.85),
+    inset -2px 2px 5px rgba(102, 220, 255, 0.55),
+    0 0 0 2px #075eb8;
+  transform: translateZ(2px);
+}
+
+/* Popped-out 3D Relief Logo Face */
+.shark-coin-face {
+  position: relative;
+  z-index: 2;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 9999px;
+  object-fit: cover;
+  transform: translateZ(6px) scale(0.97);
+  filter:
+    drop-shadow(-1px 1px 0px #cceeff)
+    drop-shadow(-2px 1.5px 0px #0868c8)
+    drop-shadow(-3px 2.5px 0px #043e82)
+    drop-shadow(-4px 4px 5px rgba(0, 10, 28, 0.78));
+}
+
+.shark-coin-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: 9999px;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateZ(11px);
+}
+
+.shark-coin-shine::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: -40%;
+  width: 46%;
+  height: 160%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(230, 250, 255, 0.52) 50%,
+    transparent 100%
+  );
+  animation: sharkCoinShineSweep 6s ease-in-out infinite;
+}
+
+@media (max-width: 1279px) {
+  .site-navbar .navbar-top {
+    grid-template-columns: 132px minmax(0, 1fr) !important;
+  }
+  .shark-coin-3d {
+    width: 124px;
+    height: 124px;
+    padding: 6px;
+  }
+  .shark-coin-stage {
+    margin-bottom: -44px;
+    transform: translateY(18px);
+  }
+}
+
+@media (max-width: 639px) {
+  .site-navbar .navbar-top {
+    grid-template-columns: 102px minmax(0, 1fr) !important;
+  }
+  .shark-coin-3d {
+    width: 94px;
+    height: 94px;
+    padding: 5px;
+  }
+  .shark-coin-stage {
+    margin-bottom: -30px;
+    transform: translateY(14px);
+  }
+}
+
+/* =====================================================================
+   ARENA WHITE-LABEL PAGE MODE (SCOPED STRICTLY TO ARENA PAGE 'scheduler')
+   Colors the entire page, background, navbar, and cards with the Arena's
+   uploaded logo palette.
+   ===================================================================== */
+.arena-whitelabel-mode {
+  background: radial-gradient(
+    circle at 50% 0%,
+    var(--arena-primary, #1e293b) 0%,
+    var(--arena-header-bg, #0f172a) 55%,
+    #06090e 100%
+  ) !important;
+}
+
+.arena-whitelabel-mode .aquarium-world {
+  background: var(--arena-header-bg, #0f172a) !important;
+}
+
+.arena-whitelabel-mode .aquarium-scenery {
+  opacity: 0.14 !important;
+  filter: sepia(0.55) saturate(1.4) brightness(0.6) !important;
+}
+
+.arena-whitelabel-mode .aquarium-depth {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--arena-header-bg, #0f172a) 84%, transparent) 0%,
+    color-mix(in srgb, var(--arena-primary, #1e293b) 65%, #000000) 50%,
+    color-mix(in srgb, var(--arena-header-bg, #0f172a) 94%, #000000) 100%
+  ) !important;
+}
+
+.arena-whitelabel-mode header.site-navbar.aquarium-glass {
+  background-color: color-mix(in srgb, var(--arena-header-bg, #0f172a) 94%, #000000) !important;
+  background-image: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--arena-primary, #334155) 35%, transparent),
+    transparent 60%,
+    color-mix(in srgb, var(--arena-accent, #f59e0b) 20%, transparent)
+  ) !important;
+  border-bottom-color: color-mix(in srgb, var(--arena-accent, #f59e0b) 55%, transparent) !important;
+}
+
+.arena-whitelabel-mode .aquarium-glass {
+  background-color: color-mix(in srgb, var(--arena-header-bg, #0f172a) 90%, #05070b) !important;
+  border-color: color-mix(in srgb, var(--arena-primary, #475569) 55%, rgba(255, 255, 255, 0.16)) !important;
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+.arena-whitelabel-mode .vacancy-promo {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--arena-header-bg, #0f172a) 94%, #000000) 0%,
+    color-mix(in srgb, var(--arena-primary, #334155) 75%, #000000) 58%,
+    color-mix(in srgb, var(--arena-secondary, #475569) 65%, #000000) 100%
+  ) !important;
+  border-color: var(--arena-accent, #fbbf24) !important;
+  border-left: 6px solid var(--arena-accent, #fbbf24) !important;
 }
 

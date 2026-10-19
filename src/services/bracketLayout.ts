@@ -53,22 +53,23 @@ export function layoutBracket(matches: BracketMatch[]) {
     rows.set(key, [...(rows.get(key) || []), match]);
   }
   const halfHeight = Math.max(300, ...[...rows.values()].map(group => group.length * stepY));
-  const middleGap = CARD_HEIGHT + 100;
+  const middleGap = CARD_HEIGHT + 140;
   const height = margin * 2 + halfHeight * 2 + middleGap;
   const positions = new Map<string, { x: number; y: number }>();
   for (const group of rows.values()) group.sort((a, b) => a.matchNumber - b.matchNumber).forEach((match, index) => {
     const bottom = regions.get(match.id)!.endsWith('bottom');
+    const staggerY = match.stage === 'losers' && match.round === 1 && lowerRounds > 1 ? -25 : 0;
     positions.set(match.id, {
       x: match.stage === 'winners' ? margin + (match.round - 1) * stepX : centerX + (lowerRounds - match.round + 1) * stepX,
-      y: margin + (bottom ? halfHeight + middleGap : 0) + (index + .5) * halfHeight / group.length - CARD_HEIGHT / 2,
+      y: margin + (bottom ? halfHeight + middleGap : 0) + (index + .5) * halfHeight / group.length - CARD_HEIGHT / 2 + staggerY,
     });
   });
   matches.filter(m => m.stage === 'semifinals').sort((a, b) => a.matchNumber - b.matchNumber).forEach((match, i) => positions.set(match.id, {
     x: centerX, y: margin + halfHeight / 2 - CARD_HEIGHT / 2 + (i ? halfHeight + middleGap : 0),
   }));
-  // Independent decisions share the middle band: champion left, third place right.
+  // Independent decisions share the middle band: Gold Final on the left, Top 5 Podium in the center, Bronze 3rd place on the right.
   matches.filter(m => !positions.has(m.id)).forEach((match) => positions.set(match.id, {
-    x: centerX + (match.stage === 'third_place' ? stepX / 2 : -stepX / 2),
+    x: centerX + (match.stage === 'third_place' ? 420 : -420),
     y: margin + halfHeight + (middleGap - CARD_HEIGHT) / 2,
   }));
   return { positions, width, height, centerX };
