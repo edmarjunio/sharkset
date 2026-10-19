@@ -21,7 +21,7 @@
 - As telas antigas ainda contêm demonstrações e textos extensos. A simplificação de toda a navegação não está concluída.
 - O formulário de preferência/consentimento para lembretes por WhatsApp ainda precisa ser integrado ao perfil. Contatos privados são lidos de `athlete_contacts/{athleteId}` com `ownerId`, `phone` (apenas dígitos com país) e `whatsappOptIn`.
 - A categoria histórica é preservada no reset. Não foi implementado rebaixamento de jogadores experientes para iniciante.
-- Não foi feita auditoria integral nem substituição do motor de campeonato conforme todos os cenários privados.
+- O motor de campeonato foi substituído e validado com as referências privadas. A homologação de produção ainda depende da persistência transacional, permissões de escrita por arena, recuperação após desconexão e testes em dispositivos reais.
 - Faltam testes reais em múltiplos dispositivos, teste de carga e revisão visual responsiva no navegador.
 - Imagens originais somam aproximadamente 21 MB; preparar versões de entrega otimizadas antes de produção.
 
@@ -39,3 +39,15 @@
 - Testes locais cobrem limites de 30 dias, datas inválidas, retomada e promoção.
 - `technical_table/` ignorado e sem arquivos rastreados no Git.
 - Nenhuma mensagem WhatsApp enviada; nenhum serviço publicado.
+
+## Revisão do campeonato nesta entrega
+- Motor único de geração, origens tipadas, validação de integridade e preservação do sorteio e das contrações estruturais. Limite configurado na interface: 1.024 duplas.
+- Edições de resultado, sets, regras, W.O., participantes, nomes, quadra e horário; prévia de impacto e registro da correção. Jogos dependentes que mudam de participantes são reabertos, inclusive quando já começaram. Esta liberdade administrativa segue a solicitação do responsável.
+- Exceção de semifinal justificada, vinculada ao histórico que a originou; mudanças nesse histórico invalidam a autorização antiga.
+- Alterar dados do torneio não refaz mais a chave. Novo sorteio é uma operação explícita e preserva uma revisão local anterior.
+- Panorama dinâmico e colunas usam os mesmos jogos, com busca, pan, zoom e controle de toque. Não houve homologação visual no navegador nem em celular nesta execução.
+- Exportação PDF sem corte em 10 duplas/14 partidas; resultados por set e W.O. nos relatórios. Paginação implementada, mas o PDF final ainda precisa de conferência visual.
+- Testes: geração para TODOS os inteiros de 4 a 1.024, com e sem terceiro lugar; campeonatos completos de 4 a 64 em duas sequências; correções e edição em TODOS os tamanhos de 4 a 64; simulações completas adicionais de 65, 127, 128 e 256. Isso não equivale a simular todos os resultados possíveis.
+- Comparação integral de origens com o arquivo privado de referência e cenários de cruzamento disponíveis nessa pasta. Os testes leem os arquivos localmente; não incluem cópias no repositório.
+- Executar `npm test`, `npm run lint` e `npm run build`. Para rodar os testes de referência, a pasta privada precisa estar disponível.
+- Persistência de torneios continua local: histórico ocupa espaço do navegador e não substitui backup no servidor. Alterações locais não creditam automaticamente o ranking global. Não foram publicados serviços, regras ou mensagens externas.

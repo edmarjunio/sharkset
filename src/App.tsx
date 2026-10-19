@@ -1,4 +1,5 @@
 import React from 'react';
+import { AquariumBackground } from './components/AquariumBackground';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { SmartNotificationBanner } from './components/SmartNotificationBanner';
@@ -45,6 +46,7 @@ const MainContent: React.FC = () => {
           : undefined
       }
     >
+      <AquariumBackground />
       <Navbar />
 
       {/* Top Dashboard Visual Notification / Badge for Vacant Court in Next 2h + Smart Push Center (D-2 Tuition) */}
@@ -53,7 +55,7 @@ const MainContent: React.FC = () => {
       {/* Uninterrupted Live Broadcast Hub (Full on Home, Picture-in-Picture Floating Dock on other tabs) */}
       <PersistentLiveStreamDock />
 
-      <main className="flex-1">
+      <main className="site-content flex-1 min-w-0">
         {activeTab === 'home' && <HomeHighlights />}
         {activeTab === 'tournaments' && <DoubleEliminationBracket />}
         {activeTab === 'scheduler' && <CourtScheduler />}
@@ -96,7 +98,7 @@ const MainContent: React.FC = () => {
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap justify-center items-center gap-3">
               <SharksetLogo size="sm" />
               <span className="font-black text-slate-900 tracking-tight text-sm">
                 SHARK<span className="text-[#FF6B00]">SET</span>

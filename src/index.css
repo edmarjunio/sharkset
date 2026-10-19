@@ -19,15 +19,29 @@
   content: '';
   position: fixed;
   inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: url('/brand/background.png') center center / cover no-repeat;
+  filter: blur(2px);
+  transform: scale(1.02);
+}
+.shark-site-background::after {
+  content: '';
+  position: fixed;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(rgb(2 24 43 / 12%), rgb(2 24 43 / 28%)),
-    url('/brand/background.png') center center / cover no-repeat;
+  background: radial-gradient(
+    ellipse 72% 85% at 50% 45%,
+    rgb(3 16 32 / 84%) 0%,
+    rgb(4 22 42 / 70%) 58%,
+    rgb(2 24 43 / 38%) 100%
+  );
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #032c47;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #031d33;
   color: #effaff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -39,49 +53,48 @@ body {
   height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #07334a;
+  background: #041f33;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3a99b1;
+  background: #2b7a94;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #12C7BB;
 }
 
-/* Shared aquarium surfaces: alpha belongs to the background, never the content.
-   Keep these outside Tailwind layers so existing utility classes use the theme. */
+/* Shared aquarium surfaces: 88% dark blue opacity for crisp readability over background art. */
 .shark-site-background .aquarium-glass {
-  background-color: rgb(3 30 53 / 58%);
-  background-image: linear-gradient(135deg, rgb(175 244 255 / 9%), rgb(4 43 67 / 5%));
-  border-color: rgb(154 235 255 / 30%);
-  box-shadow: inset 0 1px 0 rgb(221 251 255 / 16%), 0 10px 30px rgb(0 16 32 / 16%);
-  -webkit-backdrop-filter: blur(12px) saturate(125%);
-  backdrop-filter: blur(12px) saturate(125%);
+  background-color: rgb(5 24 44 / 88%);
+  background-image: linear-gradient(180deg, rgb(14 48 80 / 24%), rgb(4 20 38 / 24%));
+  border-color: rgb(56 139 190 / 32%);
+  box-shadow: 0 12px 32px rgb(0 10 24 / 36%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
   color: #effaff;
 }
 .shark-site-background .aquarium-glass .aquarium-glass {
-  background-color: rgb(4 32 54 / 35%);
+  background-color: rgb(4 19 36 / 86%);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 .shark-site-background :is(header.sticky, [role="dialog"]).aquarium-glass {
-  background-color: rgb(3 30 53 / 78%);
+  background-color: rgb(4 20 38 / 92%);
 }
 .shark-site-background :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-slate-700,
-  .text-slate-600, .text-gray-900, .text-gray-800, .text-gray-700) { color: #effaff; }
-.shark-site-background :is(.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400) { color: #c0e3ef; }
+  .text-slate-600, .text-gray-900, .text-gray-800, .text-gray-700) { color: #f1f8fe; }
+.shark-site-background :is(.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400) { color: #b8d9e8; }
 .shark-site-background :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea) {
-  background-color: rgb(1 24 44 / 66%);
-  color: #effaff;
-  border-color: rgb(154 235 255 / 35%);
+  background-color: rgb(3 16 31 / 90%);
+  color: #f1f8fe;
+  border-color: rgb(56 139 190 / 40%);
   color-scheme: dark;
 }
-.shark-site-background :is(input, textarea)::placeholder { color: #b7d9e7; opacity: 1; }
-.shark-site-background option { background: #082d46; color: #effaff; }
+.shark-site-background :is(input, textarea)::placeholder { color: #94b8cb; opacity: 1; }
+.shark-site-background option { background: #051e34; color: #f1f8fe; }
 .shark-site-background :is(button, [role="button"]).aquarium-glass:hover {
-  background-color: rgb(22 104 140 / 68%);
-  border-color: rgb(154 235 255 / 65%);
+  background-color: rgb(14 58 90 / 88%);
+  border-color: rgb(91 195 250 / 55%);
 }
 .shark-site-background :is(video, .broadcast-media) {
   opacity: 1;
@@ -90,13 +103,13 @@ body {
   backdrop-filter: none;
 }
 @supports not (backdrop-filter: blur(1px)) {
-  .shark-site-background .aquarium-glass { background-color: rgb(3 30 53 / 88%); }
+  .shark-site-background .aquarium-glass { background-color: rgb(5 24 44 / 94%); }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .shark-site-background .aquarium-glass { background-color: rgb(3 30 53 / 94%); backdrop-filter: none; }
+  .shark-site-background .aquarium-glass { background-color: rgb(5 24 44 / 96%); backdrop-filter: none; }
 }
 
-/* Compatibility for existing neutral surfaces throughout the application. */
+/* Compatibility for existing neutral surfaces throughout the application (85% to 90% opacity). */
 .shark-site-background :is([class~="bg-[#030B17]"],
   [class~="bg-[#030B17]/50"],
   [class~="bg-[#030B17]/60"],
@@ -130,9 +143,9 @@ body {
   [class~="bg-slate-950/90"],
   [class~="bg-white"],
   [class~="bg-white/95"]):not(img):not(video):not(svg):not(.broadcast-media) {
-  background-color: rgb(3 30 53 / 52%);
-  border-color: rgb(154 235 255 / 28%);
-  color: #effaff;
+  background-color: rgb(5 24 44 / 88%);
+  border-color: rgb(56 139 190 / 30%);
+  color: #f1f8fe;
 }
 .shark-site-background .aquarium-glass :is([class~="bg-[#030B17]"],
   [class~="bg-[#030B17]/50"],
@@ -167,100 +180,251 @@ body {
   [class~="bg-slate-950/90"],
   [class~="bg-white"],
   [class~="bg-white/95"]):not(img):not(video):not(svg):not(.broadcast-media) {
-  background-color: rgb(3 30 53 / 32%);
+  background-color: rgb(3 17 33 / 85%);
 }
 
-/* Keep status colors distinct while removing pale opaque fills. */
-.shark-site-background :is([class~="bg-sky-50"], [class~="bg-sky-50/60"], [class~="bg-sky-100"]) { background-color: color-mix(in srgb, #a7e7ff 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #a7e7ff 45%, transparent); }
+/* Keep status colors distinct while maintaining high contrast. */
+.shark-site-background :is([class~="bg-sky-50"], [class~="bg-sky-50/60"], [class~="bg-sky-100"]) { background-color: color-mix(in srgb, #a7e7ff 16%, rgb(3 20 38 / 88%)); border-color: color-mix(in srgb, #a7e7ff 40%, transparent); }
 .shark-site-background :is(.text-sky-600, .text-sky-700, .text-sky-800, .text-sky-900, .text-sky-950) { color: #a7e7ff; }
 .shark-site-background :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900, .text-blue-950) { color: #b5dcff; }
 .shark-site-background :is(.text-cyan-600, .text-cyan-700, .text-cyan-800, .text-cyan-900, .text-cyan-950) { color: #a5f3fc; }
-.shark-site-background :is([class~="bg-emerald-50"], [class~="bg-emerald-100"], [class~="bg-emerald-50/90"], [class~="bg-emerald-50/60"], [class~="bg-emerald-50/80"]) { background-color: color-mix(in srgb, #a7f3d0 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #a7f3d0 45%, transparent); }
-.shark-site-background :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900, .text-emerald-950) { color: #a7f3d0; }
-.shark-site-background :is([class~="bg-orange-100"], [class~="bg-orange-50/70"], [class~="bg-orange-50"]) { background-color: color-mix(in srgb, #fed7aa 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #fed7aa 45%, transparent); }
+.shark-site-background :is([class~="bg-emerald-50"], [class~="bg-emerald-100"], [class~="bg-emerald-50/90"], [class~="bg-emerald-50/60"], [class~="bg-emerald-50/80"]) { background-color: color-mix(in srgb, #a7f3d0 16%, rgb(3 20 38 / 88%)); border-color: color-mix(in srgb, #a7f3d0 40%, transparent); }
+.shark-site-background :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900, .text-emerald-950) { color: #6ee7b7; }
+.shark-site-background :is([class~="bg-orange-100"], [class~="bg-orange-50/70"], [class~="bg-orange-50"]) { background-color: color-mix(in srgb, #fed7aa 16%, rgb(3 20 38 / 88%)); border-color: color-mix(in srgb, #fed7aa 40%, transparent); }
 .shark-site-background :is(.text-orange-600, .text-orange-700, .text-orange-800, .text-orange-900, .text-orange-950) { color: #fed7aa; }
-.shark-site-background :is([class~="bg-amber-50/70"], [class~="bg-amber-50"], [class~="bg-amber-50/40"], [class~="bg-amber-100/80"], [class~="bg-amber-50/20"], [class~="bg-amber-100"], [class~="bg-amber-50/90"], [class~="bg-amber-50/50"]) { background-color: color-mix(in srgb, #fde68a 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #fde68a 45%, transparent); }
+.shark-site-background :is([class~="bg-amber-50/70"], [class~="bg-amber-50"], [class~="bg-amber-50/40"], [class~="bg-amber-100/80"], [class~="bg-amber-50/20"], [class~="bg-amber-100"], [class~="bg-amber-50/90"], [class~="bg-amber-50/50"]) { background-color: color-mix(in srgb, #fde68a 16%, rgb(3 20 38 / 88%)); border-color: color-mix(in srgb, #fde68a 40%, transparent); }
 .shark-site-background :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950) { color: #fde68a; }
-.shark-site-background :is([class~="bg-red-50"]) { background-color: color-mix(in srgb, #fecaca 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #fecaca 45%, transparent); }
+.shark-site-background :is([class~="bg-red-50"]) { background-color: color-mix(in srgb, #fecaca 16%, rgb(3 20 38 / 88%)); border-color: color-mix(in srgb, #fecaca 40%, transparent); }
 .shark-site-background :is(.text-red-600, .text-red-700, .text-red-800, .text-red-900, .text-red-950) { color: #fecaca; }
-.shark-site-background :is([class~="bg-rose-100"], [class~="bg-rose-50"], [class~="bg-rose-50/40"]) { background-color: color-mix(in srgb, #fecdd3 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #fecdd3 45%, transparent); }
+.shark-site-background :is([class~="bg-rose-100"], [class~="bg-rose-50"], [class~="bg-rose-50/40"]) { background-color: color-mix(in srgb, #fecdd3 16%, rgb(3 20 38 / 88%)); border-color: color-mix(in srgb, #fecdd3 40%, transparent); }
 .shark-site-background :is(.text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900, .text-rose-950) { color: #fecdd3; }
 .shark-site-background :is(.text-violet-600, .text-violet-700, .text-violet-800, .text-violet-900, .text-violet-950) { color: #ddd6fe; }
-.shark-site-background :is([class~="bg-indigo-50"]) { background-color: color-mix(in srgb, #c7d2fe 15%, rgb(2 28 47 / 60%)); border-color: color-mix(in srgb, #c7d2fe 45%, transparent); }
+.shark-site-background :is([class~="bg-indigo-50"]) { background-color: color-mix(in srgb, #c7d2fe 16%, rgb(3 20 38 / 88%)); border-color: color-mix(in srgb, #c7d2fe 40%, transparent); }
 .shark-site-background :is(.text-indigo-600, .text-indigo-700, .text-indigo-800, .text-indigo-900, .text-indigo-950) { color: #c7d2fe; }
 
 .shark-site-background :is(section, article, aside, footer, [role="dialog"], .rounded-2xl, .rounded-3xl).aquarium-glass {
-  -webkit-backdrop-filter: blur(12px) saturate(125%);
-  backdrop-filter: blur(12px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
 }
 .shark-site-background .aquarium-glass [class~="bg-gradient-to-r"]:not(button):not(a) {
-  background-image: linear-gradient(110deg, rgb(27 133 176 / 22%), rgb(4 35 60 / 30%));
-}
-@media (prefers-reduced-transparency: reduce) {
-  .shark-site-background .aquarium-glass { background: #082d46; backdrop-filter: none; }
+  background-image: linear-gradient(110deg, rgb(12 45 72 / 85%), rgb(4 22 40 / 90%));
 }
 
-/* One sculpted, glossy button treatment for every interactive button. */
+/* Clean, restrained interactive button behavior — no forced pill shape or heavy glowing borders on every element. */
 .shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]) {
-  border-radius: 999px;
-  background-image: linear-gradient(180deg,
-    rgb(235 253 255 / 28%) 0%, rgb(166 236 255 / 9%) 45%,
-    rgb(0 13 35 / 12%) 52%, rgb(0 13 35 / 26%) 100%);
-  box-shadow:
-    inset 0 2px 1px rgb(240 254 255 / 55%),
-    inset 1px 0 1px rgb(188 243 255 / 24%),
-    inset 0 -3px 2px rgb(0 14 37 / 32%),
-    0 4px 0 #04233d,
-    0 6px 0 rgb(91 215 249 / 24%),
-    0 9px 15px rgb(0 12 30 / 32%);
-  translate: 0 0;
-  scale: 1;
-  transform-origin: center;
-  transition: translate 200ms cubic-bezier(.2,.8,.2,1),
-    scale 200ms cubic-bezier(.2,.8,.2,1), box-shadow 200ms ease,
-    background-color 180ms ease, border-color 180ms ease;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 120ms ease, box-shadow 150ms ease;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]):hover {
-    translate: 0 -7px;
-    scale: 1.045;
-    box-shadow:
-      inset 0 2px 2px rgb(245 255 255 / 75%),
-      inset 1px 0 2px rgb(188 243 255 / 40%),
-      inset 0 -3px 2px rgb(0 14 37 / 28%),
-      0 7px 0 #04233d,
-      0 9px 0 rgb(91 215 249 / 40%),
-      0 18px 25px rgb(0 12 30 / 48%),
-      0 0 18px rgb(62 211 255 / 22%);
+.shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):is(:disabled, [aria-disabled="true"]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =========================================================================
+   Tournament Bracket — Infinity Scroll Viewport, Fullscreen & Match Cards
+   ========================================================================= */
+.bracket-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  background: radial-gradient(ellipse at 50% 25%, #07223d 0%, #020c18 100%) !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.bracket-close {
+  position: fixed !important;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10010 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  font-size: 0.875rem;
+  border: 2px solid #fca5a5 !important;
+  box-shadow: 0 12px 32px rgba(239, 68, 68, 0.55), 0 0 0 4px rgba(15, 23, 42, 0.85) !important;
+  cursor: pointer;
+}
+.bracket-close:hover {
+  transform: translateY(-2px) scale(1.02);
+  background: linear-gradient(135deg, #f87171 0%, #dc2626 100%) !important;
+}
+
+.bracket-viewport {
+  position: relative;
+  width: 100%;
+  height: clamp(560px, 74vh, 860px);
+  overflow: auto;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 20% 35%, rgba(16, 185, 129, 0.09), transparent 42%),
+    radial-gradient(circle at 80% 35%, rgba(245, 158, 11, 0.09), transparent 42%),
+    radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.10), transparent 50%),
+    linear-gradient(180deg, rgba(3, 15, 29, 0.94) 0%, rgba(2, 11, 22, 0.97) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  user-select: none;
+  touch-action: none;
+}
+
+.shark-site-background .vacancy-promo {
+  background: linear-gradient(115deg, rgb(5 65 100 / 94%), rgb(3 24 48 / 92%) 65%, rgb(124 55 12 / 78%));
+  box-shadow: 0 12px 38px rgb(0 153 230 / 22%), inset 0 1px 0 rgb(186 230 253 / 30%);
+  border-left: 5px solid #ff8a24;
+}
+
+.bracket-fullscreen > :not(.bracket-viewport) { flex-shrink: 0; }
+.bracket-fullscreen { color: #effaff; }
+.bracket-fullscreen input { color: #effaff; }
+
+.bracket-fullscreen .bracket-viewport {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0;
+}
+
+/* Match Card — Winners Bracket (Green Background) */
+.shark-site-background .bracket-card-winners,
+.bracket-card-winners {
+  background: linear-gradient(160deg, rgba(6, 78, 59, 0.94) 0%, rgba(4, 47, 36, 0.96) 100%) !important;
+  border: 1.5px solid rgba(52, 211, 153, 0.55) !important;
+  box-shadow: 0 10px 26px rgba(2, 24, 18, 0.55), inset 0 1px 0 rgba(167, 243, 208, 0.2) !important;
+  color: #ecfdf5 !important;
+}
+
+/* Match Card — Losers / Repescagem Bracket (Yellow/Amber Background) */
+.shark-site-background .bracket-card-losers,
+.bracket-card-losers {
+  background: linear-gradient(160deg, rgba(120, 53, 15, 0.94) 0%, rgba(69, 26, 3, 0.96) 100%) !important;
+  border: 1.5px solid rgba(251, 191, 36, 0.65) !important;
+  box-shadow: 0 10px 26px rgba(28, 12, 2, 0.55), inset 0 1px 0 rgba(253, 230, 138, 0.25) !important;
+  color: #fffbeb !important;
+}
+
+/* Match Card — Central Stage (Semifinals, Final, 3rd Place) */
+.shark-site-background .bracket-card-central,
+.bracket-card-central {
+  background: linear-gradient(160deg, rgba(12, 54, 88, 0.95) 0%, rgba(6, 28, 50, 0.97) 100%) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.6) !important;
+  box-shadow: 0 10px 28px rgba(2, 12, 27, 0.6), inset 0 1px 0 rgba(186, 230, 253, 0.22) !important;
+  color: #f0f9ff !important;
+}
+
+/* Live Match Highlight — Strong Red Border + Glowing Pulse */
+@keyframes liveBorderPulse {
+  0%, 100% {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.45), 0 0 24px rgba(239, 68, 68, 0.55);
+  }
+  50% {
+    border-color: #f87171;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.7), 0 0 34px rgba(239, 68, 68, 0.8);
   }
 }
 
-.shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):focus-visible {
-  outline: 3px solid #9bf3ff;
-  outline-offset: 5px;
+.shark-site-background .bracket-card-live,
+.bracket-card-live {
+  border: 2.5px solid #ef4444 !important;
+  animation: liveBorderPulse 1.8s infinite ease-in-out;
 }
-.shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]):active {
-  translate: 0 3px;
-  scale: .98;
-  box-shadow: inset 0 2px 5px rgb(0 14 37 / 45%),
-    inset 0 -1px 1px rgb(188 243 255 / 28%),
-    0 1px 0 #04233d, 0 3px 7px rgb(0 12 30 / 30%);
-  transition-duration: 70ms;
+
+
+
+/* Aquarium depth: decoration stays behind every interactive surface. */
+.shark-site-background { position: relative; overflow-x: clip; }
+.shark-site-background::before { filter: none; transform: none; }
+.shark-site-background::after {
+  background: linear-gradient(180deg, rgb(0 25 51 / 30%), rgb(1 22 43 / 48%) 50%, rgb(1 17 35 / 65%));
 }
-.shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):is(:disabled, [aria-disabled="true"]) {
-  opacity: .5;
-  cursor: not-allowed;
-  translate: none;
-  scale: 1;
-  box-shadow: inset 0 1px 1px rgb(240 254 255 / 20%), 0 2px 4px rgb(0 12 30 / 20%);
+.aquarium-world { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; }
+.aquarium-rays {
+  position: absolute; inset: -20%; opacity: .25;
+  background: repeating-conic-gradient(from 160deg at 65% -10%, transparent 0deg 12deg, #b5f6ff44 14deg 18deg, transparent 22deg 35deg);
+  animation: aquarium-light 28s ease-in-out infinite alternate;
+}
+.aquarium-swimmer { position: absolute; left: -420px; top: 38%; width: clamp(230px, 32vw, 440px); opacity: .8; animation: aquarium-swim 48s linear infinite; will-change: transform; }
+.aquarium-swimmer img { width: 100%; height: auto; animation: aquarium-float 4s ease-in-out infinite alternate; }
+.aquarium-bubbles i { position: absolute; bottom: -50px; border: 1px solid #b8f6ff80; border-radius: 50%; box-shadow: inset 2px 2px 4px #edffff66; animation: aquarium-rise linear infinite; }
+@keyframes aquarium-swim {
+  0% { transform: translate3d(-80px, 0, 0) scaleX(1); }
+  45% { transform: translate3d(calc(100vw + 880px), -14vh, 0) scaleX(1); }
+  49% { transform: translate3d(calc(100vw + 880px), 15vh, 0) scaleX(-1); }
+  95%, 100% { transform: translate3d(-80px, 8vh, 0) scaleX(-1); }
+}
+@keyframes aquarium-float { from { transform: translateY(-12px) rotate(-3deg); } to { transform: translateY(12px) rotate(3deg); } }
+@keyframes aquarium-rise { from { transform: translate3d(0, 0, 0); opacity: 0; } 10%, 80% { opacity: .5; } to { transform: translate3d(30px, -110vh, 0); opacity: 0; } }
+@keyframes aquarium-light { from { transform: rotate(-4deg); } to { transform: rotate(5deg); } }
+.aquarium-paused *, .aquarium-paused .aquarium-swimmer img { animation-play-state: paused !important; }
+.aquarium-motion-control { position: fixed; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; z-index: 35; padding: 10px 14px; color: #d9faff; background: #062b44e8; border: 1px solid #a8eaff55; border-radius: 30px; font-size: 11px; backdrop-filter: blur(10px); }
+.shark-site-background .aquarium-glass {
+  background-color: rgb(4 30 53 / 58%);
+  background-image: linear-gradient(125deg, rgb(210 250 255 / 13%), transparent 40%, rgb(28 170 208 / 8%));
+  border-color: rgb(167 235 255 / 32%);
+  box-shadow: inset 0 1px 0 rgb(235 255 255 / 24%), inset 1px 0 0 rgb(190 240 255 / 9%), 0 12px 35px rgb(0 17 35 / 22%);
+  backdrop-filter: blur(10px) saturate(125%);
+  -webkit-backdrop-filter: blur(10px) saturate(125%);
+}
+.shark-site-background .aquarium-glass .aquarium-glass { background-color: rgb(3 25 45 / 40%); backdrop-filter: none; }
+.shark-site-background :is(header.sticky, [role="dialog"]).aquarium-glass { background-color: rgb(3 25 46 / 78%); }
+.shark-site-background :is(section, article, aside, footer, div)[class*="bg-"]:not(.broadcast-media):not(.vacancy-promo):not([class*="fixed"]):not([class*="absolute"]):not([class*="bracket-card"]) {
+  background-color: rgb(4 27 48 / 54%);
+}
+.shark-site-background .aquarium-glass [class~="bg-gradient-to-r"]:not(button):not(a) {
+  background-image: linear-gradient(110deg, rgb(12 62 88 / 55%), rgb(4 22 40 / 55%));
+}
+.shark-site-background :is(input, select, textarea) { background-color: rgb(3 23 42 / 78%); color: #f0fcff; }
+.shark-site-background video, .shark-site-background iframe, .shark-site-background .broadcast-media { opacity: 1; }
+
+@media (max-width: 639px) {
+  .site-navbar { position: relative; }
+  .navbar-top { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding: 10px 12px; }
+  .navbar-top > div:first-child img { width: 76px; height: 76px; }
+  .navbar-actions { min-width: 0; display: grid; grid-template-columns: 44px minmax(80px, 1fr) 44px; gap: 7px; }
+  .navbar-actions > button { min-height: 44px; padding: 8px; justify-content: center; font-size: 11px; }
+  .navbar-actions > button:last-child { grid-column: 1 / -1; min-height: 34px; padding: 4px 10px; justify-content: flex-end; background: transparent; border: 0; }
+  .navbar-actions > button:last-child > div { width: 24px; height: 24px; }
+  .navbar-actions > button:last-child > span { display: inline; }
+  .mobile-navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; padding: 8px 12px 12px; background: transparent !important; border: 0; }
+  .mobile-navigation button { min-width: 0; min-height: 44px; font-size: 10px; letter-spacing: 0; padding: 8px 4px; border-radius: 12px; }
+  .navbar-search { padding: 0 12px 12px; }
+  .navbar-search button { padding: 12px; font-size: 12px; min-height: 44px; }
+  .site-content { width: 100%; }
+  .site-content > :is(div, section) { padding-left: 12px; padding-right: 12px; }
+  .site-content :is(input, select, textarea) { font-size: 16px; max-width: 100%; min-height: 44px; }
+  .site-content :is(h1, h2) { overflow-wrap: anywhere; }
+  .site-content .grid > *, .site-content .flex > * { min-width: 0; }
+  .site-content :is(.grid-cols-3, .grid-cols-4) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vacancy-promo { padding: 16px; gap: 14px; border-radius: 20px; }
+  .vacancy-promo > div { width: 100%; }
+  .vacancy-promo > div:last-child { display: flex; flex-wrap: wrap; }
+  .vacancy-promo > div:last-child > button:first-child { width: 100%; min-height: 48px; justify-content: center; }
+  .vacancy-promo p.text-lg { font-size: 19px; line-height: 1.35; }
+  .aquarium-swimmer { width: 240px; opacity: .6; animation-duration: 60s; }
+  .aquarium-bubbles i:nth-child(n+5) { display: none; }
+  .shark-site-background .aquarium-glass { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .shark-site-background .aquarium-glass .aquarium-glass { backdrop-filter: none; }
+  .bracket-fullscreen { padding: 8px; gap: 6px; }
+  .bracket-close { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); padding: 10px 14px; font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]) {
-    transition: none;
-    translate: none !important;
-    scale: 1 !important;
-  }
+  .aquarium-world * { animation: none !important; }
+  .aquarium-swimmer { left: 65%; top: 45%; opacity: .35; }
+  .aquarium-motion-control { display: none; }
+  .bracket-card-live { animation: none; }
 }

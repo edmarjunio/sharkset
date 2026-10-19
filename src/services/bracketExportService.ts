@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { BracketMatch, TeamPair, Tournament, TenantConfig } from '../types';
 import { TOURNAMENT_CATEGORY_LABELS } from './rankingValidator';
+import { formatMatchResult } from './tournamentRules';
 
 export interface StandingsInputRow {
   position?: number;
@@ -123,7 +124,7 @@ export function exportBracketToCSV(
 
   // Matches Section
   lines.push('--- HISTÓRICO DE PARTIDAS E RESULTADOS DA TABELA ---');
-  lines.push('Jogo #;Fase / Chave;Quadra;Horário;Dupla 1;Placar 1;Placar 2;Dupla 2;Vencedor;Status');
+  lines.push('Jogo #;Fase / Chave;Quadra;Horário;Dupla 1;Pontos totais 1;Pontos totais 2;Dupla 2;Vencedor;Status;Sets / W.O.');
   matches.forEach((m) => {
     const stageLabel =
       m.stage === 'winners'
@@ -145,7 +146,7 @@ export function exportBracketToCSV(
     const statusLabel = m.status === 'completed' ? 'Finalizada' : m.status === 'in_progress' ? 'Ao Vivo' : 'Aguardando';
 
     lines.push(
-      `Jogo ${m.matchNumber};${stageLabel};${m.courtName || 'Quadra Principal'};${m.scheduledTime || '-'};${t1Name};${m.score1 ?? '-'};${m.score2 ?? '-'};${t2Name};${winnerName};${statusLabel}`
+      `Jogo ${m.matchNumber};${stageLabel};${m.courtName || 'Quadra Principal'};${m.scheduledTime || '-'};${t1Name};${m.score1 ?? '-'};${m.score2 ?? '-'};${t2Name};${winnerName};${statusLabel};${formatMatchResult(m)}`
     );
   });
 
@@ -185,6 +186,15 @@ export async function exportBracketToPDF(
   const logo = new Image();
   logo.src = '/brand/logo.png';
   await logo.decode();
+  function ensureSpace(height: number) {
+    if (currentY + height <= 275) return;
+    doc.addPage();
+    doc.setFillColor(15, 23, 42); doc.rect(10, 10, pageWidth - 20, 15, 'F');
+    doc.addImage(logo, 'PNG', 12, 11, 13, 13);
+    doc.setTextColor(226, 232, 240); doc.setFontSize(10);
+    doc.text('SHARKSET | Continuação do relatório', 29, 19);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); currentY = 32;
+  }
 
   // Header Banner
   doc.setFillColor(15, 23, 42); // slate-900
@@ -270,10 +280,11 @@ export async function exportBracketToPDF(
 
   currentY += 7;
 
-  // Table Rows (limit to top 10 on page 1)
+  // Every registered pair is included, across as many pages as necessary.
   doc.setFont('helvetica', 'normal');
-  const rowsToPrint = standings.slice(0, 10);
+  const rowsToPrint = standings;
   rowsToPrint.forEach((row, idx) => {
+    ensureSpace(7);
     if (idx % 2 === 1) {
       doc.setFillColor(248, 250, 252);
       doc.rect(10, currentY, pageWidth - 20, 6, 'F');
@@ -290,6 +301,7 @@ export async function exportBracketToPDF(
   });
 
   currentY += 6;
+  ensureSpace(25);
 
   // Matches Breakdown
   doc.setFontSize(11);
@@ -315,12 +327,17 @@ export async function exportBracketToPDF(
 
   // Matches Rows (up to available page height)
   doc.setFont('helvetica', 'normal');
-  matches.slice(0, 14).forEach((m, idx) => {
-    if (currentY > 275) return; // stay within page boundaries
+  matches.forEach((m, idx) => {
+    const t1Name = m.team1 ? `${m.team1.player1} & ${m.team1.player2}` : 'A definir';
+    const t2Name = m.team2 ? `${m.team2.player1} & ${m.team2.player2}` : 'A definir';
+    const scoreStr = formatMatchResult(m);
+    const confrontationLines = doc.splitTextToSize(`${t1Name}\n${scoreStr}\n${t2Name}`, 76);
+    const rowHeight = Math.max(16, confrontationLines.length * 4 + 2);
+    ensureSpace(rowHeight);
 
     if (idx % 2 === 1) {
       doc.setFillColor(248, 250, 252);
-      doc.rect(10, currentY, pageWidth - 20, 6, 'F');
+      doc.rect(10, currentY, pageWidth - 20, rowHeight, 'F');
     }
 
     const stageLabel =
@@ -336,30 +353,30 @@ export async function exportBracketToPDF(
         ? 'Super Final'
         : m.stage;
 
-    const t1Name = m.team1 ? `${m.team1.player1}` : 'TBD';
-    const t2Name = m.team2 ? `${m.team2.player1}` : 'TBD';
-    const scoreStr = m.status === 'completed' ? `${m.score1 ?? 0} x ${m.score2 ?? 0}` : 'vs';
     const winnerTeam = m.winnerId === m.team1?.id ? m.team1 : m.winnerId === m.team2?.id ? m.team2 : undefined;
     const winnerName = winnerTeam ? `${winnerTeam.player1}` : '-';
 
     doc.setTextColor(15, 23, 42);
     doc.text(`#${m.matchNumber}`, 13, currentY + 4.5);
     doc.text(stageLabel, 26, currentY + 4.5);
-    doc.text(`${t1Name} ${scoreStr} ${t2Name}`.slice(0, 48), 60, currentY + 4.5);
+    doc.text(confrontationLines, 60, currentY + 4.5);
     doc.text(winnerName.slice(0, 26), 140, currentY + 4.5);
 
-    currentY += 6;
+    currentY += rowHeight;
   });
 
   // Footer
+  for (let page = 1; page <= doc.getNumberOfPages(); page++) {
+  doc.setPage(page);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   doc.text(
-    'Documento oficial exportado pelo sistema SHARK SET Arena & Futevôlei. Resultados registrados pelo organizador.',
+    `SHARKSET | Resultados registrados pelo organizador | Página ${page} de ${doc.getNumberOfPages()}`,
     pageWidth / 2,
     290,
     { align: 'center' }
   );
+  }
 
   doc.save(`${sanitizeFileName(tournament.name)}_oficial.pdf`);
 }
@@ -374,6 +391,9 @@ export function openBracketPrintWindow(
   podiumInput: PodiumInput,
   tenant: TenantConfig
 ): void {
+  // User-entered names and notes must remain text in the generated document.
+  const escapeData = <T,>(value: T): T => JSON.parse(JSON.stringify(value), (_key, item) => typeof item === 'string' ? item.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!)) : item);
+  tournament = escapeData(tournament); matches = escapeData(matches); standingsInput = escapeData(standingsInput); podiumInput = escapeData(podiumInput); tenant = escapeData(tenant);
   const standings = normalizeStandings(standingsInput);
   const podium = normalizePodium(podiumInput);
   const catLabel = TOURNAMENT_CATEGORY_LABELS[tournament.category] || tournament.category;
@@ -416,7 +436,7 @@ export function openBracketPrintWindow(
 
       const t1 = m.team1 ? `${m.team1.player1} & ${m.team1.player2}` : 'Aguardando';
       const t2 = m.team2 ? `${m.team2.player1} & ${m.team2.player2}` : 'Aguardando';
-      const score = m.status === 'completed' ? `<strong>${m.score1}</strong> x <strong>${m.score2}</strong>` : 'vs';
+      const score = formatMatchResult(m);
       const winnerTeam = m.winnerId === m.team1?.id ? m.team1 : m.winnerId === m.team2?.id ? m.team2 : undefined;
       const winner = winnerTeam ? `🏆 ${winnerTeam.player1} & ${winnerTeam.player2}` : '-';
 

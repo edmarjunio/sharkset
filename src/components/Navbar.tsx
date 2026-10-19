@@ -66,7 +66,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <header
-      className="aquarium-glass sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md text-slate-900 border-b border-slate-200 shadow-xs transition-colors"
+      className="site-navbar aquarium-glass sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md text-slate-900 border-b border-slate-200 shadow-xs transition-colors"
       style={
         isArenaWhiteLabelSite && arenaPalette
           ? {
@@ -98,7 +98,7 @@ export const Navbar: React.FC = () => {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 flex items-center justify-between gap-3 min-h-[96px] sm:min-h-[108px] py-2">
+      <div className="navbar-top w-full px-3 sm:px-6 flex flex-wrap items-center justify-between gap-4 py-3">
         {/* LEFT: Super Large Brand Logo (Either Arena's White-Label Logo OR Extra-Large SHARKSET Logo) */}
         <div className="flex items-center gap-3 shrink-0">
           {isArenaWhiteLabelSite && tenant.logoUrl ? (
@@ -139,13 +139,13 @@ export const Navbar: React.FC = () => {
               title="SHARKSET Oficial"
             >
               {/* Extra-Large Logo as requested: "Quero a logo maior do que na imagem que enviei, quero bem grande a logo marca" */}
-              <SharksetLogo size="xl" />
+              <SharksetLogo size="2xl" className="[&>img]:w-24 [&>img]:h-24 sm:[&>img]:w-36 sm:[&>img]:h-36" />
             </a>
           )}
         </div>
 
         {/* CENTER: Clean Descontraído Uppercase Navigation matching the attached print + ARENAS */}
-        <nav className="hidden lg:flex items-center gap-5 xl:gap-7 h-full">
+        <nav className="hidden lg:flex flex-1 flex-wrap justify-center items-center gap-4 xl:gap-6">
           {navItems.map((item) => {
             const isActive =
               activeTab === item.id ||
@@ -179,17 +179,8 @@ export const Navbar: React.FC = () => {
         </nav>
 
         {/* RIGHT: Pill Search Bar + Transmitir Ao Vivo / Criar Torneio Orange Pill Button + User Avatar */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="navbar-actions flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Search Input Pill (Matches screenshot "Buscar atletas ou torneios...") */}
-          <button
-            type="button"
-            onClick={() => setCommandPaletteOpen(true)}
-            className="hidden md:flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200/75 border border-slate-200/90 text-xs font-medium text-slate-500 w-48 xl:w-60 transition-all cursor-pointer text-left"
-            title="Buscar atletas, arenas ou torneios (Ctrl+K)"
-          >
-            <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate">Buscar atletas ou torneios...</span>
-          </button>
 
           {/* Direct Live Broadcast Button ("fazer uma transmissão live ao vivo direto pelo site") */}
           <button
@@ -253,7 +244,7 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* Mobile & Tablet Horizontal Navigation Bar */}
-      <div className="lg:hidden flex items-center justify-between border-t border-slate-200 bg-slate-50 px-3 py-2 overflow-x-auto gap-2">
+      <nav aria-label="Navegação principal no celular" className="mobile-navigation lg:hidden flex items-center justify-between border-t border-slate-200 bg-slate-50 px-3 py-2 overflow-x-auto gap-2">
         {navItems.map((item) => {
           const isActive =
             activeTab === item.id ||
@@ -274,6 +265,14 @@ export const Navbar: React.FC = () => {
             </button>
           );
         })}
+      </nav>
+      <div className="navbar-search px-4 sm:px-6 pb-4">
+        <button type="button" onClick={() => setCommandPaletteOpen(true)}
+          className="flex items-center gap-3 w-full max-w-2xl mx-auto px-5 py-3 rounded-2xl border border-cyan-300/30 bg-slate-900 text-cyan-100 text-sm text-left"
+          title="Buscar atletas, arenas ou torneios (Ctrl+K)">
+          <Search className="w-4 h-4 shrink-0" /><span>Buscar atletas, arenas ou torneios...</span>
+          <span className="ml-auto hidden sm:inline text-xs opacity-60">Ctrl + K</span>
+        </button>
       </div>
     </header>
   );

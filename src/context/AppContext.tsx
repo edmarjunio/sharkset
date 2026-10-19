@@ -75,6 +75,7 @@ export type MainTab =
 export type ArenaSubTab = 'agenda' | 'aulas' | 'campeonatos' | 'config_dono';
 
 interface AppContextType {
+  applyTournamentEdit: (tournamentId: string, matches: BracketMatch[], teams?: TeamPair[]) => void;
   checkPlayerInactivity: () => Promise<void>;
   arenasMap: Record<string, TenantConfig>;
   tenant: TenantConfig;
@@ -530,12 +531,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (!payload.matchId) return;
       setTournamentMatches((prev) =>
         prev.map((m) =>
-          m.id === payload.matchId
+          m.id === payload.matchId && m.status !== 'completed' && payload.status !== 'completed'
             ? {
                 ...m,
                 score1: payload.score1 ?? m.score1,
                 score2: payload.score2 ?? m.score2,
-                status: payload.status || m.status,
+                status: payload.status === 'in_progress' ? 'in_progress' : m.status,
                 liveReferee: payload.liveReferee ?? m.liveReferee,
               }
             : m
@@ -1208,9 +1209,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ) => {
     setTournaments((prev) => prev.map((t) => (t.id === tournamentId ? { ...t, ...updates } : t)));
 
-    if (updates.semiFormat) {
-      regenerateBracket(tournamentId, updates.semiFormat);
-    }
+    // Editing the tournament description must never regenerate and erase played matches.
+    // A new draw is an explicit operation with its previous version archived.
   };
 
   // Register Pair or Singles Participant: Guarantees spot immediately as 'pending' until BOTH players pay
@@ -1376,7 +1376,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     tournamentId: string,
     drawMode: 'seeded' | 'random' | 'manual',
     manualSlotPairIds?: (string | '')[],
-    onlyConfirmedPairs: boolean = false
+    onlyConfirmedPairs: boolean = true
   ): BracketMatch[] => {
     const tourn = tournaments.find((t) => t.id === tournamentId);
     const eligiblePairs = registeredPairs.filter((p) => {
@@ -1387,6 +1387,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     });
 
+    if (tourn && eligiblePairs.length > tourn.maxPairs) throw new Error('Número de duplas excede o limite do torneio.');
     const generatedMatches = createBracketForPresentPairs(
       tournamentId,
       eligiblePairs,
@@ -1402,15 +1403,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         : m
     );
 
-    setTournamentMatches((prev) => {
-      const updated = [...prev.filter((m) => m.tournamentId !== tournamentId), ...withReferee];
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('sharkset_live_bracket');
-        bc.postMessage({ fullMatches: updated });
-        bc.close();
-      }
-      return updated;
-    });
+    applyTournamentEdit(tournamentId, withReferee);
 
     return withReferee;
   };
@@ -1420,7 +1413,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setTournamentMatches((prev) => {
       let updatedTarget: BracketMatch | null = null;
       const nextList = prev.map((m) => {
-        if (m.id !== matchId) return m;
+        if (m.id !== matchId || m.status === 'completed') return m;
         const base = m.liveReferee ? m : { ...m, liveReferee: buildDefaultRefereeState(m) };
         updatedTarget = updater(base);
         return updatedTarget;
@@ -1627,163 +1620,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
-  // Bracket actions + Automatic Ranking Points Calculation based on Performance & Opponent Level
-  const handleAdvanceMatch = (matchId: string, winningTeam: 1 | 2, score1: number, score2: number) => {
-    const targetMatch = tournamentMatches.find((m) => m.id === matchId);
-
-    setTournamentMatches((prev) => {
-      const updated = advanceWinner(prev, matchId, winningTeam, score1, score2);
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('sharkset_live_bracket');
-        bc.postMessage({ fullMatches: updated });
-        bc.close();
-      }
-      const completedMatch = updated.find((m) => m.id === matchId);
-      if (completedMatch) {
-        fetch('/api/live-matches/broadcast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            matchId: completedMatch.id,
-            tournamentId: completedMatch.tournamentId,
-            score1: completedMatch.score1 ?? score1,
-            score2: completedMatch.score2 ?? score2,
-            status: 'completed',
-            liveReferee: completedMatch.liveReferee,
-          }),
-        }).catch(() => {});
-      }
-      return updated;
-    });
-
-    if (targetMatch && targetMatch.team1 && targetMatch.team2) {
-      const winnerPair = winningTeam === 1 ? targetMatch.team1 : targetMatch.team2;
-      const loserPair = winningTeam === 1 ? targetMatch.team2 : targetMatch.team1;
-      const winScore = winningTeam === 1 ? score1 : score2;
-      const loseScore = winningTeam === 1 ? score2 : score1;
-      const isFinalMatch = targetMatch.stage === 'grand_final' || targetMatch.stage === 'super_final';
-
-      const tourn = tournaments.find((t) => t.id === targetMatch.tournamentId);
-      const isSingles = tourn?.modalityFormat === 'simples';
-
-      const winnerLevels: AthleteLevel[] = isSingles
-        ? [winnerPair.player1Level]
-        : [winnerPair.player1Level, winnerPair.player2Level];
-      const loserLevels: AthleteLevel[] = isSingles
-        ? [loserPair.player1Level]
-        : [loserPair.player1Level, loserPair.player2Level];
-
-      const calc = calculateFutevoleiMatchPoints({
-        winnerLevels,
-        loserLevels,
-        winnerScore: winScore,
-        loserScore: loseScore,
-        stage: targetMatch.stage,
-      });
-
-      const winnerPlayerNames = [winnerPair.player1, winnerPair.player2].filter(
-        (n) => n && n.toLowerCase() !== 'individual (1x1)'
-      );
-      const loserPlayerNames = [loserPair.player1, loserPair.player2].filter(
-        (n) => n && n.toLowerCase() !== 'individual (1x1)'
-      );
-
-      // Automatically update or create athletes in the Ranking with the earned points
-      setAthletes((prev) => {
-        const nextList = [...prev];
-
-        const applyToAthlete = (
-          playerName: string,
-          playerLevel: AthleteLevel,
-          ptsDelta: number,
-          won: boolean,
-          opponentLabel: string
-        ) => {
-          const idx = nextList.findIndex((a) => a.name.toLowerCase() === playerName.toLowerCase());
-          const summary = `${won ? 'Vitória' : 'Jogo'} ${winScore}x${loseScore} vs ${opponentLabel} (+${ptsDelta} pts)`;
-
-          if (idx >= 0) {
-            const existing = nextList[idx];
-            nextList[idx] = {
-              ...applyRankedActivity(existing, ptsDelta, won),
-              lastPointsDelta: ptsDelta,
-              lastMatchSummary: summary,
-              titlesCount: won && isFinalMatch ? existing.titlesCount + 1 : existing.titlesCount,
-            };
-          } else {
-            nextList.push({
-              id: `ath-auto-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              name: playerName,
-              phone: winnerPair.phone || '64999880000',
-              birthDate: '1997-01-01',
-              experienceCategory: playerLevel === 'profissional' ? 'profissional' : 'amador',
-              courtSide: 'Ambos',
-              dominantFoot: 'Destro',
-              level: playerLevel,
-              points: ptsDelta,
-              lastMatchAt: new Date().toISOString(),
-              levelMatches: 1,
-              levelWins: Number(won),
-              levelPoints: ptsDelta,
-              lastPointsDelta: ptsDelta,
-              lastMatchSummary: summary,
-              titlesCount: won && isFinalMatch ? 1 : 0,
-              matchesPlayed: 1,
-              wins: won ? 1 : 0,
-              preferredSport: tourn?.sport || 'futevolei',
-              city: 'Mineiros - GO',
-            });
-          }
-        };
-
-        winnerPlayerNames.forEach((name, i) =>
-          applyToAthlete(
-            name,
-            i === 0 ? winnerPair.player1Level : winnerPair.player2Level,
-            calc.winnerPoints,
-            true,
-            loserPlayerNames.join(' & ')
-          )
-        );
-
-        loserPlayerNames.forEach((name, i) =>
-          applyToAthlete(
-            name,
-            i === 0 ? loserPair.player1Level : loserPair.player2Level,
-            calc.loserPoints,
-            false,
-            winnerPlayerNames.join(' & ')
-          )
-        );
-
-        return nextList;
-      });
-
-      // Add entry to Ranking Match Logs
-      const newLog: RankingMatchLog = {
-        id: `rlog-${Date.now()}`,
-        tournamentId: targetMatch.tournamentId,
-        tournamentName: tourn?.name || 'Torneio de Futevôlei',
-        matchNumber: targetMatch.matchNumber,
-        winnerNames: winnerPlayerNames.join(' & '),
-        loserNames: loserPlayerNames.join(' & '),
-        score: `${winScore} x ${loseScore}`,
-        winnerLevelAvg: winnerLevels.map((l) => ATHLETE_LEVEL_LABELS[l]).join(' + '),
-        loserLevelAvg: loserLevels.map((l) => ATHLETE_LEVEL_LABELS[l]).join(' + '),
-        pointsAwardedWinner: calc.winnerPoints,
-        pointsAwardedLoser: calc.loserPoints,
-        explanation: calc.explanation,
-        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setRankingLogs((prev) => [newLog, ...prev]);
+  // Results are projections of the current bracket; corrections never add duplicate credits.
+  const applyTournamentEdit = (tournamentId: string, matches: BracketMatch[], teams?: TeamPair[]) => {
+    if (matches.some(match => match.tournamentId !== tournamentId)) throw new Error('Tabela pertence a outro torneio.');
+    const previous = tournamentMatches.filter(match => match.tournamentId === tournamentId);
+    if (JSON.stringify(previous) === JSON.stringify(matches) && !teams) return;
+    const archiveKey = 'sharkset_bracket_revisions_' + tournamentId;
+    const nextById = new Map(matches.map(match => [match.id, match]));
+    const changed = previous.filter(match => JSON.stringify(match) !== JSON.stringify(nextById.get(match.id)));
+    try {
+      const archive = JSON.parse(localStorage.getItem(archiveKey) || '[]');
+      localStorage.setItem(archiveKey, JSON.stringify([...archive, { at: new Date().toISOString(),
+        matches: changed.map(({ audit, ...match }) => match),
+        removedIds: matches.filter(match => !previous.some(old => old.id === match.id)).map(match => match.id),
+        teams: teams ? registeredPairs.filter(team => team.tournamentId === tournamentId) : undefined }]));
+    } catch { throw new Error('Não foi possível preservar o histórico neste navegador. Libere espaço antes de salvar a alteração.'); }
+    const updated = [...tournamentMatches.filter(match => match.tournamentId !== tournamentId), ...matches];
+    setTournamentMatches(updated);
+    if (teams) setRegisteredPairs(prev => [...prev.filter(team => team.tournamentId !== tournamentId), ...teams]);
+    setTournaments(prev => prev.map(tournament => tournament.id === tournamentId ? { ...tournament,
+      isFinished: matches.length > 0 && matches.every(match => match.status === 'completed'), semiFormat: 'semi_direta' } : tournament));
+    // Local table edits are not proof of an official server-validated result for global ranking.
+    if ('BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('sharkset_live_bracket');
+      channel.postMessage({ fullMatches: updated }); channel.close();
     }
+  };
+
+  const handleAdvanceMatch = (matchId: string, winningTeam: 1 | 2, score1: number, score2: number) => {
+    const target = tournamentMatches.find(match => match.id === matchId);
+    if (!target) throw new Error('Partida não encontrada.');
+    const matches = tournamentMatches.filter(match => match.tournamentId === target.tournamentId);
+    applyTournamentEdit(target.tournamentId, advanceWinner(matches, matchId, winningTeam, score1, score2));
   };
 
   // Notify Next Match Players when Current Match has <= 10 points remaining
   const notifyLiveMatchProgress = (matchId: string, liveScore1: number, liveScore2: number): string | null => {
     const currentMatch = tournamentMatches.find((m) => m.id === matchId);
-    if (!currentMatch) return null;
+    if (!currentMatch || currentMatch.status === 'completed') return null;
 
     setTournamentMatches((prev) =>
       prev.map((m) =>
@@ -1811,14 +1685,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const handleResetMatch = (matchId: string) => {
-    setTournamentMatches((prev) => resetMatch(prev, matchId));
+    const target = tournamentMatches.find(match => match.id === matchId);
+    if (!target) return;
+    applyTournamentEdit(target.tournamentId, resetMatch(tournamentMatches.filter(match => match.tournamentId === target.tournamentId), matchId));
   };
 
   const handleOverrideMatch = (
     matchId: string,
     updates: { team1?: TeamPair; team2?: TeamPair; courtName?: string; scheduledTime?: string }
   ) => {
-    setTournamentMatches((prev) => overrideMatchDetails(prev, matchId, updates));
+    const target = tournamentMatches.find(match => match.id === matchId);
+    if (!target) return;
+    applyTournamentEdit(target.tournamentId, overrideMatchDetails(tournamentMatches.filter(match => match.tournamentId === target.tournamentId), matchId, updates));
   };
 
   const regenerateBracket = (tournamentId: string, customFormat?: SemiFormat) => {
@@ -1826,10 +1704,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const formatToUse = customFormat || tourn?.semiFormat || 'semi_direta';
     const pairsForTourn = registeredPairs.filter((p) => p.tournamentId === tournamentId);
     const newMatches = createBuraco4Bracket(tournamentId, pairsForTourn, formatToUse);
-    setTournamentMatches((prev) => [
-      ...prev.filter((m) => m.tournamentId !== tournamentId),
-      ...newMatches,
-    ]);
+    applyTournamentEdit(tournamentId, newMatches);
   };
 
   // White-Label Arena Branding (Logo + Automatic Palette + Website Mode)
@@ -1889,6 +1764,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider
       value={{
+        applyTournamentEdit,
         checkPlayerInactivity,
         arenasMap,
         tenant,

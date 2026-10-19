@@ -144,7 +144,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
     }
 
     return (
-      <div className="aquarium-glass fixed bottom-20 md:bottom-4 right-4 z-40 w-80 sm:w-96 bg-[#030B17] text-white rounded-2xl border-2 border-[#0987CE] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="aquarium-glass fixed bottom-20 md:bottom-4 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] sm:w-96 bg-[#030B17] text-white rounded-2xl border-2 border-[#0987CE] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
         {/* Top PiP Bar */}
         <div className="px-3 py-2 bg-[#071D3D] border-b border-[#145A9B] flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 truncate">

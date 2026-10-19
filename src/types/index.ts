@@ -278,6 +278,8 @@ export interface Booking {
 }
 
 export interface TeamPair {
+  player1Id?: string;
+  player2Id?: string;
   id: string;
   tournamentId: string;
   player1: string;
@@ -361,6 +363,21 @@ export interface RefereeMatchState {
 }
 
 export interface BracketMatch {
+  bracketStructure?: { version: number; drawMode?: 'seeded' | 'random' | 'manual'; randomSeed?: number; seededTeamIds: (string | null)[]; contractedNodes: { id: string; stage: BracketStage; round: number; source1?: BracketSource; source2?: BracketSource }[] };
+  source1?: BracketSource;
+  source2?: BracketSource;
+  initialLowerSource?: BracketSource;
+  nodeKey?: string;
+  region?: 'left_top' | 'left_bottom' | 'right_top' | 'right_bottom' | 'center';
+  rules?: MatchRules;
+  sets?: MatchSet[];
+  resultMode?: 'played' | 'walkover';
+  officialAt?: string;
+  revision?: number;
+  semifinalDecision?: 'waiting' | 'fixed' | 'swap' | 'blocked' | 'exception';
+  exceptionReason?: string;
+  exceptionFingerprint?: string;
+  audit?: BracketAuditEntry[];
   id: string;
   tournamentId: string;
   matchNumber: number;
@@ -383,6 +400,15 @@ export interface BracketMatch {
   loserDestinationSlot?: 'team1' | 'team2';
   liveReferee?: RefereeMatchState;
   spectatorsCount?: number;
+}
+
+export type BracketSource = { kind: 'team'; team: TeamPair; slot: number } |
+  { kind: 'winner' | 'loser'; matchId: string };
+export interface MatchSet { score1: number; score2: number }
+export interface MatchRules { bestOf: 1 | 3 | 5; targetPoints: number; decidingPoints: number; winBy: number }
+export interface BracketAuditEntry {
+  id: string; at: string; actor: string; reason: string; action: string;
+  before: string; affectedMatchIds: string[];
 }
 
 export interface Tournament {

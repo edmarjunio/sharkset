@@ -188,49 +188,61 @@ export const SmartNotificationBanner: React.FC = () => {
   };
 
   return (
-    <section className="aquarium-glass bg-[#030B17] border-b border-[#145A9B]/60 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 space-y-2.5">
-        {/* TOP VISUAL BADGE & CALLOUT: Vacant Court Slot in the Next 2 Hours */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-[#071D3D] via-[#0B254E]/80 to-[#030B17] border border-[#145A9B] rounded-xl px-4 py-2.5">
-          <div className="flex flex-wrap items-center gap-2.5 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-black uppercase tracking-tight text-[11px] shadow-xs">
-              <Flame className="w-3.5 h-3.5" />
+    <section className="aquarium-glass bg-[#041529] border-b border-[#145A9B]/40 text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-2.5">
+        {/* TOP VISUAL BANNER: Vacant Court Slot in the Next 2 Hours */}
+        <div className="vacancy-promo flex flex-col lg:flex-row lg:items-center justify-between gap-5 p-5 sm:p-6 rounded-3xl border border-cyan-300/60">
+          <div className="flex flex-col items-start gap-3 text-sm sm:text-base">
+            <span className="inline-flex items-center gap-2 font-black uppercase tracking-wide text-amber-300 text-base sm:text-xl">
+              <Zap className="w-4 h-4 text-[#FF6B00] fill-[#FF6B00]" />
               {vacantSlotsNext2h.length > 0
-                ? `${vacantSlotsNext2h.length} HORÁRIO(S) VAGO(S) NAS PRÓXIMAS 2H`
-                : 'AGENDA NAS PRÓXIMAS 2H'}
+                ? `${vacantSlotsNext2h.length} HORÁRIOS LIVRES · PRÓXIMAS 2H`
+                : 'AGENDA NAS PRÓXIMAS 2H:'}
             </span>
+            <p className="text-white font-bold text-lg sm:text-2xl">Chame sua dupla. A próxima partida é aqui!</p>
+            <p className="text-cyan-100 text-sm">{tenant.name} · {tenant.city}</p>
 
             {primaryVacant ? (
-              <div className="flex flex-wrap items-center gap-1.5 text-slate-200">
+              <div className="flex flex-wrap items-center gap-1.5 text-slate-100">
                 <span className="font-extrabold text-white">
                   {primaryVacant.court.name.split(' - ')[0]}
                 </span>
-                <span className="text-[#5BC3FA] font-mono font-bold">
-                  às {primaryVacant.slot.startTime} (em {primaryVacant.minutesUntilStart} min)
+                <span className="text-amber-300 font-extrabold">
+                  às {primaryVacant.slot.startTime}
                 </span>
-                <span className="text-slate-400">·</span>
-                <span className="text-[#12C7BB] font-mono font-bold">
-                  R$ {primaryVacant.slot.price.toFixed(2)}
+                <span className="text-[#12C7BB] font-extrabold">
+                  (R$ {primaryVacant.slot.price.toFixed(0)})
                 </span>
-                <span className="hidden sm:inline text-slate-300">
-                  — Preencha a agenda agora com 1 clique!
+                <span className="text-slate-300 text-xs hidden md:inline">
+                  · em {primaryVacant.minutesUntilStart} min
                 </span>
               </div>
             ) : (
-              <span className="text-slate-300 font-medium">
-                Todas as quadras das próximas 2h estão ocupadas. Use o relógio de referência ao lado para inspecionar outros horários.
+              <span className="text-slate-200 font-semibold">
+                Todas as quadras das próximas 2h estão ocupadas. Ajuste o horário ao lado para consultar.
               </span>
             )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1 bg-[#030B17] border border-[#145A9B] rounded-lg px-2 py-1 text-[11px]">
-              <Clock className="w-3 h-3 text-[#0987CE]" />
-              <span className="text-slate-400">Agora:</span>
+            {primaryVacant && (
+              <button
+                type="button"
+                onClick={handleQuickFillVacantSlot}
+                className="px-6 py-4 rounded-2xl bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold text-base transition-all cursor-pointer flex items-center gap-2 shadow-lg"
+              >
+                <Zap className="w-3.5 h-3.5 fill-white" />
+                Reservar Agora
+              </button>
+            )}
+
+            <div className="flex items-center gap-1.5 bg-[#030B17]/80 border border-slate-700/70 rounded-lg px-2.5 py-1 text-[11px]">
+              <Clock className="w-3 h-3 text-[#12C7BB]" />
+              <span className="text-slate-300 font-medium">Ref:</span>
               <select
                 value={referenceClockTime}
                 onChange={(e) => setReferenceClockTime(e.target.value)}
-                className="bg-transparent text-white font-mono font-bold focus:outline-none cursor-pointer"
+                className="bg-transparent text-white font-bold focus:outline-none cursor-pointer border-none p-0"
                 title="Horário de referência para radar de 2h e alerta de 15 min"
               >
                 <option value="16:45" className="bg-[#030B17]">16:45</option>
@@ -240,26 +252,17 @@ export const SmartNotificationBanner: React.FC = () => {
               </select>
             </div>
 
-            {primaryVacant && (
-              <button
-                onClick={handleQuickFillVacantSlot}
-                className="px-3 py-1.5 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                Preencher Horário ({primaryVacant.slot.startTime})
-              </button>
-            )}
-
             <button
+              type="button"
               onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 border ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
                 notificationDrawerOpen
                   ? 'bg-[#0987CE] text-white border-[#0987CE]'
-                  : 'bg-[#030B17] hover:bg-[#0B254E] text-white border-[#145A9B]'
+                  : 'bg-[#030B17]/80 hover:bg-[#0B254E] text-slate-200 border-slate-700/70'
               }`}
             >
               <BellRing className="w-3.5 h-3.5 text-[#12C7BB]" />
-              Central Push ({unreadCount})
+              <span>Alertas ({unreadCount})</span>
             </button>
           </div>
         </div>
