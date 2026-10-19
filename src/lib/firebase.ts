@@ -15,8 +15,22 @@ import {
 import { AcademyPost, AthleteProfile, MatchMvpVoteRecord } from '../types';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+interface ExtendedFirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId: string;
+  measurementId?: string;
+  firestoreDatabaseId?: string;
+}
+
+const config = firebaseConfig as ExtendedFirebaseConfig;
+const app = initializeApp(config);
+export const db = config.firestoreDatabaseId
+  ? getFirestore(app, config.firestoreDatabaseId)
+  : getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 

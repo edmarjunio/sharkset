@@ -1,12 +1,9 @@
 {
-  "projectId": "gen-lang-client-0678817245",
-  "appId": "1:786624706423:web:df24dedaa481ba9a769372",
-  "apiKey": "AIzaSyDphfq62SA8BOG6atbSfxYwnj8je4DusBs",
-  "authDomain": "gen-lang-client-0678817245.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-izibolaarenabeac-fbe2fcd6-71ad-48a2-8b43-55c4f4c3b2c2",
-  "storageBucket": "gen-lang-client-0678817245.firebasestorage.app",
-  "messagingSenderId": "786624706423",
-  "measurementId": "",
-  "oAuthClientId": "786624706423-aobd4ku553a2bqud9e4eq330f14je01i.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "projectId": "sharkset-70de4",
+  "appId": "1:677873825510:web:30c5713941511a982dad27",
+  "apiKey": "AIzaSyDitBHnsdRUmUuDqd266riYMBWnPzGwhEg",
+  "authDomain": "sharkset-70de4.firebaseapp.com",
+  "storageBucket": "sharkset-70de4.firebasestorage.app",
+  "messagingSenderId": "677873825510",
+  "measurementId": "G-DM1XKKPESY"
 }
