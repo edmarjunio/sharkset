@@ -1,3 +1,5 @@
+import { LocationScopeFilter } from './LocationScopeFilter';
+import { useScopedCatalog } from '../hooks/useScopedCatalog';
 import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { matchPhaseLabel } from '../services/bracketPresentation';
 import { TournamentOperationsPanel } from './TournamentOperationsPanel';
@@ -96,6 +98,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     setArenaSubTab,
     availableTenants,
   } = useApp();
+
+  const scopedTournaments = useScopedCatalog(tournaments, tournament => availableTenants.find(arena => arena.id === tournament.tenantId) || {});
 
   const [activeStageTab, setActiveStageTab] = useState<
     'all' | 'standings' | 'winners' | 'losers' | 'final'
@@ -1010,6 +1014,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       )}
 
       {/* Miniature Most-Watched Live Games Rail */}
+      {!isFullscreen && <div className="rounded-2xl bg-slate-950 p-4 border border-slate-700"><LocationScopeFilter /><p className="text-xs text-slate-400 mt-3">{scopedTournaments.length} campeonatos neste local. Use o seletor para abrir a tabela.</p></div>}
       {!isFullscreen && (
         <MostWatchedGamesMiniRail
           onSelectTournamentMatch={(m) => setSelectedLiveMatchId(m.id)}
@@ -1184,7 +1189,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                 }}
                 className="px-3 py-2 text-xs font-extrabold bg-[#030B17] text-white border border-[#145A9B] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0987CE] max-w-full sm:max-w-[280px]"
               >
-                {tournaments.map((t) => (
+                {!scopedTournaments.some(t => t.id === activeTournamentId) && <option value={activeTournamentId}>Atual: {activeTournament.name} (fora do filtro)</option>}
+                  {scopedTournaments.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>

@@ -1,3 +1,7 @@
+import { LocationScopeFilter } from './LocationScopeFilter';
+import { useDirectoryScope } from '../store/useDirectoryScope';
+import { useScopedCatalog } from '../hooks/useScopedCatalog';
+import { validCoordinates } from '../store/useBookingLocation';
 import { useBookingLocation } from '../store/useBookingLocation';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
@@ -27,8 +31,6 @@ export const ArenasDirectory: React.FC = () => {
     availableTenants,
     tenant,
     setTenantId,
-    radiusKm,
-    setRadiusKm,
     selectedSport,
     setSelectedSport,
     setActiveTab,
@@ -40,59 +42,9 @@ export const ArenasDirectory: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFinderSection, setActiveFinderSection] = useState<'free_slots' | 'classes' | 'none'>('free_slots');
 
-  // Geolocation API state
-  const [userCoords, setUserCoords] = useState<GeoCoordinates | null>(null);
-  const [geoStatus, setGeoStatus] = useState<'idle' | 'locating' | 'granted' | 'denied' | 'unsupported'>('idle');
-  const [geoMessage, setGeoMessage] = useState<string>('Obtendo sua localização...');
-
-  // Geolocation request handler
-  const requestUserLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGeoStatus('unsupported');
-      setGeoMessage('Seu navegador não suporta geolocalização. Usando Mineiros/GO.');
-      return;
-    }
-
-    setGeoStatus('locating');
-    setGeoMessage('Buscando sinal de GPS...');
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords: GeoCoordinates = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        };
-        setUserCoords(coords);
-        useBookingLocation.getState().setCoords(coords);
-        setGeoStatus('granted');
-        setGeoMessage('Localização GPS detectada! Distâncias calculadas com precisão.');
-      },
-      (err) => {
-        console.warn('Geolocation error:', err.message);
-        setGeoStatus('denied');
-        useBookingLocation.getState().setCoords(null);
-        setGeoMessage('Permissão de GPS negada. Usando base de Mineiros, GO.');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
-      }
-    );
-  }, []);
-
-  // Request geolocation on initial mount
-  useEffect(() => {
-    requestUserLocation();
-  }, [requestUserLocation]);
-
-  const radiusOptions = [
-    { km: 5, label: 'Até 5 km' },
-    { km: 15, label: 'Até 15 km' },
-    { km: 30, label: 'Até 30 km' },
-    { km: 50, label: 'Até 50 km' },
-    { km: 500, label: 'Todo o Estado' },
-  ];
+  const { filter: locationFilter, setFilter: setLocationFilter } = useDirectoryScope();
+  const { coords: userCoords, status: geoStatus, request: requestUserLocation } = useBookingLocation();
+  const scopedArenas = useScopedCatalog(availableTenants, arena => arena);
 
   const sportNames: Record<SportType, string> = {
     futevolei: 'Futevôlei',
@@ -102,14 +54,14 @@ export const ArenasDirectory: React.FC = () => {
 
   // Compute calculated distance for each arena using GPS if available
   const arenasWithCalculatedDistance = useMemo(() => {
-    return availableTenants.map((arena) => {
-      let distanceKm = arena.distanceKm;
-      if (userCoords && arena.lat && arena.lng) {
+    return scopedArenas.map((arena) => {
+      let distanceKm = Infinity;
+      if (validCoordinates(userCoords) && validCoordinates({ lat: arena.lat!, lng: arena.lng! })) {
         distanceKm = calculateHaversineDistance(
           userCoords.lat,
           userCoords.lng,
-          arena.lat,
-          arena.lng
+          arena.lat!,
+          arena.lng!
         );
       }
       return {
@@ -117,13 +69,13 @@ export const ArenasDirectory: React.FC = () => {
         calculatedDistanceKm: distanceKm,
       };
     });
-  }, [availableTenants, userCoords]);
+  }, [scopedArenas, userCoords]);
 
   // Filter arenas by radius, sport, and search query
   const filteredArenas = useMemo(() => {
     return arenasWithCalculatedDistance
       .filter((arena) => {
-        if (arena.calculatedDistanceKm > radiusKm) return false;
+
 
         if (selectedSport !== 'all') {
           const hasSport = arena.courts.some((c) => c.sports.includes(selectedSport));
@@ -141,7 +93,7 @@ export const ArenasDirectory: React.FC = () => {
         return true;
       })
       .sort((a, b) => a.calculatedDistanceKm - b.calculatedDistanceKm);
-  }, [arenasWithCalculatedDistance, radiusKm, selectedSport, searchQuery]);
+  }, [arenasWithCalculatedDistance, selectedSport, searchQuery]);
 
   // Enter selected Arena
   const handleSelectArena = (
@@ -176,14 +128,14 @@ export const ArenasDirectory: React.FC = () => {
                     ? 'GPS DO NAVEGADOR ATIVO'
                     : geoStatus === 'locating'
                     ? 'LOCALIZANDO...'
-                    : 'BASE: MINEIROS, GO'}
+                    : 'LOCALIZAÇÃO NÃO INFORMADA'}
                 </span>
               </div>
 
               <span className="text-slate-400">·</span>
 
               <span className="text-amber-400 font-extrabold">
-                RAIO: {radiusKm >= 500 ? 'TODO O ESTADO' : `${radiusKm} KM`}
+                {locationFilter.mode === 'nearby' ? 'ATÉ 50 KM' : locationFilter.mode === 'city' ? locationFilter.city : 'TODAS NO SITE'}
               </span>
 
               {/* Refresh GPS Button */}
@@ -203,7 +155,7 @@ export const ArenasDirectory: React.FC = () => {
               Arenas Mais Próximas de Você — Agende em 2 Cliques
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              O sistema calcula automaticamente a distância em quilômetros das arenas até a sua localização. Escolha uma arena abaixo ou filtre diretamente pelo dia e horário livre que deseja jogar!
+              Busque por localização, cidade ou veja todas as arenas do site.
             </p>
           </div>
 
@@ -257,28 +209,7 @@ export const ArenasDirectory: React.FC = () => {
 
         {/* High-Visibility Radius Selector + Sport Filter */}
         <div className="pt-4 border-t border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Radius Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-extrabold text-amber-400 mr-1 flex items-center gap-1 uppercase tracking-wider">
-              <MapPin className="w-3.5 h-3.5" />
-              Raio de Alcance:
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-              {radiusOptions.map((opt) => (
-                <button
-                  key={opt.km}
-                  onClick={() => setRadiusKm(opt.km)}
-                  className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                    radiusKm === opt.km
-                      ? 'bg-amber-400 text-slate-950 shadow-xs font-black'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <LocationScopeFilter />
 
           {/* Sport Filter */}
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800 w-fit">
@@ -342,7 +273,7 @@ export const ArenasDirectory: React.FC = () => {
           <span>
             Exibindo <strong className="text-slate-950 font-black tabular-nums">{filteredArenas.length}</strong>{' '}
             {filteredArenas.length === 1 ? 'arena mais próxima' : 'arenas mais próximas'} dentro de{' '}
-            {radiusKm >= 500 ? 'todo o estado' : `${radiusKm} km`}
+            {locationFilter.mode === 'nearby' ? '50 km' : locationFilter.mode === 'city' ? locationFilter.city : 'todo o site'}
           </span>
           {geoStatus === 'granted' && (
             <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -391,7 +322,7 @@ export const ArenasDirectory: React.FC = () => {
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-xs">
                     <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 backdrop-blur-xs text-white font-mono font-black tabular-nums border border-white/15 flex items-center gap-1 shadow-sm">
                       <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{arena.calculatedDistanceKm.toFixed(1)} km</span>
+                      <span>{Number.isFinite(arena.calculatedDistanceKm) ? `${arena.calculatedDistanceKm.toFixed(1)} km` : 'Distância não informada'}</span>
                       <span className="text-slate-400 text-[10px]">({arena.city}/{arena.state})</span>
                     </span>
                     <div className="flex items-center gap-1.5">
@@ -512,16 +443,16 @@ export const ArenasDirectory: React.FC = () => {
           <div className="aquarium-glass col-span-full bg-white border-2 border-slate-200 rounded-2xl p-12 text-center space-y-3">
             <MapPin className="w-10 h-10 text-slate-400 mx-auto" />
             <h3 className="text-base font-black text-slate-900">
-              Nenhuma arena encontrada num raio de {radiusKm} km
+              Nenhuma arena encontrada para este local
             </h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Clique abaixo para ampliar o alcance e ver todas as unidades em Goiás.
+              Altere a cidade ou veja todas as arenas cadastradas.
             </p>
             <button
-              onClick={() => setRadiusKm(500)}
+              onClick={() => setLocationFilter({ ...locationFilter, mode: 'all' })}
               className="mt-2 px-5 py-2.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer"
             >
-              MOSTRAR TODAS AS ARENAS DO ESTADO
+              VER TODAS AS ARENAS NO SITE
             </button>
           </div>
         )}

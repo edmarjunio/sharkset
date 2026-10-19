@@ -1,3 +1,5 @@
+import { LocationScopeFilter } from './LocationScopeFilter';
+import { useScopedCatalog } from '../hooks/useScopedCatalog';
 import { LiveDirectory } from './LiveDirectory';
 import { HomeRanking } from './HomeRanking';
 import { useBookingLocation, validCoordinates } from '../store/useBookingLocation';
@@ -13,19 +15,23 @@ export const HomeHighlights: React.FC = () => {
   const { coords } = useBookingLocation();
   const distance = (arena: typeof availableTenants[number]) => validCoordinates(coords) && validCoordinates({ lat: arena.lat!, lng: arena.lng! }) ? calculateHaversineDistance(coords.lat, coords.lng, arena.lat!, arena.lng!) : arena.distanceKm;
   const { date } = useBookingSelection();
+  const scopedArenas = useScopedCatalog(availableTenants, arena => arena);
+  const scopedTournaments = useScopedCatalog(tournaments, tournament => availableTenants.find(arena => arena.id === tournament.tenantId) || {});
   const stage = (t: Tournament) => t.isFinished ? 'finished' : (matchesByTournament[t.id] || []).some(m => m.status === 'in_progress' || m.status === 'completed') ? 'running' : 'upcoming';
   const labels = { running: 'Em execução', upcoming: 'Próximos', finished: 'Finalizados' };
-  const ordered = useMemo(() => [...tournaments].sort((a, b) => ['running', 'upcoming', 'finished'].indexOf(stage(a)) - ['running', 'upcoming', 'finished'].indexOf(stage(b)) || a.date.localeCompare(b.date)), [tournaments, matchesByTournament]);
+  const ordered = useMemo(() => [...scopedTournaments].sort((a, b) => ['running', 'upcoming', 'finished'].indexOf(stage(a)) - ['running', 'upcoming', 'finished'].indexOf(stage(b)) || a.date.localeCompare(b.date)), [scopedTournaments, matchesByTournament]);
   return <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8 text-white">
+    <LocationScopeFilter />
     <LiveDirectory compact />
     <HomeRanking />
     <section className="space-y-3" aria-labelledby="nearby-arenas-title">
-      <div className="flex justify-between gap-3"><h2 id="nearby-arenas-title" className="font-black text-xl">Arenas próximas</h2><button onClick={() => setActiveTab('arenas_directory')} className="text-cyan-300">Localizar arenas →</button></div>
+      <div className="flex justify-between gap-3"><h2 id="nearby-arenas-title" className="font-black text-xl">Arenas</h2><button onClick={() => setActiveTab('arenas_directory')} className="site-secondary-action aquarium-glass">Localizar arenas →</button></div>
       <p className="text-xs text-slate-400">Catálogo local de referência. Distâncias aproximadas; o diretório permite autorizar a localização. A disponibilidade é consultada separadamente na agenda online.</p>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[...availableTenants].sort((a,b) => distance(a)-distance(b)).map(arena => <article key={arena.id} className="rounded-2xl border border-cyan-900 bg-slate-950 p-4 space-y-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{scopedArenas.map(arena => <article key={arena.id} className="rounded-2xl border border-cyan-900 bg-slate-950 p-4 space-y-2">
         <h3 className="font-black">{arena.name}</h3><p className="text-sm text-slate-300">{arena.city}/{arena.state} · {distance(arena).toFixed(1)} km {coords && validCoordinates({ lat: arena.lat!, lng: arena.lng! }) ? 'por coordenadas' : 'de referência'}</p>
-        <button className="text-cyan-300 font-bold" onClick={() => { setTenantId(arena.id); setArenaSubTab('agendamentos'); setActiveTab('scheduler'); }}>Ver Arena · {date.split('-').reverse().join('/')} →</button>
+        <button className="site-secondary-action aquarium-glass" onClick={() => { setTenantId(arena.id); setArenaSubTab('agendamentos'); setActiveTab('scheduler'); }}>Ver Arena · {date.split('-').reverse().join('/')} →</button>
       </article>)}</div>
+      {!scopedArenas.length && <p className="text-sm text-slate-400">Nenhuma arena para este local. Ajuste o filtro acima.</p>}
     </section>
     <section className="space-y-3" aria-labelledby="home-tournaments-title">
       <h2 id="home-tournaments-title" className="font-black text-xl">Campeonatos</h2>

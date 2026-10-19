@@ -936,3 +936,14 @@ body {
   .watch-table-heading { gap: 8px; padding: 8px; }
   .watch-table-heading .watch-control { font-size: 11px; padding: 8px; }
 }
+.navbar-live-actions { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.navbar-live-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 9px 14px; border-radius: 999px; border: 1px solid #334155; font-size: 12px; font-weight: 800; white-space: nowrap; cursor: pointer; transition: background .2s, transform .2s; }
+.navbar-live-action:active { transform: scale(.98); }
+.navbar-live-list { background: #dc2626; border-color: #f87171; color: #fff; animation: shark-live-pulse 2s ease-in-out infinite; }
+.navbar-live-list:hover { background: #ef4444; }
+.navbar-live-studio { background: #0f172a; color: #fff; }
+.navbar-live-studio:hover { background: #1e293b; }
+@keyframes shark-live-pulse { 0%, 100% { box-shadow: 0 0 0 0 #ef444440; } 50% { box-shadow: 0 0 0 5px #ef444410, 0 0 18px #ef444450; } }
+@media (prefers-reduced-motion: reduce) { .navbar-live-list { animation: none; } }
+/* Secondary links use the same glass surface and tactile elevation as site buttons. */
+.site-secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 9px 14px; border: 1px solid rgb(56 139 190 / 32%); border-radius: 12px; color: #a5f3fc; font-size: 12px; font-weight: 700; line-height: 1.4; cursor: pointer; }

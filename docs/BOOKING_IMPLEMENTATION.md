@@ -73,3 +73,9 @@ Reinicie o servidor local para carregar a nova rota SSE. Não houve deploy ou pu
 - Removidas contagens artificiais da faixa de jogos e do destaque ao vivo editados neste trabalho. Assistir não concede pontos.
 
 Validação: 54 testes aprovados na suíte sequencial, TypeScript e build de produção aprovados. O aviso de tamanho do bundle continua existente. Tela cheia nativa, reprodução de vídeo e compartilhamento de arquivo ainda precisam de verificação visual em navegadores desktop/mobile; o navegador conectado não alcança o servidor local. Não houve deploy. Reinicie o servidor local para disponibilizar a nova consulta GET /api/broadcasts. A listagem depende das transmissões publicadas e de arenas reais configuradas no Firebase Admin.
+
+Ajustes adicionais de navegação e localização:
+
+- O mesmo filtro Perto de mim / Cidade / Todas no site é compartilhado entre LIVE, arenas e campeonatos, inclusive nas listagens da home. A escolha acompanha a navegação. Campeonatos usam a localização da arena vinculada; locais sem coordenadas ficam fora da busca próxima. A ausência de GPS não é substituída silenciosamente por Mineiros.
+- INÍCIO permanece como primeira opção à esquerda e é a opção ativa inicial. LIVE está à esquerda de Transmissão ao vivo: LIVE abre o catálogo e usa fundo vermelho, texto branco e pulsação; Transmissão ao vivo abre o estúdio. A animação respeita a preferência de redução de movimento.
+- Atalhos Ver transmissões, Localizar arenas, Ver Arena e Ver ranking usam a mesma superfície de vidro escuro, bordas e elevação dos botões do site, conforme o print enviado.

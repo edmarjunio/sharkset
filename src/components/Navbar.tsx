@@ -60,10 +60,19 @@ export const Navbar: React.FC = () => {
 
   const arenaPalette = tenant.brandPalette;
 
+  const openBroadcastStudio = () => {
+    const booking = bookings.find(item => item.status === 'confirmed');
+    if (booking) setActiveLiveBroadcastBookingId(booking.id);
+    else { setActiveTab('scheduler'); setArenaSubTab('transmissoes'); }
+  };
+  const liveActions = <div className="navbar-live-actions">
+    <button type="button" onClick={() => setActiveTab('live')} aria-current={activeTab === 'live' ? 'page' : undefined} className="navbar-live-action navbar-live-list" title="Assistir transmissões próximas"><Radio size={16} /><span>LIVE</span></button>
+    <button type="button" onClick={openBroadcastStudio} className="navbar-live-action navbar-live-studio" title="Abrir estúdio de transmissão"><Radio size={16} /><span>Transmissão ao vivo</span></button>
+  </div>;
+
   // General Platform Navigation Items
   const navItems: { id: typeof activeTab; label: string; isArena?: boolean }[] = [
     { id: 'home', label: 'INÍCIO' },
-    { id: 'live', label: '🔴 LIVE' },
     { id: 'tournaments', label: 'CAMPEONATOS' },
     { id: 'arenas_directory', label: 'ARENAS', isArena: true },
     { id: 'ranking_athletes', label: 'RANKINGS' },
@@ -192,7 +201,7 @@ export const Navbar: React.FC = () => {
             {isArenaPage ? (
                   <>
                     <button type="button" onClick={goHome} className="min-h-9 px-3 py-2 rounded-xl text-xs font-black hover:bg-white/10 whitespace-nowrap">INÍCIO</button>
-                    <button type="button" onClick={() => setActiveTab('live')} className="min-h-9 px-3 py-2 rounded-xl text-xs font-black text-red-300 hover:bg-white/10 whitespace-nowrap">🔴 LIVE</button>
+
                     <button
                       type="button"
                       onClick={() => setActiveTab('arenas_directory')}
@@ -269,15 +278,7 @@ export const Navbar: React.FC = () => {
 
               {/* Ações Desktop */}
               <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('live')}
-                  className="px-3 py-1.5 rounded-full bg-slate-900/90 hover:bg-slate-800 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer border border-slate-700/80 shadow-xs transition-all whitespace-nowrap"
-                  title="Iniciar transmissão ao vivo"
-                >
-                  <Radio className="w-3.5 h-3.5 text-red-500 animate-pulse shrink-0" />
-                  <span>Transmitir Live</span>
-                </button>
+                {liveActions}
 
                 <button
                   type="button"
@@ -410,24 +411,6 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* CENTRO: BOTÃO DE AO VIVO BEM DESTACADO (vermelho pulsando) */}
-          <div className="flex-1 flex items-center justify-center px-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('live')}
-              className="relative px-3 sm:px-4 py-1.5 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs sm:text-[13px] tracking-wider uppercase flex items-center gap-1.5 shadow-[0_0_18px_rgba(239,68,68,0.7)] ring-2 ring-red-400/80 cursor-pointer transition-all active:scale-95 animate-pulse"
-              title="Ver transmissões ao vivo"
-              aria-label="Ao Vivo"
-            >
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white shadow-xs" />
-              </span>
-              <Radio className="w-3.5 h-3.5 text-white" />
-              <span className="font-black drop-shadow-sm">LIVE</span>
-            </button>
-          </div>
-
           {/* DIREITA: BOTÃO DE NOTIFICAÇÃO AO LADO DA FOTO DO USUÁRIO + BOLINHA ONLINE À FRENTE DA FOTO E DO ENTORNO */}
           <div className="flex items-center gap-2 shrink-0">
             {/* BOTÃO DE NOTIFICAÇÃO */}
@@ -472,6 +455,8 @@ export const Navbar: React.FC = () => {
 
         </div>
 
+        <div className="flex justify-center w-full">{liveActions}</div>
+
         {/* LINHA 2: BOTÕES SEMPRE A MOSTRA (SEM ROLAR!)
             Grid responsivo: 3 colunas x 2 linhas em celulares / 6 colunas em tablets.
             Cada botão é largo, alto (py-2.5) e super fácil de tocar no dedo! */}
@@ -510,8 +495,9 @@ export const Navbar: React.FC = () => {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setActiveTab(item.id)}
-                    className={`py-2 px-1 text-[11px] font-black tracking-wide uppercase transition-all rounded-xl text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs border ${
+                    aria-current={isActive ? 'page' : undefined}
+                    onClick={() => item.id === 'home' ? goHome() : setActiveTab(item.id)}
+                    className={`min-h-10 py-2 px-1 text-[11px] font-black tracking-wide uppercase transition-all rounded-xl text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs border ${
                       isActive
                         ? 'text-white border-white/20 shadow-md font-black'
                         : 'text-slate-200 bg-slate-900/90 hover:bg-slate-800 border-slate-800'
