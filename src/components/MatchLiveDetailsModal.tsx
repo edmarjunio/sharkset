@@ -536,7 +536,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                         onClick={() => handleQuickSubtractPoint(1)}
                         className="score-control score-control-subtract w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
                       >
-                        <Minus className="score-control score-control-subtract w-4 h-4" />
+                        <Minus className="w-4 h-4" />
                       </button>
                       <span className="text-4xl sm:text-5xl font-mono font-black text-white tabular-nums">
                         {score1}
@@ -547,7 +547,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                         onClick={() => handleQuickAddPoint(1)}
                         className="score-control score-control-add px-3.5 h-10 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
                       >
-                        <Plus className="score-control score-control-add w-4 h-4 stroke-[3]" />
+                        <Plus className="w-4 h-4 stroke-[3]" />
                       </button>
                     </div>
                   </div>
@@ -592,7 +592,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                         onClick={() => handleQuickSubtractPoint(2)}
                         className="score-control score-control-subtract w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
                       >
-                        <Minus className="score-control score-control-subtract w-4 h-4" />
+                        <Minus className="w-4 h-4" />
                       </button>
                       <span className="text-4xl sm:text-5xl font-mono font-black text-white tabular-nums">
                         {score2}
@@ -603,7 +603,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                         onClick={() => handleQuickAddPoint(2)}
                         className="score-control score-control-add px-3.5 h-10 rounded-xl bg-[#12C7BB] hover:bg-[#0ea89e] text-slate-950 font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
                       >
-                        <Plus className="score-control score-control-add w-4 h-4 stroke-[3]" />
+                        <Plus className="w-4 h-4 stroke-[3]" />
                       </button>
                     </div>
                   </div>
@@ -891,4 +891,5 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
     </div>
   );
 };
+
 

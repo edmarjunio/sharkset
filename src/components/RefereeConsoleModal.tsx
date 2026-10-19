@@ -398,7 +398,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
                 onClick={() => handleDecrementPoint(1)}
                 className="score-control score-control-subtract aquarium-glass w-12 h-12 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
               >
-                <Minus className="score-control score-control-subtract w-5 h-5" />
+                <Minus className="w-5 h-5" />
               </button>
 
               <div className="text-center">
@@ -415,7 +415,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
                 onClick={() => handleScorePoint(1)}
                 className="score-control score-control-add px-5 h-16 rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-sm flex items-center gap-2 shadow-md cursor-pointer transition-all"
               >
-                <Plus className="score-control score-control-add w-6 h-6 stroke-[3]" />
+                <Plus className="w-6 h-6 stroke-[3]" />
               </button>
             </div>
 
@@ -465,7 +465,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
                 onClick={() => handleDecrementPoint(2)}
                 className="score-control score-control-subtract aquarium-glass w-12 h-12 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
               >
-                <Minus className="score-control score-control-subtract w-5 h-5" />
+                <Minus className="w-5 h-5" />
               </button>
 
               <div className="text-center">
@@ -482,7 +482,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
                 onClick={() => handleScorePoint(2)}
                 className="score-control score-control-add px-5 h-16 rounded-2xl bg-emerald-400 hover:bg-emerald-300 active:scale-95 text-slate-950 font-black text-sm flex items-center gap-2 shadow-md cursor-pointer transition-all"
               >
-                <Plus className="score-control score-control-add w-6 h-6 stroke-[3]" />
+                <Plus className="w-6 h-6 stroke-[3]" />
               </button>
             </div>
 
@@ -779,4 +779,5 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
     </div>
   );
 };
+
 

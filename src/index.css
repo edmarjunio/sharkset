@@ -21,7 +21,7 @@
   inset: 0;
   z-index: -2;
   pointer-events: none;
-  background: url('/brand/background.png') center center / cover no-repeat;
+  background: url('/brand/deep-ocean.jpg') center center / cover no-repeat;
   filter: blur(2px);
   transform: scale(1.02);
 }
@@ -434,7 +434,7 @@ body {
 .aquarium-world { background: #04648a; }
 .aquarium-scenery {
   position: absolute; inset: -2%;
-  background: url('/brand/background.png') center center / cover no-repeat;
+  background: url('/brand/deep-ocean.jpg') center center / cover no-repeat;
   animation: aquarium-current 24s ease-in-out infinite alternate;
 }
 .aquarium-depth {
@@ -473,6 +473,16 @@ body {
 .shark-site-background .site-navbar :is(.navbar-top, .navbar-actions, .navbar-search) { background: transparent; }
 
 /* Compact header: shared alignment for brand, navigation, actions and search. */
+.score-control {
+  width: 48px; height: 48px; min-width: 48px; padding: 0;
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 14px;
+}
+.score-control.score-control-add { width: 56px; height: 56px; }
+.score-control svg { width: 24px; height: 24px; pointer-events: none; }
+.score-control.score-control-add svg { width: 28px; height: 28px; stroke-width: 3; }
+.score-control:focus-visible { outline: 3px solid #67e8f9; outline-offset: 4px; }
+.score-control:disabled { cursor: not-allowed; }
 .shark-miniplayer {
   position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom));
   z-index: 40; width: 384px; max-width: calc(100vw - 24px);
@@ -555,3 +565,4 @@ body {
   .aquarium-world * { animation: none !important; }
   .aquarium-swimmer { left: 55%; top: 40%; }
 }
+
