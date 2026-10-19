@@ -1,3 +1,4 @@
+import { BOOKING_DEMO } from '../services/bookingMode';
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import {
   ArenaBrandPalette,
@@ -56,7 +57,7 @@ import {
   evaluateMatchNearCompletion,
 } from '../services/smartAlertEngine';
 import { useSharkStore } from '../store/useSharkStore';
-import { auth, persistBookingToFirestore } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { checkPlayerInactivity } from '../services/inactivityClient';
 import { applyRankedActivity, resetInactiveProgress } from '../services/rankingActivity';
@@ -74,9 +75,11 @@ export type MainTab =
 
 export type ArenaSubTab =
   | 'agendamentos'
+  | 'ranking'
   | 'campeonatos'
   | 'transmissoes'
-  | 'ranking'
+  | 'comunidade'
+  | 'info_historico'
   | 'dono'
   | 'agenda'
   | 'aulas'
@@ -626,6 +629,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Create Booking
   const createBooking = (slotId: string, sport: SportType, customerName: string, customerPhone: string): Booking => {
+    if (!BOOKING_DEMO) throw new Error('Reserva online indisponível. A arena deve confirmar o horário.');
     const slot = slots.find((s) => s.id === slotId);
     if (!slot) throw new Error('Slot não encontrado');
 
@@ -665,8 +669,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setUserProfile({ ...userProfile, name: customerName, phone: customerPhone });
     setBookings((prev) => [newBooking, ...prev]);
 
-    // Non-blocking Firestore persistence
-    persistBookingToFirestore(newBooking).catch(() => {});
+    // Preview bookings remain local and never reach Firestore.
 
     // Automatically schedule/dispatch 15-minute pre-match reminder notification
     const reminderNotif = buildBooking15MinReminderNotification(newBooking, tenant.name);
@@ -677,6 +680,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Cancel Booking & Automatically Notify Next Person in Waitlist (with Push Notification)
   const cancelBooking = (bookingId: string): WaitlistEntry | null => {
+    if (!BOOKING_DEMO) throw new Error('Cancelamento online indisponível. Contate a arena.');
     const targetBooking = bookings.find((b) => b.id === bookingId);
     if (!targetBooking) return null;
 
@@ -789,6 +793,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const claimWaitlistSlot = (waitlistId: string): Booking => {
+    if (!BOOKING_DEMO) throw new Error('Reserva online indisponível. A arena deve confirmar o horário.');
     const entry = waitlist.find((w) => w.id === waitlistId);
     if (!entry) throw new Error('Registro da lista de espera não encontrado');
 

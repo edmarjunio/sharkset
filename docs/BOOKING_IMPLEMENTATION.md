@@ -1,0 +1,51 @@
+# Agendamentos — implementação e configuração
+
+## Comportamento entregue
+
+- A página inicial apresenta horários disponíveis, transmissões publicadas ao vivo, arenas e campeonatos, nessa ordem.
+- A data é compartilhada entre a página inicial, o diretório, a agenda da arena e a revisão do horário. O seletor oferece hoje e os próximos seis dias; a agenda da arena respeita também o limite retornado pelo servidor.
+- O horário é opcional, inicia vazio e filtra pelo início exato quando preenchido.
+- O cartão oferece acesso à agenda completa. Cada horário livre abre sua própria revisão com arena, quadra, início, fim, preço e esporte. Os controles são independentes.
+- A agenda distingue livre, reservado, aula, bloqueado e indisponível. O diálogo nativo oferece fechamento por Escape e contenção de foco.
+- A disponibilidade considera intervalos sobrepostos, arena, quadra, data, aulas recorrentes, bloqueios, preços por dia e reservas pendentes válidas. A consulta pública não contém nomes de clientes, telefones ou identificadores de pagamento.
+- A localização é solicitada por ação do usuário na página inicial. Quando indisponível, a interface identifica as distâncias de referência.
+
+## Pagamentos e reservas: pendências deliberadas
+
+Não havia provedor de pagamentos verificável integrado ao checkout encontrado. O PIX fictício e a confirmação por clique foram removidos. O checkout apresenta a revisão do horário e, quando possível, um link para consultar a arena; não registra uma reserva nem informa pagamento recebido.
+
+`POST /api/booking/checkout` retorna HTTP 503 sem gravar no banco. Os testes de concorrência verificam essa recusa, **não** uma criação transacional de reservas. A criação real continua pendente: transação para bloquear intervalos, cálculo financeiro no servidor, chave de idempotência, expiração de pendências, cobrança real e webhook autenticado do provedor.
+
+As regras locais do Firestore proíbem criar, alterar e excluir reservas diretamente pelo cliente. Elas precisam ser publicadas separadamente para vigorar no ambiente remoto. Nenhum deploy foi realizado. Os métodos antigos de criação, resgate da fila e cancelamento no contexto recusam operações reais. A demonstração não persiste reservas no Firestore.
+
+## Fonte dos dados e preparação do servidor
+
+`GET /api/booking/availability?tenantId=ID&date=AAAA-MM-DD` consulta, com Firebase Admin:
+
+- `arenas/{ID}`: documento com `courts` conforme o tipo `Court[]` do projeto e `operatingHours` com `open` e `close`. Campos opcionais: `timeZone` (padrão `America/Sao_Paulo`) e `bookingHorizonDays` (padrão 7; limite do servidor 90).
+- `bookings`: registros filtrados por `tenantId` e `date`, contendo `courtId`, `startTime`, `endTime` e `status`. Estados reconhecidos: `confirmed`, `pending`, `cancelled`, `expired`. `expiresAt`, quando presente, usa data ISO. Pendências sem expiração verificável permanecem bloqueadas por segurança.
+- `booking_blocks`: intervalos administrativos filtrados por `tenantId` e `date`, com `courtId`, `startTime` e `endTime`.
+
+As credenciais de execução devem autorizar o Firebase Admin a ler essas coleções. O catálogo atual do aplicativo continua sendo local e está identificado como referência. O cadastro antigo de arena nas regras não aceita toda a configuração de quadras; sua configuração administrativa no servidor ainda precisa ser integrada ao painel. Não foi feita migração ou inserção de dados reais.
+
+Configuração ausente, reserva ativa incompleta ou falha do banco produzem erro explícito. Não há substituição automática por dados de exemplo. A consulta é atualizada ao abrir a revisão, trocar data/arena, focar a janela e a cada minuto. Esse mecanismo não substitui a futura validação transacional no momento de reservar.
+
+Para prévia local, defina explicitamente `VITE_BOOKING_DEMO=true` e reinicie o Vite. A interface identifica o modo de demonstração e bloqueia cobrança/reserva real. O padrão documentado em `.env.example` é `false`.
+
+## Arquivos desta implementação
+
+- Disponibilidade: `server/bookings.ts`, `server.ts`, `src/services/bookingAvailability.ts`, `src/services/bookingMode.ts`, `src/hooks/useArenaAvailability.ts`.
+- Interface: `src/components/ArenaScheduleModal.tsx`, `BookingDatePicker.tsx`, `FreeSlotsDateTimeFilter.tsx`, `QuickBookingPaymentModal.tsx`, `HomeHighlights.tsx`, `ArenasDirectory.tsx`, `CourtScheduler.tsx`, `SmartNotificationBanner.tsx` e `src/App.tsx`.
+- Estado e acessibilidade: `src/store/useBookingSelection.ts`, `src/store/useBookingLocation.ts`, `src/hooks/useModalFocus.ts`.
+- Proteção do fluxo: `src/context/AppContext.tsx`, `firestore.rules`, `.env.example`.
+- Testes: `tests/bookingAvailability.test.ts`, `tests/bookingRoutes.test.ts`.
+
+## Verificação e limitações
+
+Resultados: `npm run lint` e `npm run build` aprovados; `npm test` aprovado com 39 testes. Dois novos cenários de leitura do servidor foram acrescentados depois do início dessa execução e passaram na execução específica de `tests/bookingRoutes.test.ts` (6 testes aprovados, incluindo quatro já contados na suíte). O build mantém um aviso de tamanho de bundle acima de 500 kB. Os testes adicionais verificam disponibilidade, preços, fuso horário, privacidade, falhas do banco e recusa de checkout sem integração financeira.
+
+Os testes de servidor usam respostas controladas; não substituem validação contra um Firestore real. A validação visual de desktop/celular e de navegação por teclado ficou bloqueada porque o navegador de teste não alcançou o servidor local. O fechamento e a contenção de foco usam o elemento HTML `dialog`, mas ainda precisam de homologação visual.
+
+O projeto foi recebido na `main` em `05b631f`, com merge de `af6681f` em andamento. A atualização remota foi bloqueada por permissão de escrita nos metadados do Git. A criação de branch e de cópia Git isolada também não foi possível. As mudanças permanecem sem commit; o arquivo `CourtScheduler.tsx` teve os marcadores de conflito resolvidos preservando abas e seções dos dois lados, mas o índice Git continua marcado como não resolvido. É necessário revisar e concluir esse merge antes de publicar ou integrar uma branch de desenvolvimento.
+
+Não foram modificados os motores de campeonato, resultados ou ranking nesta implementação. As alterações já existentes nesses arquivos pertencem ao estado recebido do repositório.

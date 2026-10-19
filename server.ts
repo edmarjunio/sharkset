@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import 'dotenv/config';
 import { registerInactivityRoutes } from './server/inactivity';
 import { registerBroadcastRoutes } from './server/broadcasts';
+import { registerBookingRoutes } from './server/bookings';
 
 interface LiveMatchPayload {
   matchId: string;
@@ -35,6 +36,7 @@ async function startServer() {
   });
   registerInactivityRoutes(app);
   registerBroadcastRoutes(app);
+  registerBookingRoutes(app);
 
   // Authoritative in-memory store for real-time live matches + connected SSE clients
   const liveMatchesState = new Map<string, LiveMatchPayload>();

@@ -164,13 +164,8 @@ service cloud.firestore {
     match /bookings/{bookingId} {
       allow get: if isValidId(bookingId) && isOwner(existing().ownerId);
       allow list: if isOwner(existing().ownerId);
-      allow create: if isVerifiedUser() && isValidId(bookingId) && isValidBookingRecord(incoming());
-      allow update: if isVerifiedUser() && isValidId(bookingId) && isValidBookingRecord(incoming()) &&
-        isOwner(existing().ownerId) &&
-        existing().status != 'cancelled' &&
-        incoming().ownerId == existing().ownerId &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['status']);
-      allow delete: if isVerifiedUser() && isValidId(bookingId) && isOwner(existing().ownerId);
+      // Booking creation, cancellation and payment transitions belong to the server.
+      allow create, update, delete: if false;
     }
 
     match /notifications/{notificationId} {

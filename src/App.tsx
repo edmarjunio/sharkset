@@ -50,7 +50,7 @@ const MainContent: React.FC = () => {
               '--arena-accent': arenaPalette.accent,
               '--arena-header-bg': arenaPalette.headerBg,
               '--arena-surface-bg': arenaPalette.surfaceBg,
-              '--arena-text': arenaPalette.textPrimary,
+              '--arena-text': arenaPalette.textOnPrimary,
               backgroundColor: arenaPalette.headerBg,
             } as React.CSSProperties)
           : undefined
@@ -63,7 +63,7 @@ const MainContent: React.FC = () => {
       <SmartNotificationBanner />
 
       {/* Uninterrupted Live Broadcast Hub (Full on Home, Picture-in-Picture Floating Dock on other tabs) */}
-      <PersistentLiveStreamDock />
+      {activeTab !== 'home' && <PersistentLiveStreamDock />}
 
       <main className="site-content flex-1 min-w-0">
         {activeTab === 'home' && <HomeHighlights />}

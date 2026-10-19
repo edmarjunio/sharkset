@@ -1,5 +1,11 @@
+import { BOOKING_DEMO } from '../services/bookingMode';
+import { STATE_LABELS } from '../services/bookingAvailability';
+import { useArenaAvailability } from '../hooks/useArenaAvailability';
+import { useBookingSelection } from '../store/useBookingSelection';
+import { arenaDate } from '../services/bookingAvailability';
+import { QuickBookingPaymentModal } from './QuickBookingPaymentModal';
 import React, { useState, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, ArenaSubTab } from '../context/AppContext';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import {
   AthleteLevel,
@@ -32,6 +38,9 @@ import {
 import { CourtPricingAdminPanel } from './CourtPricingAdminPanel';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
 import { ArenaWhiteLabelCustomizerModal } from './ArenaWhiteLabelCustomizerModal';
+import { ArenaHighlightCard } from './ArenaHighlightCard';
+import { ArenaCommunityLearning } from './ArenaCommunityLearning';
+import { ArenaInfoHistory } from './ArenaInfoHistory';
 import { DoubleEliminationBracket } from './DoubleEliminationBracket';
 import { RankingBoard } from './RankingBoard';
 import { useSharkStore } from '../store/useSharkStore';
@@ -58,13 +67,14 @@ import {
   Radio,
   Crown,
   Zap,
+  History,
 } from 'lucide-react';
 
 export const CourtScheduler: React.FC = () => {
   const {
     tenant,
     slots,
-    bookings,
+    bookings: previewBookings,
     waitlist,
     waitlistNotifications,
     joinWaitlist,
@@ -98,14 +108,16 @@ export const CourtScheduler: React.FC = () => {
     setActiveLiveBroadcastBookingId,
   } = useApp();
 
+  const bookings = BOOKING_DEMO ? previewBookings : [];
+
   const [showWhiteLabelModal, setShowWhiteLabelModal] = useState(false);
 
   // Filter by specific court inside the arena agenda
   const [selectedCourtId, setSelectedCourtId] = useState<string>('all');
 
   // Date selection
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const todayStr = arenaDate();
+  const { date: selectedDate, setDate: setSelectedDate } = useBookingSelection();
 
   // Quick booking modal state (Available Slot)
   const [activeSlot, setActiveSlot] = useState<TimeSlot | null>(null);
@@ -186,7 +198,7 @@ export const CourtScheduler: React.FC = () => {
     for (let i = 0; i < 7; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = arenaDate(d);
       list.push({
         dateStr,
         dayNum: d.getDate(),
@@ -216,9 +228,8 @@ export const CourtScheduler: React.FC = () => {
     });
   }, [tenant.courts, selectedCourtId, selectedSport]);
 
-  const slotsForDate = useMemo(() => {
-    return slots.filter((s) => s.date === selectedDate);
-  }, [slots, selectedDate]);
+  const availability = useArenaAvailability(tenant, selectedDate);
+  const slotsForDate = availability.cells.map(cell => ({ ...cell, classConfig: cell.state === 'class' ? tenant.courts.find(c => c.id === cell.courtId)?.classSchedules?.find(c => c.startTime === cell.startTime) : undefined }));
 
   // Arena classes & students
   const arenaClasses = useMemo(() => {
@@ -240,7 +251,7 @@ export const CourtScheduler: React.FC = () => {
   }, [tournaments, tenant.id]);
 
   // Effective active subtab
-  const effectiveSubTab: 'agendamentos' | 'aulas' | 'campeonatos' | 'transmissoes' | 'ranking' | 'dono' =
+  const effectiveSubTab: ArenaSubTab =
     arenaSubTab === 'aulas'
       ? 'aulas'
       : arenaSubTab === 'campeonatos'
@@ -249,6 +260,10 @@ export const CourtScheduler: React.FC = () => {
       ? 'transmissoes'
       : arenaSubTab === 'ranking'
       ? 'ranking'
+      : arenaSubTab === 'comunidade'
+      ? 'comunidade'
+      : arenaSubTab === 'info_historico'
+      ? 'info_historico'
       : arenaSubTab === 'dono' || arenaSubTab === 'config_dono'
       ? 'dono'
       : 'agendamentos';
@@ -322,6 +337,7 @@ export const CourtScheduler: React.FC = () => {
       return;
     }
 
+    if (!slot.isAvailable && ('state' in slot && slot.state !== 'reserved')) return;
     if (!slot.isAvailable) {
       // Occupied / Sold-out court -> Open Waitlist Modal!
       setWaitlistName(userProfile.name);
@@ -340,16 +356,7 @@ export const CourtScheduler: React.FC = () => {
     }
   };
 
-  // Confirm regular booking
-  const handleConfirmBooking = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeSlot || !customerName.trim() || !customerPhone.trim()) return;
-
-    const newBooking = createBooking(activeSlot.id, chosenSport, customerName.trim(), customerPhone.trim());
-    setUserProfile({ ...userProfile, name: customerName.trim(), phone: customerPhone.trim() });
-    const waLink = generateBookingWhatsAppLink(newBooking, tenant.whatsapp, tenant.name);
-    setBookingSuccessUrl(waLink);
-  };
+  // Reservations use the shared review dialog; online payment is not configured.
 
   // Join Waitlist on sold-out slot
   const handleJoinWaitlistSubmit = (e: React.FormEvent) => {
@@ -370,6 +377,7 @@ export const CourtScheduler: React.FC = () => {
 
   // Cancel active booking directly from Waitlist modal to demonstrate automatic notification
   const handleCancelCurrentSlotBooking = (bookingId: string) => {
+    if (!BOOKING_DEMO) { triggerToast('Contate a arena para cancelar a reserva.'); return; }
     const notified = cancelBooking(bookingId);
     setWaitlistSlot(null);
     if (notified) {
@@ -538,6 +546,7 @@ export const CourtScheduler: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <button
                   onClick={() => {
+                    if (!BOOKING_DEMO) { triggerToast('Contate a arena para confirmar a reserva.'); return; }
                     const booked = claimWaitlistSlot(notif.waitlistEntry.id);
                     triggerToast(
                       `Reserva confirmada automaticamente para ${booked.customerName} às ${booked.startTime}!`
@@ -746,6 +755,11 @@ export const CourtScheduler: React.FC = () => {
                     badgeBg: 'bg-amber-400 text-slate-950',
                   },
                   {
+                    id: 'ranking',
+                    icon: Crown,
+                    label: '2. RANKING DA ARENA',
+                  },
+                  {
                     id: 'campeonatos',
                     icon: Trophy,
                     label: `3. CAMPEONATOS (${arenaTournaments.length})`,
@@ -755,14 +769,17 @@ export const CourtScheduler: React.FC = () => {
                   {
                     id: 'transmissoes',
                     icon: Radio,
-                    label: '4. TRANSMISSÕES AO VIVO',
-                    badge: 'AO VIVO',
-                    badgeBg: 'bg-red-500 text-white animate-pulse',
+                    label: '4. AO VIVO (TRANSMISSÃO)',
                   },
                   {
-                    id: 'ranking',
-                    icon: Crown,
-                    label: '5. RANKING DA ARENA',
+                    id: 'comunidade',
+                    icon: GraduationCap,
+                    label: '5. COMUNIDADE (VÍDEOS)',
+                  },
+                  {
+                    id: 'info_historico',
+                    icon: History,
+                    label: '6. INFORMAÇÕES & HISTÓRICO',
                   },
                   {
                     id: 'dono',
@@ -982,6 +999,23 @@ export const CourtScheduler: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* ARENA EXECUTIVE RADAR / HIGHLIGHT CARD (Campeonatos, Horários, Ranking, Clientes) */}
+      {/* ===================================================================== */}
+      <ArenaHighlightCard
+        tenant={tenant}
+        upcomingTournaments={arenaTournaments}
+        upcomingAvailableSlots={upcomingAvailableSlots}
+        arenaAthletes={athletes.filter((a) => a.arenaId === tenant.id || a.city.includes(tenant.city))}
+        recentBookings={bookings.filter((b) => b.tenantId === tenant.id || b.courtId.includes(tenant.id))}
+        onBookSlot={(slot, court) => handleSlotClick(slot, court)}
+        onRegisterTournament={(tournId) => {
+          setRegisteringTournId(tournId);
+          setArenaSubTab('campeonatos');
+        }}
+        onViewAllTournaments={() => setArenaSubTab('campeonatos')}
+        onViewAllSlots={() => setArenaSubTab('agendamentos')}
+        onViewAllRanking={() => setArenaSubTab('ranking')}
+      />
 
       {/* ===================================================================== */}
       {/* SUB-TAB 1: AGENDAMENTOS (O PRINCIPAL DA PÁGINA DA ARENA)              */}
@@ -1363,7 +1397,9 @@ export const CourtScheduler: React.FC = () => {
             })}
           </div>
 
-          {/* Courts Schedule List */}
+          {availability.loading && <p role="status">Consultando agenda…</p>}
+            {availability.error && <p role="alert" className="text-red-600">{availability.error}</p>}
+            {/* Courts Schedule List */}
           <div className="space-y-5">
             {filteredCourts.map((court) => {
               const allCourtSlots = slotsForDate.filter((s) => s.courtId === court.id);
@@ -1454,6 +1490,9 @@ export const CourtScheduler: React.FC = () => {
                         );
                         const hasNotified = slotWaitlist.some((w) => w.status === 'notified');
 
+                        if (!slot.isAvailable && slot.state !== 'reserved') {
+                          return <div key={slot.id} className="min-h-[64px] p-2 rounded-xl bg-slate-100 text-slate-500 text-center text-xs"><strong className="block font-mono">{slot.startTime}</strong>{STATE_LABELS[slot.state]}</div>;
+                        }
                         if (!slot.isAvailable) {
                           return (
                             <button
@@ -1634,7 +1673,7 @@ export const CourtScheduler: React.FC = () => {
                 className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
               >
                 <option value="all">Todos os Professores</option>
-                {Array.from(new Set(classesWithSpotsInfo.map((c) => c.cls.coach).filter(Boolean))).map((coach) => (
+                {Array.from(new Set(classesWithSpotsInfo.map((c) => c.cls.coachName).filter(Boolean))).map((coach) => (
                   <option key={coach} value={coach}>
                     {coach}
                   </option>
@@ -1647,7 +1686,7 @@ export const CourtScheduler: React.FC = () => {
           {(() => {
             const displayClasses = classesWithSpotsInfo.filter(({ cls }) => {
               const sportMatches = selectedClassSportFilter === 'all' || cls.sport === selectedClassSportFilter;
-              const coachMatches = selectedCoachFilter === 'all' || cls.coach === selectedCoachFilter;
+              const coachMatches = selectedCoachFilter === 'all' || cls.coachName === selectedCoachFilter;
               return sportMatches && coachMatches;
             });
 
@@ -1727,7 +1766,7 @@ export const CourtScheduler: React.FC = () => {
 
                         <div className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                           <Users className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Prof. <strong className="text-slate-900">{cls.coach}</strong></span>
+                          <span>Prof. <strong className="text-slate-900">{cls.coachName}</strong></span>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
@@ -2059,7 +2098,21 @@ export const CourtScheduler: React.FC = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* SUB-TAB 5: ÁREA DO DONO DA ARENA (GESTÃO COMPLETA)                   */}
+      {/* SUB-TAB 5: COMUNIDADE DA ARENA (VÍDEOS DE APRENDIZADO & TREINO)       */}
+      {/* ===================================================================== */}
+      {effectiveSubTab === 'comunidade' && (
+        <ArenaCommunityLearning tenant={tenant} />
+      )}
+
+      {/* ===================================================================== */}
+      {/* SUB-TAB 6: INFORMAÇÕES SOBRE HORÁRIOS & HISTÓRICO DE PARTIDAS         */}
+      {/* ===================================================================== */}
+      {effectiveSubTab === 'info_historico' && (
+        <ArenaInfoHistory tenant={tenant} />
+      )}
+
+      {/* ===================================================================== */}
+      {/* SUB-TAB 7: ÁREA DO DONO DA ARENA (GESTÃO COMPLETA)                   */}
       {/* ===================================================================== */}
       {effectiveSubTab === 'dono' && (
         <div className="space-y-6">
@@ -2624,7 +2677,7 @@ export const CourtScheduler: React.FC = () => {
                             <div className="flex flex-wrap items-center justify-end gap-1.5">
                               <button
                                 onClick={() => {
-                                  toggleClassClassPayment(stu.id);
+                                  toggleClassStudentPayment(stu.id);
                                   triggerToast(
                                     isPaid
                                       ? `Status de ${stu.studentName} alterado para Pendente.`
@@ -2701,173 +2754,7 @@ export const CourtScheduler: React.FC = () => {
       {/* ===================================================================== */}
       {/* MODAL 1: QUICK 1-CLICK REGULAR COURT BOOKING                          */}
       {/* ===================================================================== */}
-      {activeSlot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="aquarium-glass bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-            {!bookingSuccessUrl ? (
-              <form onSubmit={handleConfirmBooking} className="space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">Reservar Horário</h2>
-                    <p className="text-xs text-slate-500">
-                      {tenant.name} · {activeSlot.date} às {activeSlot.startTime}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSlot(null)}
-                    className="text-slate-400 hover:text-slate-600 text-sm font-semibold p-1 cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex items-center justify-between text-xs text-slate-700">
-                  <div>
-                    <span className="font-semibold block text-slate-900">
-                      {tenant.courts.find((c) => c.id === activeSlot.courtId)?.name}
-                    </span>
-                    <span className="text-slate-500">
-                      Duração: 60 min ({activeSlot.startTime} - {activeSlot.endTime})
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs text-slate-400 block">Total</span>
-                    <span className="text-base font-extrabold text-slate-900 tabular-nums">
-                      R$ {activeSlot.price.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Esporte:</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'futevolei' as SportType, label: '⚽ Futevôlei' },
-                      { id: 'beach_tennis' as SportType, label: '🎾 Beach Tennis' },
-                      { id: 'volei_praia' as SportType, label: '🏐 Vôlei Praia' },
-                    ].map((sp) => (
-                      <button
-                        type="button"
-                        key={sp.id}
-                        onClick={() => setChosenSport(sp.id)}
-                        className={`py-2 px-2 text-xs font-semibold rounded-lg border text-center transition-colors cursor-pointer ${
-                          chosenSport === sp.id
-                            ? 'bg-slate-900 text-white border-slate-900'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        {sp.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Seu Nome:</label>
-                    <input
-                      type="text"
-                      required
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">WhatsApp:</label>
-                    <input
-                      type="tel"
-                      required
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* 1-Click Payment Method Selector */}
-                <div className="space-y-2 pt-1">
-                  <label className="block text-xs font-bold text-slate-800">
-                    Forma de Pagamento Rápido:
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBookingPayMethod('pix')}
-                      className={`p-2.5 rounded-xl border text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                        bookingPayMethod === 'pix'
-                          ? 'bg-slate-950 text-amber-400 border-slate-950'
-                          : 'bg-slate-50 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      <QrCode className="w-4 h-4" />
-                      PIX Instantâneo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBookingPayMethod('cartao')}
-                      className={`p-2.5 rounded-xl border text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                        bookingPayMethod === 'cartao'
-                          ? 'bg-slate-950 text-amber-400 border-slate-950'
-                          : 'bg-slate-50 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      Cartão em 1 Clique
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSlot(null)}
-                    className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-3 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Check className="w-4 h-4 stroke-[3]" />
-                    PAGAR R$ {activeSlot.price.toFixed(2)} & RESERVAR AGORA
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="text-center space-y-4 py-2">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto">
-                  <Check className="w-6 h-6 stroke-[3]" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">Reserva Confirmada!</h3>
-                  <p className="text-xs text-slate-600 mt-1">Horário reservado na {tenant.name}.</p>
-                </div>
-                <div className="space-y-2 pt-2">
-                  <a
-                    href={bookingSuccessUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center justify-center gap-2"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Enviar Comprovante no WhatsApp
-                  </a>
-                  <button
-                    onClick={() => setActiveSlot(null)}
-                    className="w-full py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
-                  >
-                    Fechar
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {activeSlot && <QuickBookingPaymentModal slotData={{ arena: tenant, courtId: activeSlot.courtId, courtName: tenant.courts.find(c => c.id === activeSlot.courtId)?.name || '', date: activeSlot.date, time: activeSlot.startTime, endTime: activeSlot.endTime, price: activeSlot.price, sport: chosenSport }} onClose={() => setActiveSlot(null)} />}
 
       {/* ===================================================================== */}
       {/* MODAL 1B: WAITLIST FOR SOLD-OUT COURT SLOT (LISTA DE ESPERA)          */}

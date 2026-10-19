@@ -2697,7 +2697,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           match={activeRefereeMatch}
           arenaName={tenant.name}
           arenaId={tenant.id}
-          tournamentMatches={matches}
+          tournamentMatches={tournamentMatches}
           onClose={() => setRefereeModalMatchId(null)}
           onUpdateLiveMatch={(matchId, updater) => {
             updateLiveRefereeMatch(matchId, updater);

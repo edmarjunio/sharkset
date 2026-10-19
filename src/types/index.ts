@@ -483,6 +483,8 @@ export interface TenantConfig {
   logoUrl?: string;
   whiteLabelEnabled?: boolean;
   brandPalette?: ArenaBrandPalette;
+  lat?: number;
+  lng?: number;
 }
 
 export interface LiveChatMessage {
