@@ -457,6 +457,51 @@ export const ArenasDirectory: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Seção Educativa: Como Funciona o Ecossistema de Arenas SHARKSET */}
+      <section className="rounded-3xl border border-cyan-800/40 bg-[#041529]/90 p-6 sm:p-8 text-white space-y-6 shadow-xl">
+        <div className="flex items-center gap-3 border-b border-cyan-800/50 pb-4">
+          <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
+            <Compass className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-white">Como Funciona a Gestão e Reservas nas Arenas</h3>
+            <p className="text-xs text-slate-400">Dicas essenciais para atletas e proprietários de quadras de areia.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-amber-400 font-black">
+              <Clock className="w-4 h-4" />
+              <span>Reserva e Horários Livres</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Consulte a disponibilidade em tempo real das quadras com iluminação e areia tratada. Quando um horário é desocupado por desistência, o sistema alerta automaticamente os atletas da região.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-[#12C7BB] font-black">
+              <Zap className="w-4 h-4" />
+              <span>Transmissão Oficial de Jogos</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              As arenas credenciadas possuem suporte a transmissão ao vivo via câmera fixa. Os jogos transmitidos contam com placar esportivo estilo TV e pontuação válida para a subida oficial no Ranking Sharkset.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-[#0987CE] font-black">
+              <GraduationCap className="w-4 h-4" />
+              <span>Aulas e Mensalidades</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Professores de Futevôlei e Beach Tennis gerenciam turmas por nível técnico (Iniciante, Série C, B e A). O vencimento mensal é automatizado com lembretes via WhatsApp para evitar atrasos.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

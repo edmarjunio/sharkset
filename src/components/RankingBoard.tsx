@@ -18,6 +18,7 @@ import { getInactivityDays, INACTIVITY_DAYS } from '../services/rankingActivity'
 import { AthleteLevelBadge } from './AthleteLevelBadge';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import { Top10WhatsAppShareModal } from './Top10WhatsAppShareModal';
+import { IntegrityReportModal } from './IntegrityReportModal';
 import {
   Trophy,
   Search,
@@ -28,6 +29,7 @@ import {
   ArrowUpDown,
   Sparkles,
   ShieldCheck,
+  ShieldAlert,
   MapPin,
   Download,
   UserPlus,
@@ -67,6 +69,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
   const [isAddAthleteModalOpen, setIsAddAthleteModalOpen] = useState<boolean>(false);
   const [isRecordMatchModalOpen, setIsRecordMatchModalOpen] = useState<boolean>(false);
   const [isShareTop10Open, setIsShareTop10Open] = useState<boolean>(false);
+  const [reportTarget, setReportTarget] = useState<{ id: string; name: string } | null>(null);
 
   // 5 Segmented Scopes: GERAL | PAÍS | ESTADO | CIDADE | ARENA
   const [rankingScope, setRankingScope] = useState<RankingScope>(initialScope || 'geral');
@@ -745,14 +748,24 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
 
                       {/* Action */}
                       <td className="py-3.5 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('register_dupla')}
-                          className="px-3 py-1.5 rounded-lg bg-[#071D3D] hover:bg-[#0B254E] text-slate-200 border border-slate-700 font-bold text-[11px] transition-transform active:translate-y-0.5 shadow-sm"
-                          title="Inscrever este atleta no campeonato"
-                        >
-                          Inscrever →
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setReportTarget({ id: athlete.id, name: athlete.name })}
+                            className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/40 font-bold text-xs transition-colors"
+                            title={`Denunciar suspeita de fraude/entrega de pontos para ${athlete.name}`}
+                          >
+                            <ShieldAlert size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('register_dupla')}
+                            className="px-3 py-1.5 rounded-lg bg-[#071D3D] hover:bg-[#0B254E] text-slate-200 border border-slate-700 font-bold text-[11px] transition-transform active:translate-y-0.5 shadow-sm"
+                            title="Inscrever este atleta no campeonato"
+                          >
+                            Inscrever →
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -777,30 +790,63 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
         </div>
       </div>
 
-      {/* Rules Explanatory Footer: Anti-Sandbagging & Cross-City Logic */}
-      <div className="aquarium-glass bg-[#05182C] text-slate-300 border border-[#145A9B]/60 rounded-2xl p-4 text-xs flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#0987CE]/20 text-[#0987CE] flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-5 h-5" />
+      {/* Rules Explanatory Footer: Anti-Sandbagging, Amistosos & Anti-Farming */}
+      <section className="rounded-3xl border border-cyan-800/40 bg-[#041529]/95 p-6 sm:p-8 text-white space-y-6 shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-cyan-800/50 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-white">
+                Regras Oficiais do Ranking & Integridade Competitiva
+              </h3>
+              <p className="text-xs text-slate-400">
+                Como pontuar em torneios e amistosos com transmissão, subir de nível e denunciar irregularidades.
+              </p>
+            </div>
           </div>
-          <div>
-            <h4 className="font-extrabold text-white text-sm">
-              Passaporte Único SHARK SET & Regras Anti-Sandbagging
-            </h4>
-            <p className="text-slate-300 text-xs mt-0.5">
-              Se você joga Série A na sua cidade, não pode se inscrever como iniciante em outra arena. As pontuações são consolidadas no Cloud Firestore.
+          <button
+            type="button"
+            onClick={() => setActiveTab('tournaments')}
+            className="px-4 py-2.5 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] text-white border border-slate-700 font-bold text-xs shrink-0 transition-all cursor-pointer"
+          >
+            Ver Tabela dos Torneios →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-amber-400 font-black">
+              <Zap className="w-4 h-4 text-orange-400" />
+              <span>Amistosos com Transmissão (Zebra & Underdog)</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Vencer uma dupla de categoria superior em jogo transmitido rende até <strong>+55 pts</strong> no ranking! Já o favorito ganha pontuação mínima ao vencer séries inferiores.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-[#12C7BB] font-black">
+              <Sparkles className="w-4 h-4 text-[#12C7BB]" />
+              <span>Barra de XP & Trava de Consistência</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Para subir de categoria não basta apenas pontuar: exige-se no mínimo 6 partidas disputadas com 4 vitórias e aproveitamento $\ge 60\%$. Após 30 dias inativo, o nível é resetado.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-rose-400 font-black">
+              <ShieldAlert className="w-4 h-4 text-rose-400" />
+              <span>Tolerância Zero com Fraude e Conluio</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Viu alguém entregando jogo para amigo subir ou forjando placar? Clique no botão de denúncia (<ShieldAlert className="w-3.5 h-3.5 inline text-rose-400" />) ao lado do atleta. O comitê investiga e anula os pontos.
             </p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('tournaments')}
-          className="px-4 py-2 rounded-lg bg-[#071D3D] hover:bg-[#0B254E] text-white border border-slate-700 font-bold text-xs shrink-0 transition-all"
-        >
-          Ver Tabela dos Torneios →
-        </button>
-      </div>
+      </section>
 
       {/* Secondary Collapsible / Bottom Free Broadcast Studio */}
       <details className="aquarium-glass bg-[#05182C] border border-[#145A9B]/50 rounded-2xl p-4">
@@ -1146,6 +1192,20 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
         arenaName={tenant.name}
         cityName={selectedCity}
       />
+
+      {/* Integrity Report Modal (Denúncia de Fraude/Conluio) */}
+      {reportTarget && (
+        <IntegrityReportModal
+          isOpen={!!reportTarget}
+          onClose={() => setReportTarget(null)}
+          targetType="athlete"
+          targetId={reportTarget.id}
+          targetName={reportTarget.name}
+          onReportSubmitted={(rep) => {
+            setStatusMessage(`🚨 Denúncia registrada contra ${rep.targetName}. O caso foi enviado ao comitê de integridade.`);
+          }}
+        />
+      )}
     </div>
   );
 };

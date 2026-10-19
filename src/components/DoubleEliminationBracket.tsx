@@ -35,6 +35,7 @@ import { ShareBracketModal } from './ShareBracketModal';
 import { MatchHistoryModal } from './MatchHistoryModal';
 import { SharksetLogo } from './SharksetLogo';
 import { MostWatchedGamesMiniRail } from './MostWatchedGamesMiniRail';
+import { IntegrityReportModal } from './IntegrityReportModal';
 import {
   Trophy,
   MessageSquare,
@@ -54,6 +55,7 @@ import {
   ArrowDown,
   Play,
   ShieldAlert,
+  Flag,
   Timer,
   Download,
   FileSpreadsheet,
@@ -133,6 +135,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     }>;
     completedMatch: BracketMatch;
   } | null>(null);
+
+  const [reportMatchTarget, setReportMatchTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleOpenShare = (match?: BracketMatch) => {
     setShareMatch(match || null);
@@ -820,6 +824,19 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
               title="Editar participantes, horário ou placar livremente"
             >
               <Sliders className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setReportMatchTarget({
+                  id: match.id,
+                  name: `Jogo #${match.matchNumber} (${formatParticipantName(match.team1)} vs ${formatParticipantName(match.team2)})`,
+                })
+              }
+              className="p-1 text-red-400 hover:text-red-300 rounded cursor-pointer hover:bg-red-950/40"
+              title="Denunciar suspeita de fraude, conluio ou entrega de pontos nesta partida"
+            >
+              <Flag className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -2744,6 +2761,64 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         tournamentId={activeTournament.id}
         tournamentName={activeTournament.name}
       />
+
+      {/* Integrity Report Modal (Denunciar Partida) */}
+      {reportMatchTarget && (
+        <IntegrityReportModal
+          isOpen={!!reportMatchTarget}
+          onClose={() => setReportMatchTarget(null)}
+          targetType="match"
+          targetId={reportMatchTarget.id}
+          targetName={reportMatchTarget.name}
+          onReportSubmitted={(rep) => {
+            triggerToast(`🚨 Denúncia registrada: ${rep.targetName}. Enviada para o comitê de integridade.`);
+          }}
+        />
+      )}
+      {/* Seção Educativa: Como Funciona a Chave de Dupla Eliminação no SHARKSET */}
+      <section className="rounded-3xl border border-cyan-800/40 bg-[#041529]/90 p-6 sm:p-8 text-white space-y-6 shadow-xl">
+        <div className="flex items-center gap-3 border-b border-cyan-800/50 pb-4">
+          <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
+            <Trophy className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-white">Como Funciona a Tabela de Dupla Eliminação</h3>
+            <p className="text-xs text-slate-400">Entenda a chave dos vencedores, repescagem e avanço até a grande final.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-emerald-400 font-black">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              <span>Chave dos Vencedores (Winners)</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Todas as duplas iniciam na chave principal (verde). Ao vencer, continuam avançando. Quem perde o primeiro jogo não é eliminado: cai imediatamente para a Repescagem (Losers).
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-amber-400 font-black">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+              <span>Repescagem (Losers Bracket)</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Na repescagem (amarela), a dupla luta pela sobrevida. Se vencer todos os jogos da repescagem, chega até a Semifinal/Final. Apenas a 2ª derrota elimina a dupla do campeonato.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-[#0987CE] font-black">
+              <ShieldAlert className="w-4 h-4 text-cyan-300" />
+              <span>Passaporte Único Anti-Gato</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              O nível do atleta no Sharkset é único e nacional. Se um jogador joga Série A ou B em sua cidade, o sistema bloqueia automaticamente a inscrição dele como Iniciante ou C em qualquer outra arena do Brasil.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

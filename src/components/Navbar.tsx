@@ -71,23 +71,23 @@ export const Navbar: React.FC = () => {
         type="button"
         onClick={() => setActiveTab('live')}
         aria-current={activeTab === 'live' ? 'page' : undefined}
-        className="navbar-live-action navbar-live-list relative inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-xs uppercase tracking-wider shadow-[0_4px_16px_rgba(220,38,38,0.55)] border-t border-red-300/60 active:translate-y-0.5 transition-all"
+        className="navbar-live-action relative inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-red-700/30 border border-red-400/40 active:translate-y-0.5 transition-all cursor-pointer"
         title="Assistir partidas ao vivo agora"
       >
-        <span className="relative flex h-2.5 w-2.5">
+        <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
         </span>
-        <span className="drop-shadow-sm">🔴 AO VIVO</span>
+        <span>LIVE</span>
       </button>
       <button
         type="button"
         onClick={openBroadcastStudio}
-        className="navbar-live-action navbar-live-studio inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#030E1F] hover:bg-[#071D3D] text-cyan-200 border border-cyan-500/30 font-bold text-xs shadow-md active:translate-y-0.5 transition-all"
+        className="navbar-live-action inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 font-bold text-xs shadow-md active:translate-y-0.5 transition-all cursor-pointer"
         title="Abrir estúdio de transmissão ao vivo"
       >
         <Radio size={14} className="text-[#12C7BB]" />
-        <span>Transmitir</span>
+        <span>INICIAR TRANSMISSÃO</span>
       </button>
     </div>
   );

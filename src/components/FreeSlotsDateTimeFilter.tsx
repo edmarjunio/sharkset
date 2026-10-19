@@ -83,15 +83,69 @@ export function FreeSlotsDateTimeFilter({ userCoords, className = '', defaultSpo
     {arenas.map(({ arena }) => <ArenaSubscription key={arena.id + ':' + date} arena={arena} date={date} receive={receive} />)}
     {(!homeTop || activeTab === 'home') && <section ref={section} data-nearby-availability className={'max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 ' + className} aria-label="Horários livres nas próximas horas">
       <div className="vacancy-promo rounded-3xl border border-cyan-400/50 bg-[#041529] p-4 sm:p-5 text-white space-y-3">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-sm sm:text-base font-black uppercase text-amber-300"><Zap className="w-4 h-4 text-orange-500" />Horários livres nas próximas horas · Arenas próximas</h2>
-          <button type="button" disabled={location.status === 'locating'} onClick={() => void location.request()} className="text-xs text-cyan-200 p-2 rounded-lg hover:bg-white/10">{location.status === 'locating' ? 'Localizando…' : 'Usar minha localização'}</button>
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+          <h2 className="flex items-center gap-2 text-sm sm:text-base font-black uppercase text-amber-300">
+            <Zap className="w-4 h-4 text-orange-500" />
+            Horários livres nas próximas horas · Arenas próximas
+          </h2>
+          <button
+            type="button"
+            disabled={location.status === 'locating'}
+            onClick={() => void location.request()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-cyan-500/40 bg-[#052445]/90 hover:bg-[#083566] text-white font-bold text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer"
+          >
+            <MapPin size={15} className="text-cyan-300" />
+            <span>{location.status === 'locating' ? 'Localizando…' : 'Usar minha localização'}</span>
+          </button>
         </header>
-        <div className="flex flex-wrap items-end gap-3 text-xs font-bold">
-          <label className="space-y-1">Arena<select aria-label="Filtrar por arena" value={arenaFilter} onChange={event => setArenaFilter(event.target.value)} className="block max-w-full min-h-10 rounded-xl border border-cyan-700 bg-slate-900 px-3 py-2"><option value="all">Todas as arenas próximas</option>{arenas.map(({ arena }) => <option key={arena.id} value={arena.id}>{arena.name}</option>)}</select></label>
-          <label className="space-y-1">Hora inicial<input aria-label="Hora inicial da busca" type="time" value={from} onChange={event => setFrom(event.target.value)} className="block min-h-10 rounded-xl border border-cyan-700 bg-slate-900 px-3 py-2 [color-scheme:dark]" /></label>
-          <label className="space-y-1">Hora final<input aria-label="Hora final da busca" type="time" value={to} onChange={event => setTo(event.target.value)} className="block min-h-10 rounded-xl border border-cyan-700 bg-slate-900 px-3 py-2 [color-scheme:dark]" /></label>
-          <button type="button" onClick={() => { setArenaFilter('all'); setFrom(''); setTo(''); }} className="min-h-10 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15">Limpar filtros</button>
+        <div className="flex flex-wrap items-end gap-3 text-xs font-bold pt-1">
+          <label className="space-y-1.5 flex-1 min-w-[200px]">
+            <span className="text-slate-300 font-bold block">Arena</span>
+            <select
+              aria-label="Filtrar por arena"
+              value={arenaFilter}
+              onChange={(event) => setArenaFilter(event.target.value)}
+              className="block w-full min-h-11 rounded-xl border border-cyan-800/60 bg-[#030D1A] px-3.5 py-2.5 text-xs text-white"
+            >
+              <option value="all">Todas as arenas próximas</option>
+              {arenas.map(({ arena }) => (
+                <option key={arena.id} value={arena.id}>
+                  {arena.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-slate-300 font-bold block">Hora inicial</span>
+            <input
+              aria-label="Hora inicial da busca"
+              type="time"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+              className="block min-h-11 rounded-xl border border-cyan-800/60 bg-[#030D1A] px-3.5 py-2.5 text-xs text-white [color-scheme:dark]"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-slate-300 font-bold block">Hora final</span>
+            <input
+              aria-label="Hora final da busca"
+              type="time"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+              className="block min-h-11 rounded-xl border border-cyan-800/60 bg-[#030D1A] px-3.5 py-2.5 text-xs text-white [color-scheme:dark]"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setArenaFilter('all');
+              setFrom('');
+              setTo('');
+            }}
+            className="min-h-11 px-4 py-2.5 rounded-xl border border-cyan-800/60 bg-[#05182C] hover:bg-[#072545] text-slate-200 font-bold text-xs transition-colors cursor-pointer"
+          >
+            Limpar filtros
+          </button>
           {!homeTop && <BookingDatePicker />}
         </div>
         <p className="text-[11px] text-slate-300">{coords ? 'Distâncias por coordenadas quando disponíveis.' : location.status === 'denied' ? 'Localização não autorizada ou indisponível. Distâncias de referência.' : 'Distâncias de referência; autorize a localização para calcular pelo GPS.'} {!from && !to ? 'Disponibilidade nas próximas 4 horas.' : 'Horários completos dentro do intervalo selecionado.'}</p>

@@ -22,27 +22,15 @@ export const SharksetLogo: React.FC<SharksetLogoProps> = ({
 
   if (variant === 'coin3d') {
     return (
-      <span className={`shark-coin-stage inline-flex items-center shrink-0 ${className}`}>
-        <span
-          className="shark-coin-3d shrink-0"
-          style={{ width: `${px}px`, height: `${px}px` }}
-        >
-          {/* 3D Extruded Cylinder Side Layers (exact logo blue/cyan colors) */}
-          <span className="shark-coin-edge-back" aria-hidden="true" />
-          <span className="shark-coin-edge-mid" aria-hidden="true" />
-          {/* Recessed Inner Coin Dish + Raised Outer Rim in Logo Blue */}
-          <span className="shark-coin-rim" aria-hidden="true" />
-          {/* Popped-out 3D Relief Logo Face */}
-          <img
-            src="/brand/logo.png"
-            alt="SHARKSET"
-            width={px}
-            height={px}
-            className="shark-coin-face rounded-full object-contain shrink-0"
-            decoding="async"
-          />
-          <span className="shark-coin-shine" aria-hidden="true" />
-        </span>
+      <span className={`inline-flex items-center shrink-0 ${className}`}>
+        <img
+          src="/brand/sharkset-logo-transparent.png"
+          alt="SHARKSET"
+          width={px}
+          height={px}
+          className="rounded-full object-contain shrink-0 shark-logo-elevated transition-transform hover:scale-105"
+          decoding="async"
+        />
         {showText && (
           <span className="font-black tracking-tight ml-3 text-white text-base sm:text-lg">
             SHARK<span className="text-[#FF6B00]">SET</span>

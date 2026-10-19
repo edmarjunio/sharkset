@@ -603,3 +603,27 @@ export interface AcademyPost {
   ownerId?: string;
 }
 
+export type ReportTargetType = 'athlete' | 'match';
+
+export type ReportReason =
+  | 'match_fixing'           // Entrega de jogo combinada com amigos para subir ranking
+  | 'fake_score'             // Placar simulado ou falso
+  | 'sandbagging'            // Atleta jogando em categoria inferior de propósito
+  | 'collusion_farming'      // Múltiplos jogos seguidos contra a mesma pessoa para farmar XP
+  | 'inappropriate_conduct'  // Conduta anti-esportiva
+  | 'other';
+
+export interface IntegrityReport {
+  id: string;
+  targetType: ReportTargetType;
+  targetId: string;           // athleteId ou matchId
+  targetName: string;         // Nome do atleta ou descrição da partida
+  reason: ReportReason;
+  description: string;
+  reporterName?: string;
+  reporterPhone?: string;
+  status: 'pending' | 'investigating' | 'action_taken' | 'dismissed';
+  evidenceUrl?: string;       // Link de gravação ou transmissão
+  adminNotes?: string;
+  createdAt: string;
+}

@@ -46,7 +46,23 @@ export function LiveDirectory({ compact = false }: { compact?: boolean }) {
     return () => { generation.current++; currentRequest.current?.abort(); pending.current = false; };
   }, [load]);
   return <section className={compact ? 'space-y-3' : 'max-w-7xl mx-auto px-4 sm:px-6 py-5 text-white space-y-5'} aria-labelledby={compact ? 'home-live-title' : 'live-directory-title'}>
-    <header className="flex justify-between items-center gap-3"><div><h1 id={compact ? 'home-live-title' : 'live-directory-title'} className="text-xl font-bold flex items-center gap-2"><Radio size={20} className="text-red-400" />{compact ? (filter.mode === 'nearby' ? 'Jogos ao vivo perto de você' : filter.mode === 'city' ? `Jogos ao vivo em ${filter.city || 'outra cidade'}` : 'Jogos ao vivo') : 'LIVE'}</h1>{!compact && <p className="text-xs text-slate-400 mt-1">Acompanhe as transmissões das arenas.</p>}</div>{compact && <button onClick={() => setActiveTab('live')} className="site-secondary-action aquarium-glass">Ver transmissões →</button>}</header>
+    <header className="flex justify-between items-center gap-3">
+      <div>
+        <h1 id={compact ? 'home-live-title' : 'live-directory-title'} className="text-xl font-bold flex items-center gap-2">
+          <Radio size={20} className="text-red-400" />
+          {compact ? (filter.mode === 'nearby' ? 'Jogos ao vivo perto de você' : filter.mode === 'city' ? `Jogos ao vivo em ${filter.city || 'outra cidade'}` : 'Jogos ao vivo') : 'LIVE'}
+        </h1>
+        {!compact && <p className="text-xs text-slate-400 mt-1">Acompanhe as transmissões das arenas.</p>}
+      </div>
+      {compact && (
+        <button
+          onClick={() => setActiveTab('live')}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-cyan-500/40 bg-[#052445]/90 hover:bg-[#083566] text-white font-bold text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer"
+        >
+          <span>Ver transmissões →</span>
+        </button>
+      )}
+    </header>
     {!compact && <LocationScopeFilter />}
     {filter.mode === 'nearby' && !validCoordinates(coords) ? (compact ? <p className="text-sm text-slate-400">Escolha uma localização no filtro acima para ver os jogos.</p> : null) : <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{items.map(item => <button key={item.id} onClick={() => useBroadcastNavigation.getState().open({ kind: 'published', id: item.id })} className="rounded-2xl border border-slate-700 hover:border-red-400 bg-slate-950 p-4 text-left space-y-2"><span className="inline-flex items-center gap-2 text-xs font-bold text-red-400"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />AO VIVO</span><strong className="block">{item.title}</strong><span className="block text-xs text-slate-400">{[item.arenaName, [item.city, item.state].filter(Boolean).join('/')].filter(Boolean).join(' · ') || 'Localização não informada'}{item.distanceKm !== null ? ` · ${item.distanceKm} km` : ''}</span><span className="block text-sm text-cyan-300">Assistir →</span></button>)}</div>
