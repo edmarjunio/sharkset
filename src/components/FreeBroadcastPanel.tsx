@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { BroadcastOverlay, elapsedTime, type ScoreboardState } from './BroadcastOverlay';
+import { isYouTubeUrl, getYouTubeEmbedUrl } from '../utils/videoUtils';
 
 interface Broadcast extends ScoreboardState {
   id: string; ownerId: string; title: string; team1: string; team2: string;
@@ -48,8 +49,20 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     {broadcast && <>
       <div className="relative rounded-2xl overflow-hidden bg-[#071D3D] aspect-video flex items-center justify-center border-2 border-slate-900 shadow-xl">
-        {broadcast.isLive && broadcast.videoUrl ? <video src={broadcast.videoUrl} controls autoPlay muted playsInline className="w-full h-full object-contain" /> :
-          <p className="text-center text-white p-6">{canEdit ? 'Conecte o vídeo para publicar.' : 'A transmissão ainda não começou.'}</p>}
+        {broadcast.isLive && broadcast.videoUrl ? (
+          isYouTubeUrl(broadcast.videoUrl) ? (
+            <iframe
+              src={getYouTubeEmbedUrl(broadcast.videoUrl, { autoplay: true, muted: true }) || ''}
+              className="w-full h-full border-0 object-contain"
+              allow="autoplay; encrypted-media"
+              title="Prévia do vídeo"
+            />
+          ) : (
+            <video src={broadcast.videoUrl} controls autoPlay muted playsInline className="w-full h-full object-contain" />
+          )
+        ) : (
+          <p className="text-center text-white p-6">{canEdit ? 'Conecte o vídeo para publicar.' : 'A transmissão ainda não começou.'}</p>
+        )}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl z-20 pointer-events-none">
           <BroadcastOverlay state={broadcast} team1={broadcast.team1} team2={broadcast.team2} compact />
         </div>
@@ -57,13 +70,13 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
       <button onClick={() => useBroadcastNavigation.getState().open({ kind: 'published', id })} className="rounded-xl bg-cyan-700 text-white px-4 py-2 font-bold">Assistir / tela cheia</button>
       {canEdit && <fieldset disabled={busy} className="space-y-3">
         <BroadcastOverlay state={broadcast} team1={broadcast.team1} team2={broadcast.team2} onChange={save} />
-        <label className="block text-sm">Endereço HTTPS do vídeo ao vivo
-          <input type="url" value={videoUrl} onChange={event => setVideoUrl(event.target.value)} placeholder="https://…" className="w-full p-3 border rounded-xl mt-1" />
+        <label className="block text-sm font-semibold">Endereço do vídeo ou Live (YouTube ou HTTPS direto)
+          <input type="url" value={videoUrl} onChange={event => setVideoUrl(event.target.value)} placeholder="https://www.youtube.com/watch?v=... ou https://..." className="w-full p-3 border rounded-xl mt-1 text-slate-800" />
         </label>
-        <p className="text-xs text-slate-600">Use um endereço de reprodução compatível com seu navegador. A câmera local ainda funciona apenas como prévia.</p>
+        <p className="text-xs text-slate-600">Suporta transmissões ao vivo do YouTube (ex: mega torneios, Mikasa, Team Águia) ou stream HTTPS. O placar e a tabela ficarão sincronizados sobre o vídeo!</p>
         <div className="flex gap-3 flex-wrap">
-          <button className="bg-[#0987CE] text-white p-3 rounded-xl" disabled={!videoUrl && !broadcast.isLive} onClick={() => save(broadcast.isLive ? { isLive: false, elapsedSeconds: elapsedTime(broadcast), clockStartedAt: null } : { videoUrl, isLive: true })}>{broadcast.isLive ? 'Encerrar transmissão' : 'Publicar vídeo'}</button>
-          <a className="text-[#0987CE] p-3 underline" target="_blank" rel="noreferrer" href={`?broadcast=${id}`}>Abrir tela do público</a>
+          <button className="bg-[#0987CE] text-white p-3 rounded-xl font-bold" disabled={!videoUrl && !broadcast.isLive} onClick={() => save(broadcast.isLive ? { isLive: false, elapsedSeconds: elapsedTime(broadcast), clockStartedAt: null } : { videoUrl, isLive: true })}>{broadcast.isLive ? 'Encerrar transmissão' : 'Publicar vídeo'}</button>
+          <a className="text-[#0987CE] p-3 underline font-medium" target="_blank" rel="noreferrer" href={`?broadcast=${id}`}>Abrir tela do público</a>
         </div>
       </fieldset>}
     </>}

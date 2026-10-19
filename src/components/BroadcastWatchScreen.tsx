@@ -9,6 +9,7 @@ import { watchSessionReducer } from '../services/watchSession';
 import { ImmersiveSurface } from './ImmersiveSurface';
 import { FutevoleiVisualBracketCanvas } from './FutevoleiVisualBracketCanvas';
 import { BroadcastOverlay, isSemiOrFinalStage } from './BroadcastOverlay';
+import { isYouTubeUrl, getYouTubeEmbedUrl } from '../utils/videoUtils';
 import type { TeamPair } from '../types';
 
 interface PublishedVideo { title?: string; videoUrl?: string; isLive?: boolean; team1?: string; team2?: string; score1?: number; score2?: number }
@@ -42,7 +43,9 @@ function WatchScreen({ source }: { source: WatchSource }) {
   const broadcast = published || booking?.liveBroadcast;
   const title = published?.title || booking?.liveBroadcast?.streamTitle || (match ? `Jogo ${match.matchNumber}` : 'Transmissão');
   const url = broadcast?.videoUrl || '';
-  const playable = broadcast?.isLive && /^https:\/\//i.test(url);
+  const isYouTube = isYouTubeUrl(url);
+  const youTubeEmbedUrl = isYouTube ? getYouTubeEmbedUrl(url, { autoplay: true, muted }) : null;
+  const playable = Boolean(broadcast?.isLive && (isYouTube || /^https:\/\//i.test(url)));
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -101,7 +104,37 @@ function WatchScreen({ source }: { source: WatchSource }) {
         }
       }}>
       <div className="watch-video" style={{ visibility: session.view === 'video' ? 'visible' : 'hidden' }} aria-hidden={session.view !== 'video'} inert={session.view !== 'video'}>
-        {playable ? <video key={url} ref={video} src={url} autoPlay muted={muted} playsInline className="watch-media" onPlay={() => setPaused(false)} onPause={() => setPaused(true)} onError={() => setError('O vídeo está indisponível ou não é compatível com este navegador.')} /> : <div className="watch-empty"><Play size={32} /><p>{error || (publishedId ? 'Aguardando vídeo da transmissão.' : 'Vídeo ainda não vinculado a este jogo.')}</p><p className="text-sm text-slate-400">A tabela pode ser acompanhada pelo botão abaixo.</p></div>}
+        {playable ? (
+          isYouTube && youTubeEmbedUrl ? (
+            <iframe
+              key={youTubeEmbedUrl}
+              src={youTubeEmbedUrl}
+              title={title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="watch-media w-full h-full border-0 object-contain"
+            />
+          ) : (
+            <video
+              key={url}
+              ref={video}
+              src={url}
+              autoPlay
+              muted={muted}
+              playsInline
+              className="watch-media"
+              onPlay={() => setPaused(false)}
+              onPause={() => setPaused(true)}
+              onError={() => setError('O vídeo está indisponível ou não é compatível com este navegador.')}
+            />
+          )
+        ) : (
+          <div className="watch-empty">
+            <Play size={32} />
+            <p>{error || (publishedId ? 'Aguardando vídeo da transmissão.' : 'Vídeo ainda não vinculado a este jogo.')}</p>
+            <p className="text-sm text-slate-400">A tabela pode ser acompanhada pelo botão abaixo.</p>
+          </div>
+        )}
         <header className={`watch-heading ${visibleControls ? '' : 'watch-controls-hidden'}`}>
           <button onClick={close} className="watch-control" title="Voltar ao site"><ArrowLeft size={20} /><span>Voltar</span></button>
           <div className="min-w-0"><h1 className="font-bold truncate">{title}</h1><p className="text-xs text-slate-300">{broadcast?.isLive ? 'Ao vivo' : 'Transmissão'}</p></div>
