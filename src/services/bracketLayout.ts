@@ -58,10 +58,9 @@ export function layoutBracket(matches: BracketMatch[]) {
   const positions = new Map<string, { x: number; y: number }>();
   for (const group of rows.values()) group.sort((a, b) => a.matchNumber - b.matchNumber).forEach((match, index) => {
     const bottom = regions.get(match.id)!.endsWith('bottom');
-    const staggerY = match.stage === 'losers' && match.round === 1 && lowerRounds > 1 ? -25 : 0;
     positions.set(match.id, {
       x: match.stage === 'winners' ? margin + (match.round - 1) * stepX : centerX + (lowerRounds - match.round + 1) * stepX,
-      y: margin + (bottom ? halfHeight + middleGap : 0) + (index + .5) * halfHeight / group.length - CARD_HEIGHT / 2 + staggerY,
+      y: margin + (bottom ? halfHeight + middleGap : 0) + (index + .5) * halfHeight / group.length - CARD_HEIGHT / 2,
     });
   });
   matches.filter(m => m.stage === 'semifinals').sort((a, b) => a.matchNumber - b.matchNumber).forEach((match, i) => positions.set(match.id, {
@@ -72,5 +71,8 @@ export function layoutBracket(matches: BracketMatch[]) {
     x: centerX + (match.stage === 'third_place' ? 420 : -420),
     y: margin + halfHeight + (middleGap - CARD_HEIGHT) / 2,
   }));
-  return { positions, width, height, centerX };
+  // Free space between the two decision cards (and their local lines) reserved for the Top 5 podium.
+  const podium = { x: centerX - 20, y: margin + halfHeight + 8, width: CARD_WIDTH + 80, height: middleGap - 16 };
+  return { positions, width, height, centerX, podium };
 }
+

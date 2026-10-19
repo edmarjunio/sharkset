@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { BracketMatch, BracketSource, MatchSet, SemiFormat, TeamPair } from '../types';
 import { layoutBracket, bracketEdges, bracketSlotOrigins, CARD_WIDTH, CARD_HEIGHT } from '../services/bracketLayout';
 import { matchRules } from '../services/tournamentRules';
+import { computeTopFive } from '../services/podium';
 import {
   Maximize2,
   Minimize2,
@@ -68,6 +69,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
   const viewport = useRef({ left: 0, top: 0 });
 
   const layout = useMemo(() => layoutBracket(matches), [matches]);
+  const podium = useMemo(() => computeTopFive(matches), [matches]);
   const edges = useMemo(() => bracketEdges(matches), [matches]);
   const slotOrigins = useMemo(() => bracketSlotOrigins(matches), [matches]);
   const matchById = useMemo(() => new Map(matches.map((m) => [m.id, m])), [matches]);
@@ -283,19 +285,27 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
     const winnerDestMatch = winnerEdge ? matchById.get(winnerEdge.to) : undefined;
     const loserDestMatch = loserEdge ? matchById.get(loserEdge.to) : undefined;
 
-    const stageCardClass =
-      match.stage === 'winners'
-        ? 'bracket-card-winners'
-        : match.stage === 'losers'
-        ? 'bracket-card-losers'
-        : 'bracket-card-central';
+    const isFinalMatch = match.stage === 'grand_final' || match.stage === 'super_final';
+    const isThirdMatch = match.stage === 'third_place';
+    const stageCardClass = isFinalMatch
+      ? 'bracket-card-final'
+      : isThirdMatch
+      ? 'bracket-card-bronze'
+      : match.stage === 'winners'
+      ? 'bracket-card-winners'
+      : match.stage === 'losers'
+      ? 'bracket-card-losers'
+      : 'bracket-card-central';
 
-    const stageBadgeClass =
-      match.stage === 'winners'
-        ? 'bg-emerald-400 text-slate-950'
-        : match.stage === 'losers'
-        ? 'bg-amber-400 text-slate-950'
-        : 'bg-sky-400 text-slate-950';
+    const stageBadgeClass = isFinalMatch
+      ? 'bg-yellow-200 text-amber-950'
+      : isThirdMatch
+      ? 'bg-orange-200 text-orange-950'
+      : match.stage === 'winners'
+      ? 'bg-emerald-400 text-slate-950'
+      : match.stage === 'losers'
+      ? 'bg-amber-400 text-slate-950'
+      : 'bg-sky-400 text-slate-950';
 
     const slot1 = getSlotSourceInfo(match, 0);
     const slot2 = getSlotSourceInfo(match, 1);
@@ -1177,6 +1187,38 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
                   );
                 })}
               </svg>
+
+              {/* TOP 5 PODIUM — middle of the bracket, filled only from official (completed) results */}
+              <div
+                className="bracket-podium"
+                aria-label="Pódio: 5 primeiros colocados"
+                style={{ left: layout.podium.x, top: layout.podium.y, width: layout.podium.width, height: layout.podium.height }}
+              >
+                <div className="text-center text-[11px] font-black uppercase tracking-widest text-amber-300">
+                  🏆 Pódio · 5 primeiros colocados
+                </div>
+                {([
+                  { place: 1, medal: '🥇', label: 'Campeões', teams: podium.first ? [podium.first] : [] },
+                  { place: 2, medal: '🥈', label: 'Vice-campeões', teams: podium.second ? [podium.second] : [] },
+                  { place: 3, medal: '🥉', label: '3º lugar', teams: podium.third ? [podium.third] : [] },
+                  { place: 4, medal: '4º', label: '4º lugar', teams: podium.fourth ? [podium.fourth] : [] },
+                  { place: 5, medal: '5º', label: podium.fifth.length > 1 ? '5º lugar (empate)' : '5º lugar', teams: podium.fifth },
+                ] as const).map((row) => (
+                  <div key={row.place} className={`bracket-podium-row ${row.place <= 3 ? `place-${row.place}` : ''}`}>
+                    <span className="bracket-podium-medal">{row.medal}</span>
+                    <div className="min-w-0 flex-1">
+                      <small>{row.label}</small>
+                      {row.teams.length > 0 ? (
+                        row.teams.map((team) => (
+                          <span key={team.id} className="block truncate">{formatParticipantName(team)}</span>
+                        ))
+                      ) : (
+                        <span className="block opacity-60">A definir</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               {matches.map((match) => {
                 const pos = layout.positions.get(match.id)!;

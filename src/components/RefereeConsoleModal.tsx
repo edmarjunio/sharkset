@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { BracketMatch, PointSkillType, RefereeCardEvent, RefereePointEvent, RefereeTimeoutEvent } from '../types';
 import { buildDefaultRefereeState } from '../services/bracketEngine';
+import { buildServiceOrder, pairAthletes, teamAtServiceIndex } from '../services/serviceOrder';
+import { auth, db } from '../lib/firebase';
 import {
   Award,
   BellRing,
   Check,
   Clock,
   Flame,
+  Link2,
   Minus,
   Plus,
   RefreshCw,
@@ -22,10 +26,22 @@ import {
 interface RefereeConsoleModalProps {
   match: BracketMatch;
   arenaName: string;
+  /** Arena (tenant) id: its broadcasts are offered for linking. */
+  arenaId?: string;
+  /** All matches of the tournament, used to prevent one broadcast from serving two matches. */
+  tournamentMatches?: BracketMatch[];
   onClose: () => void;
   onUpdateLiveMatch: (matchId: string, updater: (prev: BracketMatch) => BracketMatch) => void;
   onConfirmFinalResult: (matchId: string, winningTeam: 1 | 2, score1: number, score2: number) => void;
   onNotify10PointsRemaining: (matchId: string, score1: number, score2: number) => void;
+}
+
+interface LinkableBroadcast {
+  id: string;
+  ownerId: string;
+  title: string;
+  isLive: boolean;
+  revision: number;
 }
 
 const SKILL_LABELS: Record<PointSkillType, { label: string; badge: string }> = {
@@ -39,6 +55,8 @@ const SKILL_LABELS: Record<PointSkillType, { label: string; badge: string }> = {
 export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
   match,
   arenaName,
+  arenaId,
+  tournamentMatches = [],
   onClose,
   onUpdateLiveMatch,
   onConfirmFinalResult,
@@ -46,6 +64,11 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
 }) => {
   const [selectedSkill, setSelectedSkill] = useState<PointSkillType>('normal');
   const [cardReason, setCardReason] = useState<string>('Reclamação com arbitragem');
+  const [broadcastsByArena, setBroadcastsByArena] = useState<LinkableBroadcast[]>([]);
+  const [broadcastsByOwner, setBroadcastsByOwner] = useState<LinkableBroadcast[]>([]);
+  const [syncNotice, setSyncNotice] = useState<string>('');
+  const revisionRef = useRef(0);
+  const syncQueue = useRef<{ busy: boolean; pending: { s1: number; s2: number } | null }>({ busy: false, pending: null });
 
   const refState = match.liveReferee || buildDefaultRefereeState(match);
   const cardsHistory = refState.cardsHistory || [];
@@ -69,6 +92,33 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
 
   const currentServerLabel =
     refState.serviceOrderLabels[refState.serverRotationIndex] || refState.serviceOrderLabels[0];
+
+  // ---- Official broadcast linking (one tournament can have several broadcasts; each match picks its own) ----
+  useEffect(() => {
+    if (!arenaId) return;
+    return onSnapshot(
+      query(collection(db, 'broadcasts'), where('arenaId', '==', arenaId)),
+      (snapshot) => setBroadcastsByArena(snapshot.docs.map((d) => d.data() as LinkableBroadcast)),
+      () => setBroadcastsByArena([])
+    );
+  }, [arenaId]);
+
+  const ownerUid = auth.currentUser?.uid;
+  useEffect(() => {
+    if (!ownerUid) return;
+    return onSnapshot(
+      query(collection(db, 'broadcasts'), where('ownerId', '==', ownerUid)),
+      (snapshot) => setBroadcastsByOwner(snapshot.docs.map((d) => d.data() as LinkableBroadcast)),
+      () => setBroadcastsByOwner([])
+    );
+  }, [ownerUid]);
+
+  const availableBroadcasts = Array.from(
+    new Map([...broadcastsByArena, ...broadcastsByOwner].map((b) => [b.id, b])).values()
+  );
+  const linkedBroadcast = availableBroadcasts.find((b) => b.id === match.linkedBroadcastId);
+  const canDriveLinkedScore = Boolean(linkedBroadcast && ownerUid && linkedBroadcast.ownerId === ownerUid);
+  if (linkedBroadcast) revisionRef.current = Math.max(revisionRef.current, linkedBroadcast.revision);
 
   const handleScorePoint = (scoringTeam: 1 | 2) => {
     const nextScore1 = scoringTeam === 1 ? score1 + 1 : score1;

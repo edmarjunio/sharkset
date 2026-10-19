@@ -55,7 +55,7 @@ export function registerBroadcastRoutes(app: Express) {
           (next.videoUrl && new URL(next.videoUrl).protocol !== 'https:') || (next.isLive && !next.videoUrl)) throw new Error('INVALID');
         transaction.update(ref, { ...patch, revision: revision + 1, updatedAt: new Date().toISOString() });
       });
-      res.json({ ok: true });
+      res.json({ ok: true, revision: revision + 1 });
     } catch (error) {
       const code = error instanceof Error ? error.message : '';
       res.status(code === 'CONFLICT' ? 409 : code === 'INVALID' ? 400 : 403)

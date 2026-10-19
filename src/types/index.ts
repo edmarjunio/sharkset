@@ -345,6 +345,13 @@ export interface RefereeMatchState {
    */
   serverRotationIndex: 0 | 1 | 2 | 3;
   serviceOrderLabels: [string, string, string, string];
+  /**
+   * Team that owns each position of the service order. When absent the legacy
+   * alternation (team 1, team 2, team 1, team 2) applies.
+   */
+  serviceOrderTeams?: [1 | 2, 1 | 2, 1 | 2, 1 | 2];
+  /** Player (0 = first listed, 1 = second listed) who opened serving for each team. */
+  firstServers?: { team1?: 0 | 1; team2?: 0 | 1 };
   team1TimeoutsUsed: number;
   team2TimeoutsUsed: number;
   maxTimeoutsPerTeam: number;
@@ -399,6 +406,8 @@ export interface BracketMatch {
   nextMatchLoserId?: string;
   loserDestinationSlot?: 'team1' | 'team2';
   liveReferee?: RefereeMatchState;
+  /** Official broadcast (Firestore `broadcasts` id) chosen for this specific match. */
+  linkedBroadcastId?: string;
   spectatorsCount?: number;
 }
 

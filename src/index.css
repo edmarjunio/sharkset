@@ -326,6 +326,56 @@ body {
   color: #f0f9ff !important;
 }
 
+/* Match Card — FINAL (Gold) */
+.shark-site-background .bracket-card-final,
+.bracket-card-final {
+  background: linear-gradient(150deg, #f5c518 0%, #b8860b 45%, #6b4a00 100%) !important;
+  border: 2.5px solid #fff1a8 !important;
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.45), 0 12px 34px rgba(90, 60, 0, 0.7), inset 0 1px 0 rgba(255, 249, 196, 0.7) !important;
+  color: #fffbe6 !important;
+}
+
+/* Match Card — 3rd Place Playoff (Bronze) */
+.shark-site-background .bracket-card-bronze,
+.bracket-card-bronze {
+  background: linear-gradient(150deg, #e0a070 0%, #b0693a 45%, #5c2f14 100%) !important;
+  border: 2.5px solid #f4c9a0 !important;
+  box-shadow: 0 0 0 2px rgba(205, 127, 50, 0.45), 0 12px 34px rgba(60, 28, 8, 0.7), inset 0 1px 0 rgba(255, 224, 196, 0.6) !important;
+  color: #fff4ea !important;
+}
+
+/* Top-5 podium in the middle band of the bracket */
+.bracket-podium {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 20px;
+  background: rgba(3, 14, 28, 0.9);
+  border: 1.5px solid rgba(250, 204, 21, 0.55);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  color: #fff;
+  pointer-events: none;
+}
+.bracket-podium-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+.bracket-podium-row small { display: block; font-size: 10px; font-weight: 600; opacity: .75; }
+.bracket-podium-row.place-1 { background: linear-gradient(90deg, #f5c518, #a67c00); color: #2b1d00; border-color: #fff1a8; min-height: 60px; font-size: 14px; }
+.bracket-podium-row.place-2 { background: linear-gradient(90deg, #e5e7eb, #8b95a5); color: #111827; border-color: #fff; }
+.bracket-podium-row.place-3 { background: linear-gradient(90deg, #e0a070, #9a5a2e); color: #2a1306; border-color: #f4c9a0; }
+.bracket-podium-medal { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+
 /* Live Match Highlight — Strong Red Border + Glowing Pulse */
 @keyframes liveBorderPulse {
   0%, 100% {
