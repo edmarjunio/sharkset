@@ -33,7 +33,15 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-export const RankingBoard: React.FC = () => {
+interface RankingBoardProps {
+  initialScope?: RankingScope;
+  arenaOnly?: boolean;
+}
+
+export const RankingBoard: React.FC<RankingBoardProps> = ({
+  initialScope,
+  arenaOnly = false,
+}) => {
   const {
     athletes: localAthletes,
     tenant,
@@ -54,7 +62,7 @@ export const RankingBoard: React.FC = () => {
   const [isRecordMatchModalOpen, setIsRecordMatchModalOpen] = useState<boolean>(false);
 
   // 5 Segmented Scopes: GERAL | PAÍS | ESTADO | CIDADE | ARENA
-  const [rankingScope, setRankingScope] = useState<RankingScope>('geral');
+  const [rankingScope, setRankingScope] = useState<RankingScope>(initialScope || 'geral');
   const [selectedCountry, setSelectedCountry] = useState<string>('Brasil');
   const [selectedState, setSelectedState] = useState<string>('GO');
   const [selectedCity, setSelectedCity] = useState<string>('Mineiros');

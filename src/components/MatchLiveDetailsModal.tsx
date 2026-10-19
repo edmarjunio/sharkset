@@ -509,13 +509,17 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                         : 'bg-[#030B17]/70 border-[#145A9B]'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1">
+                    <div className="h-6 flex items-center justify-between gap-1 mb-1">
                       <span className="text-[10px] font-mono font-bold text-[#0987CE]">
                         DUPLA 1 #{match.team1?.seed || 1}
                       </span>
-                      {refState.servingTeam === 1 && (
+                      {refState.servingTeam === 1 ? (
                         <span className="px-2 py-0.5 rounded bg-[#12C7BB] text-slate-950 font-black text-[9px] uppercase">
                           🏐 Sacando
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-[#071D3D] text-slate-400 font-bold text-[9px] uppercase">
+                          Recepção
                         </span>
                       )}
                     </div>
@@ -565,13 +569,17 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                         : 'bg-[#030B17]/70 border-[#145A9B]'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1">
+                    <div className="h-6 flex items-center justify-between gap-1 mb-1">
                       <span className="text-[10px] font-mono font-bold text-[#0987CE]">
                         DUPLA 2 #{match.team2?.seed || 2}
                       </span>
-                      {refState.servingTeam === 2 && (
+                      {refState.servingTeam === 2 ? (
                         <span className="px-2 py-0.5 rounded bg-[#12C7BB] text-slate-950 font-black text-[9px] uppercase">
                           🏐 Sacando
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-[#071D3D] text-slate-400 font-bold text-[9px] uppercase">
+                          Recepção
                         </span>
                       )}
                     </div>

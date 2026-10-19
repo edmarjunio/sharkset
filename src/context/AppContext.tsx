@@ -72,7 +72,15 @@ export type MainTab =
   | 'shark_academy'
   | 'my_bookings';
 
-export type ArenaSubTab = 'agenda' | 'aulas' | 'campeonatos' | 'config_dono';
+export type ArenaSubTab =
+  | 'agendamentos'
+  | 'campeonatos'
+  | 'transmissoes'
+  | 'ranking'
+  | 'dono'
+  | 'agenda'
+  | 'aulas'
+  | 'config_dono';
 
 interface AppContextType {
   applyTournamentEdit: (tournamentId: string, matches: BracketMatch[], teams?: TeamPair[]) => void;
@@ -345,7 +353,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Navigation tabs — Clean Home ('home') with eye-catching highlights + Arenas + Torneios + Ranking
   const [activeTab, setActiveTab] = useState<MainTab>('home');
-  const [arenaSubTab, setArenaSubTab] = useState<ArenaSubTab>('agenda');
+  const [arenaSubTab, setArenaSubTab] = useState<ArenaSubTab>('agendamentos');
 
   // Modals & Palettes
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);

@@ -62,7 +62,13 @@ import {
   Zap,
 } from 'lucide-react';
 
-export const DoubleEliminationBracket: React.FC = () => {
+interface DoubleEliminationBracketProps {
+  minimalistPlayerView?: boolean;
+}
+
+export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> = ({
+  minimalistPlayerView = false,
+}) => {
   const {
     tenant,
     tournaments,
@@ -1067,8 +1073,8 @@ export const DoubleEliminationBracket: React.FC = () => {
         </div>
       )}
 
-      {/* Ultra-Intuitive 3-Step Visual Guide (Hidden in Fullscreen Mode for maximum bracket space) */}
-      {!isFullscreen && (
+      {/* Ultra-Intuitive 3-Step Visual Guide (Hidden in Fullscreen Mode and Minimalist Player View) */}
+      {!isFullscreen && !minimalistPlayerView && (
         <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-white">
           <div className="space-y-2.5 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1250,7 +1256,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                 : 'Fase Semifinal (Minimizar Jogos Passados)'}
             </button>
 
-            {!knockoutOnlyMode && (
+            {!minimalistPlayerView && !knockoutOnlyMode && (
               <button
                 type="button"
                 onClick={handleSimulateAdvanceToSemifinals}
@@ -1310,13 +1316,15 @@ export const DoubleEliminationBracket: React.FC = () => {
               Imprimir
             </button>
 
-            <button
-              onClick={openCreateModal}
-              className="px-3 py-2 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              Novo Torneio
-            </button>
+            {!minimalistPlayerView && (
+              <button
+                onClick={openCreateModal}
+                className="px-3 py-2 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                Novo Torneio
+              </button>
+            )}
           </div>
         </div>
 
@@ -1426,10 +1434,12 @@ export const DoubleEliminationBracket: React.FC = () => {
           </div>
         )}
 
-        {currentMatches.length > 0 && currentMatches.every(match => match.source1) ? (
-          <div id="tournament-operations"><TournamentOperationsPanel matches={currentMatches} teams={pairsInTourn} focusedMatchId={operationsMatchId}
-            onApply={(matches, teams) => { applyTournamentEdit(activeTournament.id, matches, teams); triggerToast('Tabela atualizada. Histórico preservado.'); }} /></div>
-        ) : <p className="p-4 border border-amber-400 rounded-xl">Esta tabela usa o motor antigo ou ainda não foi gerada. Use o sorteio para gerar uma nova versão conforme o regulamento. A versão anterior será arquivada localmente.</p>}
+        {!minimalistPlayerView && (
+          currentMatches.length > 0 && currentMatches.every(match => match.source1) ? (
+            <div id="tournament-operations"><TournamentOperationsPanel matches={currentMatches} teams={pairsInTourn} focusedMatchId={operationsMatchId}
+              onApply={(matches, teams) => { applyTournamentEdit(activeTournament.id, matches, teams); triggerToast('Tabela atualizada. Histórico preservado.'); }} /></div>
+          ) : <p className="p-4 border border-amber-400 rounded-xl">Esta tabela usa o motor antigo ou ainda não foi gerada. Use o sorteio para gerar uma nova versão conforme o regulamento. A versão anterior será arquivada localmente.</p>
+        )}
 
         {/* Podium Highlight */}
         {podium.champion && (
@@ -2686,6 +2696,8 @@ export const DoubleEliminationBracket: React.FC = () => {
         <RefereeConsoleModal
           match={activeRefereeMatch}
           arenaName={tenant.name}
+          arenaId={tenant.id}
+          tournamentMatches={matches}
           onClose={() => setRefereeModalMatchId(null)}
           onUpdateLiveMatch={(matchId, updater) => {
             updateLiveRefereeMatch(matchId, updater);

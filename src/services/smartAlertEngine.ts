@@ -27,6 +27,8 @@ export function parseTimeToMinutes(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
+export const timeStrToMinutes = parseTimeToMinutes;
+
 /**
  * Returns a clean "HH:mm" string for the current local time,
  * or falls back to a prime evening hour (17:15) if current time is late night so the 2h window is always demonstrable.
