@@ -1,3 +1,4 @@
+import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { matchPhaseLabel } from '../services/bracketPresentation';
 import { TournamentOperationsPanel } from './TournamentOperationsPanel';
 import React, { useState, useMemo, useEffect } from 'react';
@@ -106,7 +107,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   const [selectedLiveMatchId, setSelectedLiveMatchId] = useState<string | null>(null);
 
   // Fullscreen & Semifinals Knockout Focus Mode
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const { active: isFullscreen, setFullscreen: setIsFullscreen } = useImmersiveMode();
   const [manualKnockoutToggle, setManualKnockoutToggle] = useState<boolean | null>(null);
 
   // Share & Match History / MVP Voting Modal States
@@ -128,16 +129,6 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     }>;
     completedMatch: BracketMatch;
   } | null>(null);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreen) {
-        setIsFullscreen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreen]);
 
   const handleOpenShare = (match?: BracketMatch) => {
     setShareMatch(match || null);

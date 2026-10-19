@@ -1,6 +1,6 @@
 import { matchPhaseLabel } from '../services/bracketPresentation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { ImmersiveSurface } from './ImmersiveSurface';
 import type { BracketMatch, BracketSource, MatchSet, SemiFormat, TeamPair } from '../types';
 import { layoutBracket, bracketEdges, bracketSlotOrigins, CARD_WIDTH, CARD_HEIGHT } from '../services/bracketLayout';
 import { matchRules } from '../services/tournamentRules';
@@ -24,6 +24,7 @@ import {
 
 interface FutevoleiVisualBracketCanvasProps {
   matches: BracketMatch[];
+  readOnly?: boolean;
   semiFormat: SemiFormat;
   isSingles: boolean;
   formatParticipantName: (pair?: TeamPair) => string;
@@ -140,17 +141,9 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
   useEffect(() => {
     const frame = requestAnimationFrame(fit);
     return () => cancelAnimationFrame(frame);
-  }, [identity, props.isFullscreen, view]);
+  }, [identity, view]);
 
-  useEffect(() => {
-    if (!props.isFullscreen) return;
-    setView('panorama');
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [props.isFullscreen]);
+
 
   useEffect(() => {
     container.current?.scrollTo(viewport.current.left, viewport.current.top);
@@ -420,7 +413,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
         {/* Action Bar: Court info + Easy 1-click controls */}
         <div className="mt-1.5 flex items-center justify-between gap-1.5 pt-1 border-t border-white/15">
           <div className="flex items-center gap-1 min-w-0">
-            {isReady && !isCompleted && onToggleLiveMatch ? (
+            {props.readOnly ? null : isReady && !isCompleted && onToggleLiveMatch ? (
               <button
                 type="button"
                 onClick={(e) => {
@@ -458,7 +451,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
             </span>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0" hidden={props.readOnly}>
             {isReady && onQuickOfficialize && (
               <button
                 type="button"
@@ -1573,5 +1566,5 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
     </section>
   );
 
-  return props.isFullscreen ? createPortal(content, document.body) : content;
+  return <ImmersiveSurface active={!!props.isFullscreen}>{content}</ImmersiveSurface>;
 };
