@@ -210,11 +210,24 @@ body {
   background-image: linear-gradient(110deg, rgb(12 45 72 / 85%), rgb(4 22 40 / 90%));
 }
 
-/* Clean, restrained interactive button behavior — no forced pill shape or heavy glowing borders on every element. */
+/* Clean, restrained interactive button behavior — professional 3D elevation and tactile feedback */
 .shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]) {
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 120ms ease, box-shadow 150ms ease;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Universal Button Elevation (applied safely to interactive buttons without breaking layout or padding) */
+.shark-site-background :is(button:not([class*="bg-transparent"]):not(.bracket-card):not([aria-hidden="true"]), [role="button"]:not([class*="bg-transparent"]):not(.bracket-card)) {
+  box-shadow: 0 2px 5px -1px rgba(0, 0, 0, 0.28), 0 1px 3px -1px rgba(0, 0, 0, 0.16);
+}
+.shark-site-background :is(button:not([class*="bg-transparent"]):not(.bracket-card):not([aria-hidden="true"]), [role="button"]:not([class*="bg-transparent"]):not(.bracket-card)):hover:not(:disabled) {
+  box-shadow: 0 5px 15px -2px rgba(0, 0, 0, 0.38), 0 3px 6px -1px rgba(0, 0, 0, 0.22);
+  transform: translateY(-1px);
+}
+.shark-site-background :is(button:not([class*="bg-transparent"]):not(.bracket-card):not([aria-hidden="true"]), [role="button"]:not([class*="bg-transparent"]):not(.bracket-card)):active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .shark-site-background :is(button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"]):focus-visible {
@@ -443,17 +456,12 @@ body {
 
 @media (max-width: 639px) {
   .site-navbar { position: relative; }
-  .navbar-top { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding: 10px 12px; }
-  .navbar-top > div:first-child img { width: 76px; height: 76px; }
-  .navbar-actions { min-width: 0; display: grid; grid-template-columns: 44px minmax(80px, 1fr) 44px; gap: 7px; }
-  .navbar-actions > button { min-height: 44px; padding: 8px; justify-content: center; font-size: 11px; }
-  .navbar-actions > button:last-child { grid-column: 1 / -1; min-height: 34px; padding: 4px 10px; justify-content: flex-end; background: transparent; border: 0; }
-  .navbar-actions > button:last-child > div { width: 24px; height: 24px; }
-  .navbar-actions > button:last-child > span { display: inline; }
-  .mobile-navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; padding: 8px 12px 12px; background: transparent !important; border: 0; }
-  .mobile-navigation button { min-width: 0; min-height: 44px; font-size: 10px; letter-spacing: 0; padding: 8px 4px; border-radius: 12px; }
-  .navbar-search { padding: 0 12px 12px; }
-  .navbar-search button { padding: 12px; font-size: 12px; min-height: 44px; }
+  .navbar-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; }
+  .navbar-actions { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; }
+  .mobile-navigation { display: flex; align-items: center; gap: 6px; padding: 8px 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .mobile-navigation button { flex-shrink: 0; padding: 6px 14px; font-size: 11px; min-height: 36px; border-radius: 9999px; }
+  .navbar-search { padding: 0 12px 10px; }
+  .navbar-search button { padding: 10px 14px; font-size: 12px; min-height: 40px; }
   .site-content { width: 100%; }
   .site-content > :is(div, section) { padding-left: 12px; padding-right: 12px; }
   .site-content :is(input, select, textarea) { font-size: 16px; max-width: 100%; min-height: 44px; }
@@ -462,8 +470,7 @@ body {
   .site-content :is(.grid-cols-3, .grid-cols-4) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vacancy-promo { padding: 16px; gap: 14px; border-radius: 20px; }
   .vacancy-promo > div { width: 100%; }
-  .vacancy-promo > div:last-child { display: flex; flex-wrap: wrap; }
-  .vacancy-promo > div:last-child > button:first-child { width: 100%; min-height: 48px; justify-content: center; }
+  .vacancy-promo .rotating-ticker-strip { display: flex; flex-wrap: nowrap; overflow-x: auto; }
   .vacancy-promo p.text-lg { font-size: 19px; line-height: 1.35; }
   .aquarium-swimmer { width: 240px; opacity: .6; animation-duration: 60s; }
   .aquarium-bubbles i:nth-child(n+5) { display: none; }
@@ -565,44 +572,102 @@ body {
 .site-navbar .navbar-top {
   max-width: 1600px;
   margin-inline: auto;
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) auto;
-  gap: 8px 24px;
-  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 20px;
 }
-.site-navbar .navbar-top > div:first-child { grid-row: 1 / 3; }
-.site-navbar .navbar-top > div:first-child img { width: 96px; height: 96px; }
-.site-navbar .desktop-navigation { display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: 18px; }
-.site-navbar .desktop-navigation button { min-height: 44px; font-size: 12px; letter-spacing: .015em; }
-.site-navbar .navbar-actions { display: flex; gap: 8px; }
-.site-navbar .navbar-actions > button { min-height: 44px; justify-content: center; }
-.site-navbar .mobile-navigation { display: none; }
-.site-navbar .navbar-search { grid-column: 2 / 4; padding: 0; min-width: 0; }
-.site-navbar .navbar-search button { max-width: none; min-height: 40px; padding: 9px 14px; border-radius: 12px; font-size: 13px; }
-.site-navbar :is(button, a):focus-visible { outline: 2px solid #67e8f9; outline-offset: 4px; }
-@media (max-width: 1279px) {
-  .site-navbar .navbar-top { grid-template-columns: 72px minmax(0, 1fr); gap: 8px 16px; padding: 10px 20px; }
-  .site-navbar .navbar-top > div:first-child { grid-row: auto; }
-  .site-navbar .navbar-top > div:first-child img { width: 72px; height: 72px; }
-  .site-navbar .desktop-navigation { display: none; }
-  .site-navbar .navbar-actions { justify-content: flex-end; }
-  .site-navbar .mobile-navigation {
-    grid-column: 1 / -1; display: flex; justify-content: flex-start;
-    gap: 8px; padding: 4px 0 8px; min-width: 0;
-    background: transparent !important; border: 0; overflow-x: auto;
+.site-navbar .desktop-navigation {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+.site-navbar .desktop-navigation button {
+  min-height: 40px;
+  font-size: 12px;
+  letter-spacing: .02em;
+}
+.site-navbar .navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.site-navbar .navbar-actions > button {
+  min-height: 40px;
+  justify-content: center;
+}
+.site-navbar .navbar-search {
+  padding: 4px 20px 18px !important;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.site-navbar .navbar-search button {
+  max-width: 680px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 16px;
+  font-size: 13px;
+}
+.site-navbar :is(button, a):focus-visible {
+  outline: 2px solid #67e8f9;
+  outline-offset: 4px;
+}
+@media (max-width: 1023px) {
+  .site-navbar .navbar-top {
+    padding: 8px 16px;
+    gap: 10px;
   }
-  .site-navbar .mobile-navigation button { flex-shrink: 0; min-height: 44px; padding: 8px 14px; font-size: 11px; border-radius: 10px; }
-  .site-navbar .navbar-search { grid-column: 1 / -1; }
+  .site-navbar .desktop-navigation {
+    display: none;
+  }
+  .site-navbar .navbar-actions {
+    justify-content: flex-end;
+  }
+  .site-navbar .mobile-navigation {
+    display: flex;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 6px 14px 8px;
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .site-navbar .mobile-navigation button {
+    flex-shrink: 0;
+    min-height: 38px;
+    padding: 6px 14px;
+    font-size: 11px;
+    border-radius: 9999px;
+  }
+  .site-navbar .navbar-search {
+    padding: 4px 14px 14px !important;
+  }
 }
 @media (max-width: 639px) {
-  .site-navbar .navbar-top { grid-template-columns: 56px minmax(0, 1fr); gap: 6px 8px; padding: 8px 12px; }
-  .site-navbar .navbar-top > div:first-child img { width: 56px; height: 56px; }
-  .site-navbar .navbar-actions { gap: 4px; min-width: 0; }
-  .site-navbar .navbar-actions > button { padding: 8px; min-width: 40px; font-size: 10px; }
-  .site-navbar .navbar-actions > button:last-child { min-height: 44px; padding: 4px; border: 1px solid #b7eeff30; }
-  .site-navbar .navbar-actions > button:last-child > div { width: 28px; height: 28px; }
-  .site-navbar .navbar-actions > button:last-child > span { display: none; }
-  .site-navbar .navbar-search button { min-height: 44px; font-size: 12px; gap: 8px; }
+  .site-navbar .navbar-top {
+    padding: 6px 12px;
+    gap: 8px;
+  }
+  .site-navbar .navbar-actions {
+    gap: 5px;
+    min-width: 0;
+  }
+  .site-navbar .navbar-actions > button {
+    padding: 6px 10px;
+    min-width: 38px;
+    font-size: 11px;
+  }
+  .site-navbar .navbar-search {
+    padding: 2px 12px 14px !important;
+  }
+  .site-navbar .navbar-search button {
+    min-height: 40px;
+    font-size: 12px;
+    gap: 8px;
+  }
 }
 @media (max-width: 639px) {
   .aquarium-scenery { background-position: 55% center; animation: none; }
@@ -621,31 +686,9 @@ body {
    3D Coin Logo Medallion — Exact Reference Coin Shape & Exact Logo Colors
    ========================================================================= */
 .shark-site-background header.site-navbar.aquarium-glass {
-  overflow: visible !important;
   z-index: 50;
   border-bottom: 2px solid rgba(88, 213, 255, 0.58) !important;
   box-shadow: 0 8px 28px rgba(0, 10, 24, 0.5) !important;
-}
-
-.site-navbar .navbar-top {
-  grid-template-columns: 176px minmax(0, 1fr) auto !important;
-  padding: 10px 24px 12px !important;
-  overflow: visible !important;
-}
-
-.site-navbar .navbar-top > div:first-child {
-  grid-row: 1 / 3 !important;
-  position: relative;
-  z-index: 65;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  overflow: visible !important;
-}
-
-.site-navbar .navbar-top > div:first-child .shark-coin-3d img.shark-coin-face {
-  width: 100% !important;
-  height: 100% !important;
 }
 
 @keyframes sharkCoinFloat3D {
@@ -674,29 +717,23 @@ body {
 .shark-coin-stage {
   perspective: 1000px;
   position: relative;
-  z-index: 65;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* Overlaps the bottom division line of the topbar into the body of the site */
-  margin-top: 2px;
-  margin-bottom: -58px;
-  transform: translateY(22px);
-  filter: drop-shadow(-5px 16px 22px rgba(0, 8, 22, 0.82));
+  filter: drop-shadow(0 4px 12px rgba(0, 8, 22, 0.7));
 }
 
 .shark-coin-3d {
   position: relative;
-  width: 164px;
-  height: 164px;
   border-radius: 9999px;
-  padding: 7px;
+  padding: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   transform-style: preserve-3d;
   transform: rotateY(9deg) rotateX(3deg);
   animation: sharkCoinFloat3D 5s ease-in-out infinite alternate;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 280ms ease;
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 280ms ease;
   /* Exact SHARKSET Logo Blue & Cyan Palette */
   background: linear-gradient(
@@ -804,35 +841,7 @@ body {
   animation: sharkCoinShineSweep 6s ease-in-out infinite;
 }
 
-@media (max-width: 1279px) {
-  .site-navbar .navbar-top {
-    grid-template-columns: 132px minmax(0, 1fr) !important;
-  }
-  .shark-coin-3d {
-    width: 124px;
-    height: 124px;
-    padding: 6px;
-  }
-  .shark-coin-stage {
-    margin-bottom: -44px;
-    transform: translateY(18px);
-  }
-}
 
-@media (max-width: 639px) {
-  .site-navbar .navbar-top {
-    grid-template-columns: 102px minmax(0, 1fr) !important;
-  }
-  .shark-coin-3d {
-    width: 94px;
-    height: 94px;
-    padding: 5px;
-  }
-  .shark-coin-stage {
-    margin-bottom: -30px;
-    transform: translateY(14px);
-  }
-}
 
 /* =====================================================================
    ARENA WHITE-LABEL PAGE MODE (SCOPED STRICTLY TO ARENA PAGE 'scheduler')

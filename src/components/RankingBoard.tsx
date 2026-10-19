@@ -15,6 +15,7 @@ import {
 } from '../services/rankingValidator';
 import { AthleteLevelBadge } from './AthleteLevelBadge';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
+import { Top10WhatsAppShareModal } from './Top10WhatsAppShareModal';
 import {
   Trophy,
   Search,
@@ -31,6 +32,10 @@ import {
   Zap,
   X,
   TrendingUp,
+  MessageCircle,
+  Flame,
+  Star,
+  Share2,
 } from 'lucide-react';
 
 interface RankingBoardProps {
@@ -60,6 +65,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
   // Operational Modals (separated from visualization)
   const [isAddAthleteModalOpen, setIsAddAthleteModalOpen] = useState<boolean>(false);
   const [isRecordMatchModalOpen, setIsRecordMatchModalOpen] = useState<boolean>(false);
+  const [isShareTop10Open, setIsShareTop10Open] = useState<boolean>(false);
 
   // 5 Segmented Scopes: GERAL | PAÍS | ESTADO | CIDADE | ARENA
   const [rankingScope, setRankingScope] = useState<RankingScope>(initialScope || 'geral');
@@ -337,85 +343,197 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
     { id: 'arena', label: 'Arena', emoji: '🏟️' },
   ];
 
+  const currentScopeLabel = scopeTabs.find((t) => t.id === rankingScope)?.label || 'Geral';
+  const currentLeader = processedAthletes[0] || null;
+  const totalVerifiedMatches = useMemo(() => {
+    return sourceAthletes.reduce((sum, a) => sum + (a.matchesPlayed || 0), 0);
+  }, [sourceAthletes]);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4 text-[#F7FAFD]">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 text-[#F7FAFD]">
       {/* ===================================================================== */}
-      {/* LEVEL 1: UNIFIED COMPACT HEADER + ACTION MODAL TRIGGERS               */}
+      {/* LEVEL 1: HIGH-VISIBILITY OFFICIAL SHARKSET RANKING COMMAND HEADER    */}
       {/* ===================================================================== */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-1">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-[#12C7BB] font-black uppercase tracking-wider text-[11px]">
-              RANKING SHARK SET OFICIAL
-            </span>
-            <span aria-hidden="true" className="text-slate-500">·</span>
-            <span className="text-slate-300 font-semibold">
-              {sourceAthletes.length} Jogadores Homologados
-            </span>
+      <div className="aquarium-glass rounded-3xl p-6 sm:p-7 border border-[#12C7BB]/40 shadow-2xl bg-gradient-to-br from-[#041c33]/95 via-[#062444]/90 to-[#021020]/95 relative overflow-hidden space-y-5">
+        {/* Ambient glow backgrounds */}
+        <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-[#12C7BB]/15 blur-3xl pointer-events-none" />
+        <div className="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-[#FF6B00]/15 blur-3xl pointer-events-none" />
+
+        {/* Top Header Row */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 relative z-10">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="px-3 py-1 rounded-full bg-[#12C7BB]/20 text-[#12C7BB] font-black uppercase tracking-widest text-[11px] border border-[#12C7BB]/40 flex items-center gap-1.5 shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-[#12C7BB]" />
+                CIRCUITO OFICIAL SHARKSET
+              </span>
+              <span aria-hidden="true" className="text-slate-500">·</span>
+              <span className="text-amber-400 font-extrabold text-xs">
+                ESCOPO: {currentScopeLabel.toUpperCase()}
+              </span>
+              <span aria-hidden="true" className="text-slate-500">·</span>
+              <span className="text-cyan-300 font-bold text-xs">
+                {selectedCategory === 'all' ? 'TODAS AS CATEGORIAS' : ATHLETE_LEVEL_LABELS[selectedCategory]?.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 text-slate-950 flex items-center justify-center font-black shadow-lg shrink-0">
+                <Trophy className="w-6 h-6 fill-slate-950" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white drop-shadow-sm">
+                  RANKING OFICIAL SHARKSET
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-300 font-medium mt-0.5">
+                  Pontuação auditada por desempenho em jogos e torneios homologados.
+                </p>
+              </div>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            RANKING SHARK SET OFICIAL{' '}
-            <span className="text-base sm:text-lg font-bold text-[#5BC3FA]">
-              ({sourceAthletes.length} Jogadores Homologados)
-            </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-3xl">
-            Alterne entre os escopos abaixo. Pontuação calculada por performance. Escolha sua categoria no cadastro. A promoção exige a pontuação da categoria, pelo menos 6 partidas, 4 vitórias e 60% de aproveitamento. Após 30 dias sem partida válida, o progresso ativo zera; o histórico da categoria permanece.
-          </p>
+
+          {/* Action Buttons on Top Right */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Primary Highlighted Button: ENCAMINHAR NO WHATSAPP O TOP 10 */}
+            <button
+              type="button"
+              onClick={() => setIsShareTop10Open(true)}
+              className="py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs sm:text-sm flex items-center gap-2.5 shadow-xl hover:shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border border-emerald-400/30"
+              title="Encaminhar imagem oficial do Top 10 nos grupos de WhatsApp"
+            >
+              <MessageCircle className="w-5 h-5 fill-white shrink-0" />
+              <span>Encaminhar Top 10 no WhatsApp</span>
+              <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] uppercase font-black text-white">
+                Imagem
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsRecordMatchModalOpen(true)}
+              className="py-3 px-4 rounded-2xl bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold text-xs transition-all flex items-center gap-2 shadow-lg hover:shadow-orange-500/25 cursor-pointer"
+            >
+              <Zap className="w-4 h-4 fill-white" />
+              <span>⚡ Registrar Partida</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsAddAthleteModalOpen(true)}
+              className="py-3 px-3.5 rounded-2xl bg-[#071D3D]/90 hover:bg-[#0B254E] text-slate-100 border border-slate-600/70 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4 text-[#12C7BB]" />
+              <span>+ Cadastrar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={exportRankingCSV}
+              className="py-3 px-3.5 rounded-2xl bg-[#030B17]/80 hover:bg-[#0B254E] text-slate-200 font-bold text-xs border border-slate-700/70 transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Baixar planilha CSV do ranking"
+            >
+              <Download className="w-4 h-4 text-[#12C7BB]" />
+              <span className="hidden sm:inline">CSV</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSyncToFirestore}
+              disabled={isSyncing}
+              className="py-3 px-3.5 rounded-2xl bg-[#030B17]/80 hover:bg-[#0B254E] text-slate-200 font-bold text-xs border border-slate-700/70 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              title="Sincronizar com Cloud Firestore"
+            >
+              <Database className="w-4 h-4 text-[#0987CE]" />
+              <span className="hidden xl:inline">
+                {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={loadAthletesFromFirestore}
+              disabled={isLoading}
+              className="p-3 rounded-2xl bg-[#030B17]/80 hover:bg-[#0B254E] text-slate-200 border border-slate-700/70 transition-colors cursor-pointer"
+              title="Recarregar dados"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#0987CE]' : ''}`} />
+            </button>
+          </div>
         </div>
 
-        {/* Action Buttons on Top Right */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsAddAthleteModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-lg bg-[#071D3D]/90 hover:bg-[#0B254E] text-slate-100 border border-slate-600/70 font-bold text-xs transition-colors flex items-center gap-1.5"
-          >
-            <UserPlus className="w-4 h-4 text-[#12C7BB]" />
-            + Cadastrar Jogador
-          </button>
+        {/* 4 LIVE KPI CARDS IN HEADER */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-4 border-t border-white/10 relative z-10">
+          {/* KPI 1: Líder Atual */}
+          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-amber-500/40 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                🥇 LÍDER ATUAL DO RANKING
+              </span>
+              <strong className="text-sm font-black text-white truncate block">
+                {currentLeader ? currentLeader.name : 'Nenhum atleta'}
+              </strong>
+              <span className="text-[11px] text-slate-300">
+                {currentLeader ? `${currentLeader.points || 0} pts · ${ATHLETE_LEVEL_LABELS[currentLeader.level]}` : 'Aguardando jogos'}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black text-base shrink-0">
+              👑
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setIsRecordMatchModalOpen(true)}
-            className="px-4 py-2.5 rounded-lg bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-md"
-          >
-            <Zap className="w-4 h-4 fill-white" />
-            ⚡ Registrar Partida
-          </button>
+          {/* KPI 2: Atletas Homologados */}
+          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-cyan-500/40 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block">
+                👥 ATLETAS HOMOLOGADOS
+              </span>
+              <strong className="text-xl font-black text-white block">
+                {sourceAthletes.length} Atletas
+              </strong>
+              <span className="text-[11px] text-slate-300">
+                {processedAthletes.length} no escopo selecionado
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-black text-sm shrink-0">
+              🏆
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={exportRankingCSV}
-            className="px-3 py-2.5 rounded-lg bg-[#030B17]/80 hover:bg-[#0B254E] text-slate-200 font-bold text-xs border border-slate-700/70 transition-colors flex items-center gap-1.5"
-            title="Baixar planilha CSV do ranking"
-          >
-            <Download className="w-4 h-4 text-[#12C7BB]" />
-            <span className="hidden sm:inline">CSV</span>
-          </button>
+          {/* KPI 3: Partidas Oficiais */}
+          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-emerald-500/40 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block">
+                ⚡ PARTIDAS VALIDADAS
+              </span>
+              <strong className="text-xl font-black text-white block">
+                {totalVerifiedMatches} Partidas
+              </strong>
+              <span className="text-[11px] text-emerald-400 font-semibold">
+                Auditadas com ranking ativo
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-sm shrink-0">
+              ✓
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleSyncToFirestore}
-            disabled={isSyncing}
-            className="px-3 py-2.5 rounded-lg bg-[#030B17]/80 hover:bg-[#0B254E] text-slate-200 font-bold text-xs border border-slate-700/70 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-            title="Sincronizar com Cloud Firestore"
-          >
-            <Database className="w-4 h-4 text-[#0987CE]" />
-            <span className="hidden xl:inline">
-              {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={loadAthletesFromFirestore}
-            disabled={isLoading}
-            className="p-2.5 rounded-lg bg-[#030B17]/80 hover:bg-[#0B254E] text-slate-200 border border-slate-700/70 transition-colors"
-            title="Recarregar dados"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#0987CE]' : ''}`} />
-          </button>
+          {/* KPI 4: Regra dos 30 Dias */}
+          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-rose-500/40 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-400 block">
+                ⏳ REGRA DOS 30 DIAS
+              </span>
+              <strong className="text-sm font-black text-white block">
+                Inatividade Zera Nível
+              </strong>
+              <span className="text-[11px] text-slate-300">
+                Jogue regularmente p/ manter posição
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-black text-sm shrink-0">
+              ⚠️
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1137,6 +1255,18 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Official Top 10 WhatsApp Share & High-Res Image Modal */}
+      <Top10WhatsAppShareModal
+        isOpen={isShareTop10Open}
+        onClose={() => setIsShareTop10Open(false)}
+        topAthletes={processedAthletes}
+        scope={rankingScope}
+        scopeLabel={currentScopeLabel}
+        category={selectedCategory}
+        arenaName={tenant.name}
+        cityName={selectedCity}
+      />
     </div>
   );
 };

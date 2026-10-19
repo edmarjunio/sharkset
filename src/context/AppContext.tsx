@@ -74,9 +74,11 @@ export type MainTab =
 
 export type ArenaSubTab =
   | 'agendamentos'
+  | 'ranking'
   | 'campeonatos'
   | 'transmissoes'
-  | 'ranking'
+  | 'comunidade'
+  | 'info_historico'
   | 'dono'
   | 'agenda'
   | 'aulas'

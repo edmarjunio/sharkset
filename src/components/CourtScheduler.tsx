@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, ArenaSubTab } from '../context/AppContext';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import {
   AthleteLevel,
@@ -32,6 +32,9 @@ import {
 import { CourtPricingAdminPanel } from './CourtPricingAdminPanel';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
 import { ArenaWhiteLabelCustomizerModal } from './ArenaWhiteLabelCustomizerModal';
+import { ArenaHighlightCard } from './ArenaHighlightCard';
+import { ArenaCommunityLearning } from './ArenaCommunityLearning';
+import { ArenaInfoHistory } from './ArenaInfoHistory';
 import { DoubleEliminationBracket } from './DoubleEliminationBracket';
 import { RankingBoard } from './RankingBoard';
 import { useSharkStore } from '../store/useSharkStore';
@@ -57,6 +60,7 @@ import {
   Palette,
   Radio,
   Crown,
+  History,
 } from 'lucide-react';
 
 export const CourtScheduler: React.FC = () => {
@@ -238,13 +242,17 @@ export const CourtScheduler: React.FC = () => {
   }, [tournaments, tenant.id]);
 
   // Effective active subtab
-  const effectiveSubTab: 'agendamentos' | 'campeonatos' | 'transmissoes' | 'ranking' | 'dono' =
+  const effectiveSubTab: ArenaSubTab =
     arenaSubTab === 'campeonatos'
       ? 'campeonatos'
       : arenaSubTab === 'transmissoes'
       ? 'transmissoes'
       : arenaSubTab === 'ranking'
       ? 'ranking'
+      : arenaSubTab === 'comunidade'
+      ? 'comunidade'
+      : arenaSubTab === 'info_historico'
+      ? 'info_historico'
       : arenaSubTab === 'dono' || arenaSubTab === 'config_dono'
       ? 'dono'
       : 'agendamentos';
@@ -722,24 +730,34 @@ export const CourtScheduler: React.FC = () => {
                     badge: 'Principal',
                   },
                   {
+                    id: 'ranking',
+                    icon: Crown,
+                    label: '2. RANKING DA ARENA',
+                  },
+                  {
                     id: 'campeonatos',
                     icon: Trophy,
-                    label: `2. CAMPEONATOS (${arenaTournaments.length})`,
+                    label: `3. CAMPEONATOS (${arenaTournaments.length})`,
                   },
                   {
                     id: 'transmissoes',
                     icon: Radio,
-                    label: '3. TRANSMISSÕES AO VIVO',
+                    label: '4. AO VIVO (TRANSMISSÃO)',
                   },
                   {
-                    id: 'ranking',
-                    icon: Crown,
-                    label: '4. RANKING DA ARENA',
+                    id: 'comunidade',
+                    icon: GraduationCap,
+                    label: '5. COMUNIDADE (VÍDEOS)',
+                  },
+                  {
+                    id: 'info_historico',
+                    icon: History,
+                    label: '6. INFORMAÇÕES & HISTÓRICO',
                   },
                   {
                     id: 'dono',
                     icon: Settings,
-                    label: '5. ÁREA DO DONO (GESTÃO)',
+                    label: '7. ÁREA DO DONO (GESTÃO)',
                   },
                 ].map((tab) => {
                   const Icon = tab.icon;
@@ -810,6 +828,25 @@ export const CourtScheduler: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ===================================================================== */}
+      {/* ARENA EXECUTIVE RADAR / HIGHLIGHT CARD (Campeonatos, Horários, Ranking, Clientes) */}
+      {/* ===================================================================== */}
+      <ArenaHighlightCard
+        tenant={tenant}
+        upcomingTournaments={arenaTournaments}
+        upcomingAvailableSlots={upcomingAvailableSlots}
+        arenaAthletes={athletes.filter((a) => a.arenaId === tenant.id || a.city.includes(tenant.city))}
+        recentBookings={bookings.filter((b) => b.tenantId === tenant.id || b.courtId.includes(tenant.id))}
+        onBookSlot={(slot, court) => handleSlotClick(slot, court)}
+        onRegisterTournament={(tournId) => {
+          setRegisteringTournId(tournId);
+          setArenaSubTab('campeonatos');
+        }}
+        onViewAllTournaments={() => setArenaSubTab('campeonatos')}
+        onViewAllSlots={() => setArenaSubTab('agendamentos')}
+        onViewAllRanking={() => setArenaSubTab('ranking')}
+      />
 
       {/* ===================================================================== */}
       {/* SUB-TAB 1: AGENDAMENTOS (O PRINCIPAL DA PÁGINA DA ARENA)              */}
@@ -2037,7 +2074,21 @@ export const CourtScheduler: React.FC = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* SUB-TAB 5: ÁREA DO DONO DA ARENA (GESTÃO COMPLETA)                   */}
+      {/* SUB-TAB 5: COMUNIDADE DA ARENA (VÍDEOS DE APRENDIZADO & TREINO)       */}
+      {/* ===================================================================== */}
+      {effectiveSubTab === 'comunidade' && (
+        <ArenaCommunityLearning tenant={tenant} />
+      )}
+
+      {/* ===================================================================== */}
+      {/* SUB-TAB 6: INFORMAÇÕES SOBRE HORÁRIOS & HISTÓRICO DE PARTIDAS         */}
+      {/* ===================================================================== */}
+      {effectiveSubTab === 'info_historico' && (
+        <ArenaInfoHistory tenant={tenant} />
+      )}
+
+      {/* ===================================================================== */}
+      {/* SUB-TAB 7: ÁREA DO DONO DA ARENA (GESTÃO COMPLETA)                   */}
       {/* ===================================================================== */}
       {effectiveSubTab === 'dono' && (
         <div className="space-y-6">
@@ -2602,7 +2653,7 @@ export const CourtScheduler: React.FC = () => {
                             <div className="flex flex-wrap items-center justify-end gap-1.5">
                               <button
                                 onClick={() => {
-                                  toggleClassClassPayment(stu.id);
+                                  toggleClassStudentPayment(stu.id);
                                   triggerToast(
                                     isPaid
                                       ? `Status de ${stu.studentName} alterado para Pendente.`

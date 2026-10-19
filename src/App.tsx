@@ -50,7 +50,7 @@ const MainContent: React.FC = () => {
               '--arena-accent': arenaPalette.accent,
               '--arena-header-bg': arenaPalette.headerBg,
               '--arena-surface-bg': arenaPalette.surfaceBg,
-              '--arena-text': arenaPalette.textPrimary,
+              '--arena-text': arenaPalette.textOnPrimary,
               backgroundColor: arenaPalette.headerBg,
             } as React.CSSProperties)
           : undefined

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
 import { generateWeeklySlots } from '../data/initialData';
@@ -154,6 +154,37 @@ export const SmartNotificationBanner: React.FC = () => {
     return nearbyArenaSlots.allItems.filter((item) => item.arena.id === selectedArenaFilter);
   }, [nearbyArenaSlots.allItems, selectedArenaFilter]);
 
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (!carouselRef.current) return;
+    const amount = direction === 'left' ? -280 : 280;
+    carouselRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+  };
+
+  // Group available slots by arena for clean horizontal carousel without expanding downwards
+  const slotsGroupedByArena = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        arena: TenantConfig;
+        slots: typeof nearbyArenaSlots.allItems;
+      }
+    >();
+
+    for (const item of filteredRotatingItems) {
+      if (!map.has(item.arena.id)) {
+        map.set(item.arena.id, {
+          arena: item.arena,
+          slots: [],
+        });
+      }
+      map.get(item.arena.id)!.slots.push(item);
+    }
+
+    return Array.from(map.values());
+  }, [filteredRotatingItems]);
+
   useEffect(() => {
     setRotatingIndex(0);
   }, [selectedArenaFilter, referenceClockTime]);
@@ -165,6 +196,21 @@ export const SmartNotificationBanner: React.FC = () => {
     }, 3500);
     return () => window.clearInterval(timer);
   }, [isPaused, filteredRotatingItems.length]);
+
+  // Smooth carousel auto-rotation from right to left every 4 seconds
+  useEffect(() => {
+    if (isPaused || slotsGroupedByArena.length <= 1) return;
+    const interval = window.setInterval(() => {
+      if (!carouselRef.current) return;
+      const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+      if (scrollLeft + clientWidth >= scrollWidth - 10) {
+        carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        carouselRef.current.scrollBy({ left: 280, behavior: 'smooth' });
+      }
+    }, 4200);
+    return () => window.clearInterval(interval);
+  }, [isPaused, slotsGroupedByArena.length]);
 
   const activeRotatingSlot =
     filteredRotatingItems[rotatingIndex % Math.max(1, filteredRotatingItems.length)] ||
@@ -480,41 +526,100 @@ export const SmartNotificationBanner: React.FC = () => {
             </div>
           </div>
 
-          {/* Row 3: Quick Ticker Strip of All Available Horários Across Nearby Arenas */}
-          {filteredRotatingItems.length > 0 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 shrink-0">
-                Horários rodando:
-              </span>
-              {filteredRotatingItems.slice(0, 14).map((item, idx) => {
-                const isCurrent = idx === rotatingIndex % filteredRotatingItems.length;
-                return (
+          {/* Row 3: CARROSSEL DE HORÁRIOS AGRUPADOS POR ARENA (NÃO AUMENTA PARA BAIXO!) */}
+          {slotsGroupedByArena.length > 0 && (
+            <div className="pt-2 border-t border-white/10 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    Horários Rodando nas Arenas:
+                  </span>
+                  <span className="hidden sm:inline text-[10px] text-slate-400 font-semibold">
+                    (Agrupados por Arena · Deslize para ver todas)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1">
                   <button
-                    key={`${item.arena.id}-${item.slot.id}`}
                     type="button"
-                    onClick={() => {
-                      setRotatingIndex(idx);
-                      handleBookArenaSlot(item.arena.id);
-                    }}
-                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 border ${
-                      isCurrent
-                        ? 'bg-amber-400 text-slate-950 border-amber-200 font-black shadow-xs scale-[1.02]'
-                        : 'bg-black/35 hover:bg-black/55 text-white border-white/15'
-                    }`}
-                    title={`Clique para alugar ${item.court.name} em ${item.arena.name} às ${item.slot.startTime}`}
+                    onClick={() => scrollCarousel('left')}
+                    className="p-1.5 rounded-lg bg-black/40 hover:bg-black/70 text-slate-200 border border-white/10 cursor-pointer transition-colors"
+                    aria-label="Arena anterior"
                   >
-                    <span>{item.arena.name.replace('SHARK SET ', '')}</span>
-                    <span className="opacity-75">·</span>
-                    <span>{item.court.name.split(' - ')[0]}</span>
-                    <span className={isCurrent ? 'text-slate-950 font-black' : 'text-amber-300 font-extrabold'}>
-                      {item.slot.startTime}
-                    </span>
-                    <span className={isCurrent ? 'text-emerald-950 font-black' : 'text-emerald-300'}>
-                      R${item.slot.price.toFixed(0)}
-                    </span>
+                    <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
-                );
-              })}
+                  <button
+                    type="button"
+                    onClick={() => scrollCarousel('right')}
+                    className="p-1.5 rounded-lg bg-black/40 hover:bg-black/70 text-slate-200 border border-white/10 cursor-pointer transition-colors"
+                    aria-label="Próxima arena"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Carrossel de Cartões por Arena rodando da direita para a esquerda sem esticar para baixo */}
+              <div
+                ref={carouselRef}
+                className="rotating-ticker-strip flex items-stretch gap-3 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory pb-1 flex-nowrap"
+              >
+                {slotsGroupedByArena.map((group) => {
+                  const arenaShortName = group.arena.name.replace('SHARK SET ', '');
+                  return (
+                    <div
+                      key={group.arena.id}
+                      className="min-w-[270px] sm:min-w-[310px] max-w-[330px] shrink-0 snap-start rounded-2xl p-3 bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400/60 transition-all flex flex-col justify-between shadow-md"
+                    >
+                      <div className="space-y-2">
+                        {/* Header: Nome da Arena + Distância */}
+                        <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-white/10">
+                          <span className="font-black text-xs text-white truncate flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                            <span className="truncate">{arenaShortName}</span>
+                          </span>
+                          <span className="text-[10px] font-extrabold text-amber-300 bg-amber-400/10 px-1.5 py-0.5 rounded shrink-0">
+                            📍 {group.arena.distanceKm.toFixed(1)} km
+                          </span>
+                        </div>
+
+                        {/* Badges dos Horários Disponíveis nesta Arena (Agrupados: 18h Q1, 18h Q2, 19h Q2) */}
+                        <div className="flex flex-wrap gap-1.5 max-h-[70px] overflow-y-auto no-scrollbar">
+                          {group.slots.slice(0, 6).map((item) => (
+                            <button
+                              key={`${item.court.id}-${item.slot.id}`}
+                              type="button"
+                              onClick={() => handleBookArenaSlot(group.arena.id)}
+                              className="px-2 py-1 rounded-lg bg-black/40 hover:bg-emerald-600/30 text-white hover:text-emerald-200 border border-white/15 hover:border-emerald-400/50 text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                              title={`Alugar ${item.court.name} às ${item.slot.startTime} por R$${item.slot.price}`}
+                            >
+                              <span className="text-cyan-300 font-mono">{item.slot.startTime}</span>
+                              <span className="text-slate-400 text-[9px]">{item.court.name.split(' - ')[0]}</span>
+                              <span className="text-emerald-400 font-bold">R${item.slot.price.toFixed(0)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Rodapé: Resumo e link direto */}
+                      <div className="pt-2 mt-1.5 border-t border-white/5 flex items-center justify-between text-[10px]">
+                        <span className="text-slate-400">
+                          {group.slots.length} {group.slots.length === 1 ? 'horário livre' : 'horários livres'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleBookArenaSlot(group.arena.id)}
+                          className="font-extrabold text-[#FF6B00] hover:text-amber-300 flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <span>Ver Arena</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
