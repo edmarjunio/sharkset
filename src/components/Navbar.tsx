@@ -101,7 +101,7 @@ export const Navbar: React.FC = () => {
       <button
         type="button"
         onClick={openBroadcastStudio}
-        className="navbar-live-action navbar-live-studio inline-flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs uppercase tracking-wider active:translate-y-0.5 transition-all cursor-pointer"
+        className="navbar-live-action navbar-live-studio inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#FF6B00] to-[#EA580C] text-white border border-orange-300 font-black text-xs uppercase tracking-wider shadow-lg shadow-orange-600/40 active:translate-y-0.5 transition-all cursor-pointer"
         title="Abrir estúdio de transmissão ao vivo"
       >
         <Radio size={16} className="text-white" aria-hidden="true" />
@@ -117,7 +117,7 @@ export const Navbar: React.FC = () => {
       aria-label="Área do administrador da arena"
       aria-current={activeTab === 'arena_admin' ? 'page' : undefined}
       title="Área do administrador da arena"
-      className={`navbar-admin-action inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border shadow-md transition-all active:scale-95 cursor-pointer ${
+      className={`navbar-admin-action inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full border shadow-md transition-all active:scale-95 cursor-pointer ${
         activeTab === 'arena_admin'
           ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 border-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.45)]'
           : 'bg-[#150f04]/90 hover:bg-[#241a06] text-amber-300 hover:text-white border-amber-500/40 hover:border-amber-300'
