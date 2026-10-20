@@ -35,12 +35,17 @@ import {
   Shield,
 } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { FloatingBottomDock } from './components/FloatingBottomDock';
+import { TopBarSlotDetailsModal } from './components/TopBarSlotDetailsModal';
+import type { UpcomingSlotItem } from './hooks/useUpcomingFreeSlots';
 
 const MainContent: React.FC = () => {
   const {
     activeTab,
     setActiveTab,
     tenant,
+    setTenantId,
+    setArenaSubTab,
     activeLiveBroadcastBookingId,
     setActiveLiveBroadcastBookingId,
     userProfile,
@@ -48,6 +53,8 @@ const MainContent: React.FC = () => {
     focusMode,
     toggleFocusMode,
   } = useApp();
+
+  const [floatingSlotModal, setFloatingSlotModal] = React.useState<UpcomingSlotItem | null>(null);
 
   // Onboarding state: triggers if user has not yet completed initial technical category setup
   const [showOnboarding, setShowOnboarding] = React.useState<boolean>(() => {
@@ -194,69 +201,8 @@ const MainContent: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Links Nav with Unified Capsule Pill Standard */}
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-4 py-6">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                {[
-                  { id: 'home', label: 'INÍCIO', icon: Home },
-                  { id: 'tournaments', label: 'CAMPEONATOS', icon: Trophy },
-                  { id: 'arenas_directory', label: 'ARENAS', icon: MapPin },
-                  { id: 'ranking_athletes', label: 'RANKINGS', icon: TrendingUp },
-                  { id: 'live', label: 'AO VIVO', icon: Radio, isLive: true },
-                  { id: 'my_bookings', label: 'MINHAS RESERVAS', icon: CalendarCheck },
-                ].map((item) => {
-                  const isActive = activeTab === item.id;
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveTab(item.id as any);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all active:translate-y-0.5 cursor-pointer shadow-md ${
-                        isActive
-                          ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border border-cyan-300 shadow-[0_0_15px_rgba(18,199,187,0.45)]'
-                          : item.isLive
-                          ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 text-white border border-red-400/40 shadow-red-700/20'
-                          : 'bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300'
-                      }`}
-                    >
-                      {item.isLive ? (
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-                        </span>
-                      ) : (
-                        <Icon size={14} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
-                      )}
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Dedicated Arena Admin Pill Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('arena_admin');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs uppercase tracking-wider shadow-md transition-all active:translate-y-0.5 cursor-pointer ${
-                  activeTab === 'arena_admin'
-                    ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 border border-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.45)]'
-                    : 'bg-[#150f04]/90 hover:bg-[#241a06] text-amber-300 hover:text-white border border-amber-500/40 hover:border-amber-300'
-                }`}
-              >
-                <Shield size={14} className={activeTab === 'arena_admin' ? 'text-slate-950 stroke-[2.5]' : 'text-amber-400'} />
-                <span>Área do Administrador da Arena</span>
-              </button>
-            </div>
-
             {/* Bottom Row: Legal Copyright & Badges */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-white/5 text-[11px] text-slate-400 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 text-[11px] text-slate-400 text-center sm:text-left">
               <p>
                 &copy; {new Date().getFullYear()} SHARK SET — Todos os direitos reservados. Orgulhosamente desenvolvido para o esporte de areia.
               </p>
@@ -272,6 +218,28 @@ const MainContent: React.FC = () => {
           </div>
         </footer>
       )}
+
+      {/* Floating Bottom Navigation & Featured Slots Carousel (Visible on Scroll Down) */}
+      {!focusMode && (
+        <FloatingBottomDock onSelectSlot={(slot) => setFloatingSlotModal(slot)} />
+      )}
+
+      {/* Modal Completo de Detalhes da Arena e Agendamento Instantâneo */}
+      <TopBarSlotDetailsModal
+        isOpen={Boolean(floatingSlotModal)}
+        onClose={() => setFloatingSlotModal(null)}
+        arena={floatingSlotModal?.arena || null}
+        court={floatingSlotModal?.court || null}
+        slot={floatingSlotModal?.slot || null}
+        distanceKm={floatingSlotModal?.distanceKm}
+        onGoToArena={(arena) => {
+          setFloatingSlotModal(null);
+          setTenantId(arena.id);
+          setArenaSubTab('agendamentos');
+          setActiveTab('scheduler');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
 
       {activeLiveBroadcastBookingId && (
         <LiveBookingBroadcastModal

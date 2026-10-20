@@ -216,7 +216,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               </div>
             )}
           </div>
-        ) : (
+        ) : currentUser ? (
           /* LOGGED IN USER PROFILE STATE */
           <div className="space-y-5">
             {/* User Header */}
@@ -336,7 +336,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               </button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

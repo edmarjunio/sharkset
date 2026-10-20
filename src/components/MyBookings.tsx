@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { AthleteAchievement, AthleteGameStats, AthleteLevel, ExperienceCategory } from '../types';
+import { AthleteAchievement, AthleteGameStats, AthleteLevel, AthleteMediaItem, AthleteProfile, ExperienceCategory } from '../types';
 import { generateBookingWhatsAppLink, generateWaitlistWhatsAppLink } from '../services/whatsappAdapter';
 import {
   ATHLETE_LEVEL_LABELS,
@@ -108,6 +108,7 @@ export const MyBookings: React.FC = () => {
       matchesPlayed: 0,
       titlesCount: 0,
       experienceCategory: 'amador',
+      preferredSport: 'futevolei',
       country: 'Brasil',
       state: 'GO',
       city: 'Mineiros',
@@ -243,6 +244,7 @@ export const MyBookings: React.FC = () => {
         matchesPlayed: 0,
         titlesCount: 0,
         experienceCategory: 'amador',
+        preferredSport: 'futevolei',
         country: 'Brasil',
         state: 'GO',
         city: 'Mineiros',
@@ -811,7 +813,7 @@ export const MyBookings: React.FC = () => {
             <div className="pt-2 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-800">Série / Categoria no Ranking:</span>
-                <span className="text-slate-500 font-mono text-[11px]">{promoStatus.explanation}</span>
+                <span className="text-slate-500 font-mono text-[11px]">{promoStatus?.explanation || ''}</span>
               </div>
               <div className="grid grid-cols-5 gap-1.5">
                 {ATHLETE_TIERS.map((tier) => {
@@ -843,7 +845,7 @@ export const MyBookings: React.FC = () => {
             </h3>
 
             <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
-              {(myAthleteProfile.achievements || []).map((ach) => (
+              {(myAthleteProfile.achievements || []).map((ach: AthleteAchievement) => (
                 <div
                   key={ach.id}
                   className="p-3 rounded-xl bg-amber-50/50 border border-amber-200/80 flex items-center justify-between gap-2 text-xs"
@@ -978,7 +980,7 @@ export const MyBookings: React.FC = () => {
 
           {/* Media Gallery Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(myAthleteProfile.mediaGallery || []).map((item) => (
+            {(myAthleteProfile.mediaGallery || []).map((item: AthleteMediaItem) => (
               <div
                 key={item.id}
                 className="aquarium-glass border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 flex flex-col justify-between shadow-xs"
