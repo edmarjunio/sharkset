@@ -39,7 +39,8 @@ export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
       aria-modal="true"
       aria-labelledby="onboarding-title"
     >
-      <div className="aquarium-glass bg-[#030E1F]/98 border-2 border-[#12C7BB]/60 text-white rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto">
+      <div className="aquarium-glass bg-[#030E1F]/98 border-2 border-[#12C7BB]/60 text-white rounded-3xl max-w-xl w-full shadow-2xl my-auto max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
+        <div className="min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5">
         {/* Header */}
         <div className="flex flex-col items-center text-center space-y-2 border-b border-white/10 pb-4">
           <SharksetLogo size="sm" showText />
@@ -53,7 +54,7 @@ export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
         </div>
 
         {/* Options */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="athlete-category-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2.5">
             {ATHLETE_TIERS.map((tier) => {
               const Icon = LEVEL_ICONS[tier.level];
@@ -96,19 +97,24 @@ export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
             })}
           </div>
 
-          <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        </form>
+        </div>
+          <div className="onboarding-confirm-panel">
+            <span className="text-sm text-white font-bold">
+              Categoria selecionada: {ATHLETE_TIERS.find(tier => tier.level === selectedLevel)?.label}
+            </span>
             <span className="text-[11px] text-amber-300 font-semibold">
               🔒 Escolha única no cadastro: após confirmar, a categoria não poderá ser alterada manualmente e subirá por pontuação (MMR).
             </span>
             <button
               type="submit"
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:from-[#0878b8] hover:to-[#0ea89e] text-[#030E1F] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(9,135,206,0.4)] active:scale-[0.98] transition-all cursor-pointer shrink-0"
+              form="athlete-category-form"
+              className="onboarding-confirm-button"
             >
               <span>Confirmar Categoria</span>
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </button>
           </div>
-        </form>
       </div>
     </div>
   );

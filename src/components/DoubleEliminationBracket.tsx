@@ -1,4 +1,5 @@
 import { LocationScopeFilter } from './LocationScopeFilter';
+import { PodiumCardStudio } from './PodiumCardStudio';
 import { useScopedCatalog } from '../hooks/useScopedCatalog';
 import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { matchPhaseLabel } from '../services/bracketPresentation';
@@ -1108,6 +1109,10 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       }
     >
       {/* Toast Feedback */}
+      {!minimalistPlayerView && activeTournament && (
+        <PodiumCardStudio key={activeTournament.id} tournament={activeTournament} matches={currentMatches}
+          arena={availableTenants.find(arena => arena.id === activeTournament.tenantId)} />
+      )}
       {feedbackToast && (
         <div className="p-3.5 bg-[#071D3D] text-white border border-[#0987CE] rounded-xl text-xs flex items-center justify-between shadow-lg animate-in fade-in">
           <div className="flex items-center gap-2">
