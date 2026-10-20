@@ -91,7 +91,7 @@ export const Navbar: React.FC = () => {
         type="button"
         onClick={() => setActiveTab('live')}
         aria-current={activeTab === 'live' ? 'page' : undefined}
-        className="navbar-live-action relative inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-red-700/30 border border-red-400/50 active:translate-y-0.5 transition-all cursor-pointer"
+        className="navbar-live-action navbar-live-list relative inline-flex items-center gap-2 px-4 py-2 rounded-full text-white font-extrabold text-xs uppercase tracking-wider cursor-pointer"
         title="Assistir partidas ao vivo agora"
       >
         <span className="relative flex h-2 w-2">
@@ -103,10 +103,10 @@ export const Navbar: React.FC = () => {
       <button
         type="button"
         onClick={openBroadcastStudio}
-        className="navbar-live-action inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300 font-bold text-xs uppercase tracking-wider shadow-md active:translate-y-0.5 transition-all cursor-pointer"
+        className="navbar-live-action navbar-live-studio inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider shadow-md active:translate-y-0.5 transition-all cursor-pointer"
         title="Abrir estúdio de transmissão ao vivo"
       >
-        <Radio size={14} className="text-[#12C7BB]" />
+        <Radio size={14} />
         <span>INICIAR TRANSMISSÃO</span>
       </button>
     </div>
