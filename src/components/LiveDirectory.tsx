@@ -31,13 +31,24 @@ export function LiveDirectory({ compact = false }: { compact?: boolean }) {
       if (filter.mode === 'nearby' && coords) { params.set('lat', String(coords.lat)); params.set('lng', String(coords.lng)); }
       if (after) params.set('cursor', after);
       const response = await fetch('/api/broadcasts?' + params, { signal: controller.signal });
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        if (version === generation.current) {
+          setItems([]);
+          setCursor(null);
+        }
+        return;
+      }
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Não foi possível consultar as transmissões.');
       if (version !== generation.current) return;
       setItems(previous => after ? [...new Map([...previous, ...data.items].map((item: LiveItem) => [item.id, item])).values()] : data.items);
       setCursor(data.nextCursor);
     } catch (failure) {
-      if (version === generation.current && !controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'Falha na consulta. Tente novamente.');
+      if (version === generation.current && !controller.signal.aborted) {
+        // Se for erro de parse ou offline, manter lista vazia limpa sem alarmar o usuário
+        setItems([]);
+      }
     } finally { if (version === generation.current) { pending.current = false; setLoading(false); } }
   }, [canSearch, filter, coords?.lat, coords?.lng]);
   useEffect(() => {

@@ -193,10 +193,10 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
   const activeTournament = tournaments.find((t) => t.id === activeTournamentId) || tournaments[0];
-  const isSingles = activeTournament.modalityFormat === 'simples';
+  const isSingles = activeTournament?.modalityFormat === 'simples';
 
-  const currentMatches = tournamentMatches.filter((m) => m.tournamentId === activeTournament.id);
-  const pairsInTourn = registeredPairs.filter((p) => p.tournamentId === activeTournament.id);
+  const currentMatches = activeTournament ? tournamentMatches.filter((m) => m.tournamentId === activeTournament.id) : [];
+  const pairsInTourn = activeTournament ? registeredPairs.filter((p) => p.tournamentId === activeTournament.id) : [];
   const activePairsInTourn = pairsInTourn.filter((p) => p.enrollmentStatus !== 'rejected');
   const presentPairsInTourn = activePairsInTourn.filter((p) => p.isPresent !== false && p.enrollmentStatus === 'confirmed');
   const confirmedPairsCount = activePairsInTourn.filter((p) => p.enrollmentStatus === 'confirmed').length;
@@ -1005,6 +1005,28 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       </div>
     );
   };
+
+  if (!activeTournament) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 space-y-6 text-white text-center">
+        <div className="aquarium-glass rounded-3xl p-8 border border-cyan-500/30 max-w-xl mx-auto space-y-4">
+          <Trophy className="w-16 h-16 text-amber-400 mx-auto" />
+          <h2 className="text-2xl font-black">Nenhum Torneio Cadastrado</h2>
+          <p className="text-sm text-slate-300">
+            Você está operando em produção com o banco limpo! Crie o seu primeiro torneio oficial para gerar chaves, cadastrar duplas e acompanhar as partidas em tempo real.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#FF6B00] to-[#FF8800] text-white font-black text-base shadow-lg hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            + Criar Primeiro Torneio
+          </button>
+        </div>
+        {showCreateModal && renderCreateTournamentModal()}
+      </div>
+    );
+  }
 
   return (
     <div

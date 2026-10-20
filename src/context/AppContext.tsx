@@ -27,6 +27,19 @@ import {
   WaitlistNotification,
 } from '../types';
 import { TENANTS } from '../data/tenants';
+
+export const EMPTY_TENANT: TenantConfig = {
+  id: '',
+  name: 'Nenhuma Arena Cadastrada',
+  city: '',
+  state: '',
+  address: '',
+  distanceKm: 0,
+  courts: [],
+  operatingHours: { open: '06:00', close: '23:00' },
+  amenities: [],
+};
+
 import {
   INITIAL_ATHLETES,
   INITIAL_BOOKINGS,
@@ -87,6 +100,7 @@ export type ArenaSubTab =
   | 'config_dono';
 
 interface AppContextType {
+  resetAllDataToCleanSlate: () => void;
   applyTournamentEdit: (tournamentId: string, matches: BracketMatch[], teams?: TeamPair[]) => void;
   checkPlayerInactivity: () => Promise<void>;
   arenasMap: Record<string, TenantConfig>;
@@ -301,6 +315,16 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+
+const isCleanSlate = () => {
+  try {
+    // Modo de produção limpo: se o usuário limpou ou não tem demo explícito, inicia 100% zerado
+    return localStorage.getItem('sharkset_seed_demo') !== 'true';
+  } catch {
+    return true;
+  }
+};
+
 const STORAGE_KEYS = {
   ARENAS: 'sharkset_v3_arenas',
   TENANT: 'sharkset_v1_tenant_id',
@@ -341,7 +365,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return localStorage.getItem(STORAGE_KEYS.TENANT) || 'conflora';
   });
 
-  const tenant = useMemo(() => arenasMap[tenantId] || arenasMap.conflora || TENANTS.conflora, [arenasMap, tenantId]);
+  const tenant = useMemo(() => {
+    const list = Object.values(arenasMap);
+    if (!list.length) return EMPTY_TENANT;
+    return arenasMap[tenantId] || list[0] || EMPTY_TENANT;
+  }, [arenasMap, tenantId]);
 
   const setTenantId = (id: string) => {
     if (arenasMap[id]) {
@@ -376,6 +404,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return { name: 'Edmar Júnio', phone: '64999881122', level: 'serie_c' };
     }
   });
+
+  const setUserProfile = (profile: { name: string; phone: string; level: AthleteLevel }) => {
+    setUserProfileState(profile);
+    try {
+      localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+    } catch {
+      // ignore
+    }
+  };
+
+
+  const resetAllDataToCleanSlate = () => {
+    if (!window.confirm('Atenção: Isso irá apagar todo o histórico de teste em cache e iniciar o Sharkset completamente do zero. Deseja continuar?')) {
+      return;
+    }
+    try {
+      localStorage.clear();
+      localStorage.setItem('sharkset_clean_slate', 'true');
+    } catch {
+      // ignore
+    }
+    setAthletes([]);
+    setTournaments([]);
+    setTournamentMatches([]);
+    setRegisteredPairs([]);
+    setBookings([]);
+    setWaitlist([]);
+    setRankingLogs([]);
+    setClassStudents([]);
+    window.location.reload();
+  };
 
   // Focus Mode state (auto-activated in scheduler or broadcasts, or toggled manually)
   const [focusMode, setFocusModeState] = useState<boolean>(() => {
@@ -1839,6 +1898,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         classStudents,
         userProfile,
         setUserProfile,
+        resetAllDataToCleanSlate,
         focusMode,
         setFocusMode,
         toggleFocusMode,

@@ -35,6 +35,7 @@ const MainContent: React.FC = () => {
     setUserProfile,
     focusMode,
     toggleFocusMode,
+    resetAllDataToCleanSlate,
   } = useApp();
 
   // Onboarding state: triggers if user has not yet completed initial technical category setup
@@ -182,10 +183,18 @@ const MainContent: React.FC = () => {
               </div>
             )}
 
-            <div className="flex items-center gap-4 font-bold">
-              <span className={isArenaWhiteLabel ? 'text-white/90' : 'text-slate-600'}>
+            <div className="flex flex-wrap items-center justify-between gap-4 w-full pt-3 border-t border-white/10">
+              <span className={isArenaWhiteLabel ? 'text-white/90' : 'text-slate-400 font-semibold text-xs'}>
                 ⚽ Futevôlei · 🎾 Beach Tennis · 🏐 Vôlei de Praia
               </span>
+              <button
+                type="button"
+                onClick={resetAllDataToCleanSlate}
+                className="text-[11px] text-amber-300 hover:text-amber-100 flex items-center gap-1.5 cursor-pointer transition-all px-3 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 font-bold"
+                title="Apaga os dados de exemplo em cache e permite testar o site 100% do zero"
+              >
+                🧹 Limpar dados de teste e começar do zero
+              </button>
             </div>
           </div>
         </footer>
