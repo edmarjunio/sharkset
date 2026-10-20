@@ -8,6 +8,7 @@ import { useApp } from '../context/AppContext';
 import { SportType, TenantConfig } from '../types';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
 import { FreeSlotsDateTimeFilter } from './FreeSlotsDateTimeFilter';
+import { CreateArenaModal } from './CreateArenaModal';
 import { ARENA_BRAND_PRESETS } from '../services/logoPaletteExtractor';
 import {
   calculateHaversineDistanceKm,
