@@ -508,9 +508,9 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
           onClick={props.onToggleFullscreen}
           aria-label="Fechar tabela em tela cheia"
         >
-          <X className="w-4 h-4" />
-          Fechar Tabela (Sair da Tela Cheia)
-          <span className="text-xs opacity-80 ml-1 px-1.5 py-0.5 rounded bg-black/25">Esc</span>
+          <X className="w-4 h-4" aria-hidden="true" />
+          <span className="bracket-close-label">Fechar Tabela (Sair da Tela Cheia)</span>
+          <span className="bracket-close-shortcut text-xs opacity-80 ml-1 px-1.5 py-0.5 rounded bg-black/25">Esc</span>
         </button>
       )}
 

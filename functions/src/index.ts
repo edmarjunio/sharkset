@@ -1,7 +1,7 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { defineBoolean, defineSecret } from 'firebase-functions/params';
+import { defineBoolean, defineSecret, defineString } from 'firebase-functions/params';
 import { onRequest, type Request } from 'firebase-functions/v2/https';
 import { WebhookReceiver } from 'livekit-server-sdk';
 import { LiveService, applyWebhook } from './service';
@@ -11,6 +11,10 @@ import { LiveError, PROJECT_ID, REGION, validId } from './policy';
 const apiKey = defineSecret('LIVEKIT_API_KEY');
 const apiSecret = defineSecret('LIVEKIT_API_SECRET');
 const serverUrl = defineSecret('LIVEKIT_URL');
+// Keep this default aligned with firebase-applet-config.json and firebase.json.
+const firestoreDatabaseId = defineString('FIRESTORE_DATABASE_ID', {
+  default: '(default)',
+});
 // A standard LiveKit JWT discloses its API-key identifier as `iss`. Explicit acceptance is required.
 const allowIssuerDisclosure = defineBoolean('LIVEKIT_ALLOW_JWT_ISSUER_DISCLOSURE', { default: false });
 const origins = ['https://sharkset.web.app', 'https://sharkset.firebaseapp.com', 'http://localhost:369', 'http://localhost:5173'];
@@ -22,7 +26,7 @@ function database() {
   if (project !== PROJECT_ID) throw new LiveError(503, 'PROJECT_MISMATCH');
   if (!getApps().length) initializeApp({ projectId: PROJECT_ID });
   if (getApps()[0].options.projectId !== PROJECT_ID) throw new LiveError(503, 'PROJECT_MISMATCH');
-  return getFirestore();
+  return getFirestore(getApps()[0], firestoreDatabaseId.value());
 }
 function authorization(req: Request) {
   // API Gateway preserves the original bearer/signature in this header while authenticating to private functions.

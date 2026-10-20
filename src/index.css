@@ -280,6 +280,21 @@ body {
   background: linear-gradient(135deg, #f87171 0%, #dc2626 100%) !important;
 }
 
+@media (max-width: 639px) {
+  .bracket-close {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+  }
+
+  .bracket-close-label,
+  .bracket-close-shortcut {
+    display: none;
+  }
+}
+
 .bracket-viewport {
   position: relative;
   width: 100%;
