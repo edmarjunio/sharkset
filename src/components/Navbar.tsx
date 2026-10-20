@@ -375,9 +375,20 @@ export const Navbar: React.FC = () => {
                 />
               </div>
 
-              {/* Botões de Ação na Direita: LIVE, INICIAR TRANSMISSÃO, Notificação, Usuário, Admin */}
+              {/* Botões de Ação na Direita: LIVE, INICIAR TRANSMISSÃO, Busca, Notificação, Usuário, Admin */}
               <div className="flex items-center gap-2 shrink-0">
                 {liveButtons}
+
+                {/* Botão de Busca Rápida (Ctrl+K) */}
+                <button
+                  type="button"
+                  onClick={() => setCommandPaletteOpen(true)}
+                  className="relative inline-flex items-center justify-center p-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-cyan-300 hover:text-white border border-cyan-500/40 hover:border-cyan-300 transition-all cursor-pointer shadow-md active:translate-y-0.5 shrink-0"
+                  title="Buscar atletas, arenas ou torneios (Ctrl+K)"
+                  aria-label="Buscar"
+                >
+                  <Search className="w-4 h-4 text-cyan-300" />
+                </button>
 
                 {/* Botão de Notificações com cor bem chamativa (Gradiente Fuchsia/Roxo vibrante com brilho neon) */}
                 <button
@@ -452,10 +463,6 @@ export const Navbar: React.FC = () => {
               </div>
             </div>
 
-            {/* Linha 3: Campo de Busca Desktop com Dropdown de Pesquisas Recentes & Arenas Populares */}
-            <div className="w-full pb-1">
-              <TopBarSearchBox />
-            </div>
 
           </div>
         </div>
