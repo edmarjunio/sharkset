@@ -4,7 +4,6 @@ import type {
   Tournament,
   TenantConfig,
   DiscountCoupon,
-  AthleteProfile,
 } from '../src/types';
 
 test('Tokens Economy: Usuario comum gasta 1 token ao criar torneio independente', () => {
@@ -48,26 +47,22 @@ test('Tokens Economy: Usuario comum gasta 1 token ao criar torneio independente'
 });
 
 test('Tournament Scope: Torneio da Arena nao gasta token; Torneio de Usuario permite escolher qualquer arena', () => {
-  const arenaMatriz: TenantConfig = {
+  const arenaMatriz: Partial<TenantConfig> = {
     id: 'arena-matriz',
     name: 'SHARK SET Arena Matriz',
     city: 'Mineiros',
     state: 'GO',
-    courts: [],
-    operatingHours: { open: '06:00', close: '23:00' },
   };
 
-  const arenaFilial: TenantConfig = {
+  const arenaFilial: Partial<TenantConfig> = {
     id: 'arena-filial',
     name: 'SHARK SET Beach & Bar',
     city: 'Jataí',
     state: 'GO',
-    courts: [],
-    operatingHours: { open: '06:00', close: '23:00' },
   };
 
   // 1. Torneio criado no escopo da arena
-  const arenaTournament: Tournament = {
+  const arenaTournament: Partial<Tournament> = {
     id: 'tourn-arena-1',
     tenantId: arenaMatriz.id,
     name: 'Copa Interna Matriz',
@@ -92,7 +87,7 @@ test('Tournament Scope: Torneio da Arena nao gasta token; Torneio de Usuario per
   assert.equal(arenaTournament.creatorTokensSpent, 0);
 
   // 2. Torneio criado no escopo do usuário organizador escolhendo qualquer arena
-  const userTournament: Tournament = {
+  const userTournament: Partial<Tournament> = {
     id: 'tourn-user-1',
     tenantId: arenaFilial.id,
     name: 'Circuito Aberto Futevôlei Jataí',
@@ -119,7 +114,7 @@ test('Tournament Scope: Torneio da Arena nao gasta token; Torneio de Usuario per
 });
 
 test('Discount Coupons: Cupom Global aplica desconto em qualquer arena', () => {
-  const globalCoupon: DiscountCoupon = {
+  const globalCoupon: Partial<DiscountCoupon> = {
     id: 'coupon-shark10',
     code: 'SHARK10',
     discountType: 'fixed',
@@ -128,14 +123,14 @@ test('Discount Coupons: Cupom Global aplica desconto em qualquer arena', () => {
     active: true,
   };
 
-  const applyDiscount = (coupon: DiscountCoupon, arenaId: string, originalPrice: number) => {
+  const applyDiscount = (coupon: Partial<DiscountCoupon>, arenaId: string, originalPrice: number) => {
     if (!coupon.active) return { valid: false, discount: 0, finalPrice: originalPrice };
     if (coupon.scope === 'arena' && coupon.arenaId !== arenaId) {
       return { valid: false, discount: 0, finalPrice: originalPrice, reason: 'Cupom exclusivo de outra arena' };
     }
     const discount = coupon.discountType === 'fixed'
-      ? Math.min(coupon.discountValue, originalPrice)
-      : (originalPrice * coupon.discountValue) / 100;
+      ? Math.min(coupon.discountValue || 0, originalPrice)
+      : (originalPrice * (coupon.discountValue || 0)) / 100;
     return { valid: true, discount, finalPrice: Math.max(0, originalPrice - discount) };
   };
 
@@ -153,7 +148,7 @@ test('Discount Coupons: Cupom Global aplica desconto em qualquer arena', () => {
 });
 
 test('Discount Coupons: Cupom de Arena é válido somente na respectiva arena', () => {
-  const arenaCoupon: DiscountCoupon = {
+  const arenaCoupon: Partial<DiscountCoupon> = {
     id: 'coupon-matriz15',
     code: 'MATRIZ15',
     discountType: 'percent',
@@ -164,14 +159,14 @@ test('Discount Coupons: Cupom de Arena é válido somente na respectiva arena', 
     active: true,
   };
 
-  const applyDiscount = (coupon: DiscountCoupon, arenaId: string, originalPrice: number) => {
+  const applyDiscount = (coupon: Partial<DiscountCoupon>, arenaId: string, originalPrice: number) => {
     if (!coupon.active) return { valid: false, discount: 0, finalPrice: originalPrice };
     if (coupon.scope === 'arena' && coupon.arenaId !== arenaId) {
       return { valid: false, discount: 0, finalPrice: originalPrice, reason: 'Cupom exclusivo de outra arena' };
     }
     const discount = coupon.discountType === 'fixed'
-      ? Math.min(coupon.discountValue, originalPrice)
-      : (originalPrice * coupon.discountValue) / 100;
+      ? Math.min(coupon.discountValue || 0, originalPrice)
+      : (originalPrice * (coupon.discountValue || 0)) / 100;
     return { valid: true, discount, finalPrice: Math.max(0, originalPrice - discount) };
   };
 
@@ -189,16 +184,14 @@ test('Discount Coupons: Cupom de Arena é válido somente na respectiva arena', 
 });
 
 test('Arena Managers: Dono da arena pode adicionar e remover gestores', () => {
-  const arena: TenantConfig = {
+  const arena: Partial<TenantConfig> = {
     id: 'arena-1',
     name: 'Arena Central',
     ownerId: 'dono-uid-123',
     managers: ['gestor1@arena.com'],
-    courts: [],
-    operatingHours: { open: '07:00', close: '22:00' },
   };
 
-  const addManager = (arenaConfig: TenantConfig, emailOrUid: string) => {
+  const addManager = (arenaConfig: Partial<TenantConfig>, emailOrUid: string) => {
     const list = arenaConfig.managers ? [...arenaConfig.managers] : [];
     if (!list.includes(emailOrUid)) {
       list.push(emailOrUid);
@@ -206,7 +199,7 @@ test('Arena Managers: Dono da arena pode adicionar e remover gestores', () => {
     return { ...arenaConfig, managers: list };
   };
 
-  const removeManager = (arenaConfig: TenantConfig, emailOrUid: string) => {
+  const removeManager = (arenaConfig: Partial<TenantConfig>, emailOrUid: string) => {
     const list = (arenaConfig.managers || []).filter((m) => m !== emailOrUid);
     return { ...arenaConfig, managers: list };
   };

@@ -70,7 +70,6 @@ import { generateWaitlistWhatsAppLink } from '../services/whatsappAdapter';
 import { ATHLETE_LEVEL_LABELS, calculateFutevoleiMatchPoints } from '../services/rankingValidator';
 import {
   buildBooking15MinReminderNotification,
-  buildBracketResultPublishedNotification,
   buildMatch10PointsRemainingNotification,
   buildTournamentStartedNotification,
   buildTuitionDueTodayNotification,
@@ -1963,41 +1962,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Update Live Referee Match State & Broadcast in Real Time to all Spectators on the Bracket Page
   const updateLiveRefereeMatch = (matchId: string, updater: (prev: BracketMatch) => BracketMatch) => {
-    setTournamentMatches((prev) => {
-      let updatedTarget: BracketMatch | null = null;
-      const nextList = prev.map((m) => {
-        if (m.id !== matchId || m.status === 'completed') return m;
-        const base = m.liveReferee ? m : { ...m, liveReferee: buildDefaultRefereeState(m) };
-        updatedTarget = updater(base);
-        return updatedTarget;
+    const previousMatch = tournamentMatches.find((match) => match.id === matchId);
+    if (!previousMatch || previousMatch.status === 'completed') return;
+    const base = previousMatch.liveReferee ? previousMatch : { ...previousMatch, liveReferee: buildDefaultRefereeState(previousMatch) };
+    const updatedTarget = updater(base);
+    const nextList = tournamentMatches.map((match) => match.id === matchId ? updatedTarget : match);
+    setTournamentMatches(nextList);
+
+    if (previousMatch.linkedBroadcastId !== updatedTarget.linkedBroadcastId && auth.currentUser?.emailVerified) {
+      const previousTournamentMatches = tournamentMatches.filter((match) => match.tournamentId === previousMatch.tournamentId);
+      const nextTournamentMatches = nextList.filter((match) => match.tournamentId === previousMatch.tournamentId);
+      void persistTournamentMatchChanges(previousMatch.tournamentId, nextTournamentMatches, previousTournamentMatches).catch((error) => {
+        console.error('Falha ao persistir o vínculo entre a partida e a transmissão.', error);
+        window.dispatchEvent(new CustomEvent('sharkset:firestore-sync-error', {
+          detail: { message: 'Não foi possível sincronizar o vínculo da transmissão com o Firestore.' },
+        }));
       });
+    }
 
-      if (updatedTarget) {
-        const target = updatedTarget as BracketMatch;
-        const payload = {
-          matchId: target.id,
-          tournamentId: target.tournamentId,
-          score1: target.score1 ?? 0,
-          score2: target.score2 ?? 0,
-          status: target.status,
-          liveReferee: target.liveReferee,
-        };
-
-        fetch('/api/live-matches/broadcast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }).catch(() => {});
-
-        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-          const bc = new BroadcastChannel('sharkset_live_bracket');
-          bc.postMessage(payload);
-          bc.close();
-        }
-      }
-
-      return nextList;
-    });
+    const payload = {
+      matchId: updatedTarget.id,
+      tournamentId: updatedTarget.tournamentId,
+      score1: updatedTarget.score1 ?? 0,
+      score2: updatedTarget.score2 ?? 0,
+      status: updatedTarget.status,
+      liveReferee: updatedTarget.liveReferee,
+    };
+    fetch('/api/live-matches/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('sharkset_live_bracket');
+      bc.postMessage(payload);
+      bc.close();
+    }
   };
 
   // Athlete Profile & Ranking Management (Unique Email, allows duplicate Names)
@@ -2225,7 +2225,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       channel.postMessage({ fullMatches: updated }); channel.close();
     }
 
-    // Dispatch idempotent notification when a new bracket result is published
+    // Notify the active participants on their authorized WhatsApp channel.
     const tourn = tournaments.find((t) => t.id === tournamentId);
     const prevById = new Map(previous.map((m) => [m.id, m]));
     const newlyCompleted = matches.filter((m) => {
@@ -2255,29 +2255,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           latestMatch.sets && latestMatch.sets.length > 0
             ? latestMatch.sets.map((s) => `${s.score1}x${s.score2}`).join(' / ')
             : `${latestMatch.score1 ?? 0}x${latestMatch.score2 ?? 0}`;
-        const normUser = (userProfile.name || '').trim().toLowerCase();
-        const isUserEnvolved = Boolean(
-          normUser &&
-            [
-              winnerTeam.player1,
-              winnerTeam.player2,
-              loserTeam.player1,
-              loserTeam.player2,
-            ].some((name) => name.toLowerCase().includes(normUser))
-        );
-
-        const resultNotif = buildBracketResultPublishedNotification({
-          tournamentId,
-          tournamentName: tourn?.name || 'Torneio Oficial SHARK SET',
-          match: latestMatch,
-          winnerName: fmtPair(winnerTeam),
-          loserName: fmtPair(loserTeam),
-          scoreSummary,
-          isUserEnvolved,
-          recipientPhone: winnerTeam.phone || userProfile.phone,
-        });
-        useSharkStore.getState().pushSmartNotification(resultNotif);
-
         sendMatchResultWhatsAppAlert({
           tournamentId,
           tournamentName: tourn?.name || 'Torneio Oficial SHARK SET',

@@ -56,6 +56,8 @@ export function validateOfficialResult(params: {
   const team2 = getTeamName(match.team2);
   if (!team1 || !team2 || team1.id === team2.id) return null;
   if (match.winnerId !== team1.id && match.winnerId !== team2.id) return null;
+  const expectedLoserId = match.winnerId === team1.id ? team2.id : team1.id;
+  if (match.loserId !== expectedLoserId) return null;
 
   const resultMode = match.resultMode === 'walkover' ? 'walkover' : match.resultMode === 'played' ? 'played' : null;
   if (!resultMode) return null;
@@ -88,6 +90,8 @@ export function validateOfficialResult(params: {
     const score1 = sets.reduce((total, set) => total + set.score1, 0);
     const score2 = sets.reduce((total, set) => total + set.score2, 0);
     if (match.score1 !== score1 || match.score2 !== score2 || match.winnerId !== computedWinner) return null;
+  } else if ((Array.isArray(match.sets) && match.sets.length > 0) || match.score1 !== undefined || match.score2 !== undefined) {
+    return null;
   }
 
   const matchNumber = match.matchNumber;

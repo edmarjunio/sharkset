@@ -106,11 +106,65 @@ export const tournamentResultNotification = onDocumentWritten({
   });
   if (!notification) return;
 
+  const matchRef = db.doc(`tournaments/${tournamentId}/matches/${matchId}`);
   const notificationRef = db.doc(`tournaments/${tournamentId}/result_events/${notification.eventId}`);
-  try {
-    await notificationRef.create({ ...notification, createdAt: FieldValue.serverTimestamp() });
-  } catch (error) {
-    if ((error as { code?: number }).code === 6) return; // Idempotent retry of the same official revision.
-    throw error;
-  }
+  await db.runTransaction(async (transaction) => {
+    const [latestSnapshot, notificationSnapshot] = await Promise.all([
+      transaction.get(matchRef),
+      transaction.get(notificationRef),
+    ]);
+    const latest = latestSnapshot.data();
+    if (!latest || latest.status !== 'completed' || latest.revision !== notification.revision) return;
+    if (!didOfficialResultChange(before, latest)) return;
+
+    transaction.set(matchRef, { serverValidatedRevision: notification.revision }, { merge: true });
+    if (!notificationSnapshot.exists) {
+      transaction.set(notificationRef, { ...notification, createdAt: FieldValue.serverTimestamp() });
+    }
+  });
+});
+
+// Public, server-managed lookup lets viewers connect a broadcast directory entry
+// to the tournament whose official result events they should receive.
+export const tournamentBroadcastLink = onDocumentWritten({
+  document: 'tournaments/{tournamentId}/matches/{matchId}',
+  region: REGION,
+  maxInstances: 4,
+  retry: true,
+}, async (event) => {
+  const before = event.data?.before.data();
+  const after = event.data?.after.data();
+  const { tournamentId, matchId } = event.params;
+  if (!validId(tournamentId) || !validId(matchId)) return;
+  const db = database();
+  const previousId = typeof before?.linkedBroadcastId === 'string' && validId(before.linkedBroadcastId)
+    ? before.linkedBroadcastId
+    : '';
+  const nextId = typeof after?.linkedBroadcastId === 'string' && validId(after.linkedBroadcastId)
+    ? after.linkedBroadcastId
+    : '';
+  if (previousId === nextId) return;
+
+  const matchRef = db.doc(`tournaments/${tournamentId}/matches/${matchId}`);
+  const previousRef = previousId ? db.doc(`broadcast_tournament_links/${previousId}`) : null;
+  const nextRef = nextId ? db.doc(`broadcast_tournament_links/${nextId}`) : null;
+  await db.runTransaction(async (transaction) => {
+    const currentMatchSnapshot = await transaction.get(matchRef);
+    const currentLink = currentMatchSnapshot.data()?.linkedBroadcastId;
+    const currentId = typeof currentLink === 'string' && validId(currentLink) ? currentLink : '';
+    // Firestore may deliver an older write after a newer one. Only project the
+    // current link, so a delayed trigger cannot recreate a stale mapping.
+    if (currentId !== nextId) return;
+
+    const previousSnapshot = previousRef ? await transaction.get(previousRef) : null;
+    const nextSnapshot = nextRef && nextRef.path !== previousRef?.path ? await transaction.get(nextRef) : null;
+    const previous = previousSnapshot?.data();
+    const next = nextSnapshot?.data();
+    if (previousRef && previous?.tournamentId === tournamentId && previous?.matchId === matchId) {
+      transaction.delete(previousRef);
+    }
+    if (nextRef && (next?.tournamentId !== tournamentId || next?.matchId !== matchId)) {
+      transaction.set(nextRef, { tournamentId, matchId });
+    }
+  });
 });

@@ -5,6 +5,7 @@ import { FreeSlotsDateTimeFilter } from './components/FreeSlotsDateTimeFilter';
 import React from 'react';
 import { AquariumBackground } from './components/AquariumBackground';
 import { SportBallIcon } from './components/icons/SportBallIcon';
+import { TournamentResultNotifications } from './components/TournamentResultNotifications';
 import { AppProvider, useApp } from './context/AppContext';
 import { ArenaAdmin } from './components/ArenaAdmin';
 import { Navbar } from './components/Navbar';
@@ -24,7 +25,7 @@ import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
-import { auth } from './lib/firebase';
+import { auth, listenToBroadcastTournamentId } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
   Maximize2,
@@ -47,6 +48,9 @@ const MainContent: React.FC = () => {
   const {
     activeTab,
     setActiveTab,
+    activeTournamentId,
+    setActiveTournamentId,
+    tournamentMatches,
     tenant,
     setTenantId,
     setArenaSubTab,
@@ -57,6 +61,32 @@ const MainContent: React.FC = () => {
     focusMode,
     toggleFocusMode,
   } = useApp();
+  const watchSource = useBroadcastNavigation((state) => state.source);
+  const [publishedWatchTournamentId, setPublishedWatchTournamentId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (watchSource?.kind !== 'published') {
+      setPublishedWatchTournamentId(null);
+      return;
+    }
+    return listenToBroadcastTournamentId(watchSource.id, setPublishedWatchTournamentId, () => setPublishedWatchTournamentId(null));
+  }, [watchSource?.kind, watchSource?.id]);
+  const linkedWatchMatch = tournamentMatches.find((match) =>
+    (watchSource?.kind === 'match' && match.id === watchSource.id) || match.linkedBroadcastId === watchSource?.id
+  );
+  const watchTournamentId = watchSource?.tournamentId || linkedWatchMatch?.tournamentId || publishedWatchTournamentId;
+  const resultNotificationTournamentIds = React.useMemo(() => {
+    const ids = activeTab === 'tournaments' ? [activeTournamentId, watchTournamentId] : [watchTournamentId];
+    return ids.filter((id): id is string => Boolean(id));
+  }, [activeTab, activeTournamentId, watchTournamentId]);
+
+  const openResultMatch = (event: import('./lib/firebase').TournamentResultEvent) => {
+    useBroadcastNavigation.getState().close();
+    setActiveTournamentId(event.tournamentId);
+    setActiveTab('tournaments');
+    window.setTimeout(() => {
+      document.querySelector(`[data-match-id="${event.matchId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 350);
+  };
 
   const [floatingSlotModal, setFloatingSlotModal] = React.useState<UpcomingSlotItem | null>(null);
 
@@ -106,6 +136,7 @@ const MainContent: React.FC = () => {
     >
       <AquariumBackground />
       <GlobalToast />
+      <TournamentResultNotifications tournamentIds={resultNotificationTournamentIds} onOpenMatch={openResultMatch} />
 
       {/* Floating Focus Mode Bar when active */}
       {focusMode && (

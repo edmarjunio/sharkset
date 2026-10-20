@@ -397,6 +397,8 @@ export interface BracketMatch {
   resultMode?: 'played' | 'walkover';
   officialAt?: string;
   revision?: number;
+  /** Revision confirmed by the server-side result validator. */
+  serverValidatedRevision?: number;
   semifinalDecision?: 'waiting' | 'fixed' | 'swap' | 'blocked' | 'exception';
   exceptionReason?: string;
   exceptionFingerprint?: string;

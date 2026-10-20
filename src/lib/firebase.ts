@@ -954,6 +954,7 @@ function publicBracketMatch(match: BracketMatch): Record<string, unknown> {
     loserDestinationSlot: match.loserDestinationSlot,
     linkedBroadcastId: match.linkedBroadcastId,
     semifinalDecision: match.semifinalDecision,
+    serverValidatedRevision: match.serverValidatedRevision,
   };
   for (const [key, value] of Object.entries(optional)) {
     if (value !== undefined) payload[key] = value;
@@ -1004,7 +1005,13 @@ export function listenToTournamentMatches(
     matchesRef,
     (snapshot) => {
       const matches = snapshot.docs
-        .map((matchDoc) => matchDoc.data() as BracketMatch)
+        .map((matchDoc) => {
+          const match = matchDoc.data() as BracketMatch;
+          if (match.status === 'completed' && match.serverValidatedRevision !== match.revision) {
+            return { ...match, status: 'scheduled' as const };
+          }
+          return match;
+        })
         .sort((left, right) => left.matchNumber - right.matchNumber);
       onUpdate(matches);
     },
@@ -1046,6 +1053,21 @@ export function listenToTournamentResultEvents(
     },
     (error) => onError?.(error)
   );
+}
+
+export function listenToBroadcastTournamentId(
+  broadcastId: string,
+  onUpdate: (tournamentId: string | null) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!/^[\w-]{1,64}$/.test(broadcastId)) {
+    onUpdate(null);
+    return () => {};
+  }
+  return onSnapshot(doc(db, 'broadcast_tournament_links', broadcastId), (snapshot) => {
+    const tournamentId = snapshot.data()?.tournamentId;
+    onUpdate(typeof tournamentId === 'string' ? tournamentId : null);
+  }, (error) => onError?.(error));
 }
 
 /**

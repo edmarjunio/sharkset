@@ -410,6 +410,11 @@ body {
 
 /* Aquarium depth: decoration stays behind every interactive surface. */
 .shark-site-background { position: relative; overflow-x: clip; }
+.tournament-result-toast { animation: tournament-result-enter 280ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes tournament-result-enter {
+  from { opacity: 0; transform: translate3d(0, -10px, 0) scale(.98); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
 .shark-site-background::before { filter: none; transform: none; }
 .shark-site-background::after {
   background: linear-gradient(180deg, rgb(0 25 51 / 30%), rgb(1 22 43 / 48%) 50%, rgb(1 17 35 / 65%));
@@ -521,6 +526,7 @@ body {
   .bracket-close { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); padding: 10px 14px; font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .tournament-result-toast { animation: none; }
   .aquarium-world * { animation: none !important; }
   .aquarium-swimmer { left: 65%; top: 45%; opacity: .35; }
   .aquarium-motion-control { display: none; }

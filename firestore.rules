@@ -264,7 +264,9 @@ service cloud.firestore {
         isValidId(team.id) && isValidId(team.tournamentId) &&
         team.player1 is string && team.player1.size() >= 1 && team.player1.size() <= 120 &&
         team.player2 is string && team.player2.size() <= 120 &&
-        team.seed is int && team.seed >= 0 && team.seed <= 128;
+        team.seed is int && team.seed >= 0 && team.seed <= 128 &&
+        (!('enrollmentStatus' in team) || team.enrollmentStatus in ['pending', 'confirmed', 'rejected']) &&
+        (!('isPresent' in team) || team.isPresent is bool);
     }
 
     function isPublicBracketSource(source) {
@@ -275,13 +277,28 @@ service cloud.firestore {
       );
     }
 
+    function isValidMatchRules(rules) {
+      return rules is map && rules.keys().hasAll(['bestOf', 'targetPoints', 'decidingPoints', 'winBy']) &&
+        rules.keys().hasOnly(['bestOf', 'targetPoints', 'decidingPoints', 'winBy']) &&
+        rules.bestOf in [1, 3, 5] && rules.targetPoints is int && rules.targetPoints >= 1 && rules.targetPoints <= 99 &&
+        rules.decidingPoints is int && rules.decidingPoints >= 1 && rules.decidingPoints <= 99 &&
+        rules.winBy is int && rules.winBy >= 1 && rules.winBy <= 99;
+    }
+
+    function isValidMatchSet(set) {
+      return set is map && set.keys().hasAll(['score1', 'score2']) && set.keys().hasOnly(['score1', 'score2']) &&
+        set.score1 is int && set.score1 >= 0 && set.score1 <= 99 &&
+        set.score2 is int && set.score2 >= 0 && set.score2 <= 99;
+    }
+
     function isValidPublicBracketMatch(data, tournamentId, matchId) {
       return data.keys().hasAll(['id', 'tournamentId', 'matchNumber', 'stage', 'round', 'stageName', 'status', 'revision']) &&
         data.keys().hasOnly([
           'id', 'tournamentId', 'matchNumber', 'stage', 'round', 'stageName', 'status', 'revision',
           'source1', 'source2', 'initialLowerSource', 'region', 'rules', 'sets', 'resultMode', 'officialAt',
           'team1', 'team2', 'score1', 'score2', 'winnerId', 'loserId', 'courtId', 'courtName', 'scheduledTime',
-          'nextMatchWinnerId', 'winnerDestinationSlot', 'nextMatchLoserId', 'loserDestinationSlot', 'linkedBroadcastId', 'semifinalDecision'
+          'nextMatchWinnerId', 'winnerDestinationSlot', 'nextMatchLoserId', 'loserDestinationSlot', 'linkedBroadcastId', 'semifinalDecision',
+          'serverValidatedRevision'
         ]) &&
         data.id == matchId && data.tournamentId == tournamentId &&
         isValidId(data.id) && isValidId(data.tournamentId) &&
@@ -291,6 +308,7 @@ service cloud.firestore {
         data.status in ['scheduled', 'in_progress', 'completed'] &&
         data.stageName is string && data.stageName.size() >= 1 && data.stageName.size() <= 80 &&
         data.revision is int && data.revision >= 0 && data.revision <= 100000 &&
+        (!('serverValidatedRevision' in data) || (data.serverValidatedRevision is int && data.serverValidatedRevision >= 1 && data.serverValidatedRevision <= data.revision)) &&
         (!('team1' in data) || isPublicBracketTeam(data.team1)) &&
         (!('team2' in data) || isPublicBracketTeam(data.team2)) &&
         (!('source1' in data) || isPublicBracketSource(data.source1)) &&
@@ -301,7 +319,13 @@ service cloud.firestore {
         (!('winnerId' in data) || isValidId(data.winnerId)) && (!('loserId' in data) || isValidId(data.loserId)) &&
         (!('resultMode' in data) || data.resultMode in ['played', 'walkover']) &&
         (!('officialAt' in data) || (data.officialAt is string && data.officialAt.size() <= 40)) &&
-        (!('sets' in data) || (data.sets is list && data.sets.size() <= 5)) &&
+        (!('rules' in data) || isValidMatchRules(data.rules)) &&
+        (!('sets' in data) || (data.sets is list && data.sets.size() <= 5 &&
+          (data.sets.size() == 0 || isValidMatchSet(data.sets[0])) &&
+          (data.sets.size() < 2 || isValidMatchSet(data.sets[1])) &&
+          (data.sets.size() < 3 || isValidMatchSet(data.sets[2])) &&
+          (data.sets.size() < 4 || isValidMatchSet(data.sets[3])) &&
+          (data.sets.size() < 5 || isValidMatchSet(data.sets[4])))) &&
         (!('courtName' in data) || (data.courtName is string && data.courtName.size() <= 100)) &&
         (!('courtId' in data) || (data.courtId is string && data.courtId.size() <= 64)) &&
         (!('scheduledTime' in data) || (data.scheduledTime is string && data.scheduledTime.size() <= 40)) &&
@@ -519,8 +543,13 @@ service cloud.firestore {
 
       match /matches/{matchId} {
         allow read: if true;
-        allow create, update: if canManageTournamentMatches(tournamentId) && isValidId(matchId) &&
-          isValidPublicBracketMatch(incoming(), tournamentId, matchId);
+        allow create: if canManageTournamentMatches(tournamentId) && isValidId(matchId) &&
+          !('serverValidatedRevision' in incoming()) && isValidPublicBracketMatch(incoming(), tournamentId, matchId);
+        allow update: if canManageTournamentMatches(tournamentId) && isValidId(matchId) &&
+          isValidPublicBracketMatch(incoming(), tournamentId, matchId) &&
+          ((!('serverValidatedRevision' in existing()) && !('serverValidatedRevision' in incoming())) ||
+            ('serverValidatedRevision' in existing() && 'serverValidatedRevision' in incoming() &&
+              incoming().serverValidatedRevision == existing().serverValidatedRevision));
         allow delete: if canManageTournamentMatches(tournamentId) && isValidId(matchId);
       }
 
@@ -528,6 +557,13 @@ service cloud.firestore {
         allow read: if isValidId(tournamentId) && isValidId(eventId);
         allow write: if false;
       }
+    }
+
+    // Viewer lookup for the tournament connected to a public broadcast.
+    // Only trusted server code maintains these mappings.
+    match /broadcast_tournament_links/{broadcastId} {
+      allow read: if isValidId(broadcastId);
+      allow write: if false;
     }
 
     // Court Blocks: Administrative timetable and court maintenance locks

@@ -4,7 +4,7 @@ import { useArenaAvailability } from '../hooks/useArenaAvailability';
 import { useBookingSelection } from '../store/useBookingSelection';
 import { arenaDate } from '../services/bookingAvailability';
 import { QuickBookingPaymentModal } from './QuickBookingPaymentModal';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp, ArenaSubTab } from '../context/AppContext';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import {
@@ -44,6 +44,7 @@ import { ArenaCommunityLearning } from './ArenaCommunityLearning';
 import { ArenaInfoHistory } from './ArenaInfoHistory';
 import { DoubleEliminationBracket } from './DoubleEliminationBracket';
 import { RankingBoard } from './RankingBoard';
+import { AthleteEmailSelector } from './AthleteEmailSelector';
 import { useSharkStore } from '../store/useSharkStore';
 import {
   Check,
@@ -176,10 +177,10 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
 
   // Quick Online Tournament Registration & Payment Modal inside Arena
   const [registeringTournId, setRegisteringTournId] = useState<string | null>(null);
-  const [regPlayer1, setRegPlayer1] = useState(userProfile.name);
-  const [regLevel1, setRegLevel1] = useState<AthleteLevel>(userProfile.level || 'serie_c');
-  const [regPlayer2, setRegPlayer2] = useState('');
-  const [regLevel2, setRegLevel2] = useState<AthleteLevel>('iniciante');
+  const [regPlayer1Email, setRegPlayer1Email] = useState('');
+  const [regPlayer2Email, setRegPlayer2Email] = useState('');
+  const [isSubmittingTournReg, setIsSubmittingTournReg] = useState(false);
+  const tournRegLock = useRef(false);
   const [regPhone, setRegPhone] = useState(userProfile.phone);
   const [regPaymentMethod, setRegPaymentMethod] = useState<'pix' | 'cartao'>('pix');
 
@@ -471,33 +472,80 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
 
   // Client: Register & Pay for Tournament inside Arena
   const activeRegisteringTourn = tournaments.find((t) => t.id === registeringTournId);
+  const isSinglesReg = activeRegisteringTourn?.modalityFormat === 'simples';
+
+  const selectedRegP1 = athletes.find(
+    (a) => (a.email || '').trim().toLowerCase() === regPlayer1Email.trim().toLowerCase()
+  ) || null;
+
+  const selectedRegP2 = athletes.find(
+    (a) => (a.email || '').trim().toLowerCase() === regPlayer2Email.trim().toLowerCase()
+  ) || null;
+
+  const enrolledEmailsInTourn = useMemo(() => {
+    if (!registeringTournId) return new Set<string>();
+    return new Set(
+      registeredPairs
+        .filter((p) => p.tournamentId === registeringTournId && p.enrollmentStatus !== 'rejected')
+        .flatMap((p) => [p.player1Email, p.player2Email])
+        .filter((e): e is string => Boolean(e))
+        .map((e) => e.trim().toLowerCase())
+    );
+  }, [registeredPairs, registeringTournId]);
+
   const regValidation = useMemo(() => {
-    if (!activeRegisteringTourn) return { isValid: true, reason: '', ruleSummary: '' };
-    return validatePairCategory(activeRegisteringTourn.category, regLevel1, regLevel2);
-  }, [activeRegisteringTourn, regLevel1, regLevel2]);
+    if (!activeRegisteringTourn) return { isValid: false, reason: '', ruleSummary: '' };
+    if (!selectedRegP1) return { isValid: false, reason: 'Selecione o Atleta 1 pelo e-mail.', ruleSummary: 'A categoria vem do perfil.' };
+    if (isSinglesReg) {
+      return { isValid: true, reason: `Inscrição individual para ${selectedRegP1.name}.`, ruleSummary: 'Modalidade 1x1.' };
+    }
+    if (!selectedRegP2) return { isValid: false, reason: 'Selecione o Atleta 2 pelo e-mail.', ruleSummary: 'A categoria vem do perfil.' };
+    if (selectedRegP1.email?.trim().toLowerCase() === selectedRegP2.email?.trim().toLowerCase()) {
+      return { isValid: false, reason: 'Os atletas da dupla precisam ter e-mails diferentes.', ruleSummary: 'Escolha dois atletas.' };
+    }
+    return validatePairCategory(activeRegisteringTourn.category, selectedRegP1.level, selectedRegP2.level);
+  }, [activeRegisteringTourn, isSinglesReg, selectedRegP1, selectedRegP2]);
 
   const handleCompleteTournRegistration = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeRegisteringTourn || !regValidation.isValid) return;
-    if (!regPlayer1.trim() || !regPlayer2.trim()) return;
+    if (tournRegLock.current || isSubmittingTournReg || !activeRegisteringTourn || !regValidation.isValid || !selectedRegP1) return;
+    if (!isSinglesReg && !selectedRegP2) return;
 
-    const newPair = registerDouble({
-      tournamentId: activeRegisteringTourn.id,
-      player1: regPlayer1.trim(),
-      player1Level: regLevel1,
-      player2: regPlayer2.trim(),
-      player2Level: regLevel2,
-      phone: regPhone.trim(),
-      category: activeRegisteringTourn.category,
-      paymentMethod: regPaymentMethod,
-    });
+    tournRegLock.current = true;
+    setIsSubmittingTournReg(true);
+    try {
+      const newPair = registerDouble({
+        tournamentId: activeRegisteringTourn.id,
+        player1Id: selectedRegP1.id,
+        player1Email: selectedRegP1.email,
+        player1Phone: selectedRegP1.phone,
+        player1: selectedRegP1.name,
+        player1Level: selectedRegP1.level,
+        player2Id: isSinglesReg ? undefined : selectedRegP2?.id,
+        player2Email: isSinglesReg ? undefined : selectedRegP2?.email,
+        player2Phone: isSinglesReg ? undefined : selectedRegP2?.phone,
+        player2: isSinglesReg ? 'Individual (1x1)' : selectedRegP2!.name,
+        player2Level: isSinglesReg ? selectedRegP1.level : selectedRegP2!.level,
+        phone: selectedRegP1.phone || selectedRegP2?.phone || regPhone || '',
+        category: activeRegisteringTourn.category,
+        paymentMethod: regPaymentMethod,
+      });
 
-    setRegPlayer2('');
-    setRegisteringTournId(null);
-    toast.success(`Dupla (${newPair.player1} & ${newPair.player2}) inscrita com sucesso!`);
-    triggerToast(
-      `Pagamento confirmado e Dupla #${newPair.seed} (${newPair.player1} & ${newPair.player2}) inscrita com sucesso!`
-    );
+      setRegPlayer1Email('');
+      setRegPlayer2Email('');
+      setRegisteringTournId(null);
+      toast.success(`Dupla (${newPair.player1} & ${newPair.player2}) inscrita com sucesso!`);
+      triggerToast(
+        `Pagamento confirmado e Dupla #${newPair.seed} (${newPair.player1} & ${newPair.player2}) inscrita com sucesso!`
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível concluir a inscrição.');
+    } finally {
+      setIsSubmittingTournReg(false);
+      window.setTimeout(() => {
+        tournRegLock.current = false;
+      }, 500);
+    }
   };
 
   if (!tenant.id) return <section className="max-w-3xl mx-auto p-8 text-center"><h1 className="text-xl font-bold">Nenhuma arena selecionada</h1><p className="mt-2">Encontre uma arena para consultar quadras e horários.</p><button type="button" onClick={() => setActiveTab('arenas_directory')} className="mt-4 min-h-11 rounded-xl bg-cyan-700 px-5 text-white">Buscar arenas</button></section>;
@@ -3310,73 +3358,26 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                 </button>
               </div>
 
-              {/* Player 1 + Ranking Level */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                <div className="sm:col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Atleta 1:</label>
-                  <input
-                    type="text"
-                    required
-                    value={regPlayer1}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setRegPlayer1(val);
-                      const found = athletes.find((a) => a.name.toLowerCase() === val.toLowerCase());
-                      if (found) setRegLevel1(found.level);
-                    }}
-                    placeholder="Nome do Atleta 1"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Ranking Atleta 1:</label>
-                  <select
-                    value={regLevel1}
-                    onChange={(e) => setRegLevel1(e.target.value as AthleteLevel)}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
-                  >
-                    {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              {/* Player 1 Selection via EMAIL - NOME with locked profile category */}
+              <AthleteEmailSelector
+                label={isSinglesReg ? 'Atleta (Inscrição Individual)' : 'Atleta 1'}
+                athletes={athletes}
+                selectedEmail={regPlayer1Email}
+                enrolledEmails={enrolledEmailsInTourn}
+                onSelectAthlete={(athlete) => setRegPlayer1Email((athlete?.email || '').trim().toLowerCase())}
+              />
 
-              {/* Player 2 + Ranking Level */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                <div className="sm:col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Atleta 2 (Parceiro):</label>
-                  <input
-                    type="text"
-                    required
-                    value={regPlayer2}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setRegPlayer2(val);
-                      const found = athletes.find((a) => a.name.toLowerCase() === val.toLowerCase());
-                      if (found) setRegLevel2(found.level);
-                    }}
-                    placeholder="Nome do Parceiro"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Ranking Atleta 2:</label>
-                  <select
-                    value={regLevel2}
-                    onChange={(e) => setRegLevel2(e.target.value as AthleteLevel)}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
-                  >
-                    {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              {/* Player 2 Selection via EMAIL - NOME with locked profile category */}
+              {!isSinglesReg && (
+                <AthleteEmailSelector
+                  label="Atleta 2 (Parceiro de Dupla)"
+                  athletes={athletes}
+                  selectedEmail={regPlayer2Email}
+                  excludeEmail={regPlayer1Email}
+                  enrolledEmails={enrolledEmailsInTourn}
+                  onSelectAthlete={(athlete) => setRegPlayer2Email((athlete?.email || '').trim().toLowerCase())}
+                />
+              )}
 
               {/* Real-time Category Validation Banner */}
               <div
@@ -3439,14 +3440,16 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                 </button>
                 <button
                   type="submit"
-                  disabled={!regValidation.isValid}
+                  disabled={!regValidation.isValid || isSubmittingTournReg}
                   className={`px-5 py-2.5 text-xs font-semibold rounded-xl transition-all ${
-                    regValidation.isValid
+                    regValidation.isValid && !isSubmittingTournReg
                       ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
-                  Pagar R$ {activeRegisteringTourn.registrationFee} & Confirmar Dupla
+                  {isSubmittingTournReg
+                    ? 'Confirmando Inscrição...'
+                    : `Pagar R$ ${activeRegisteringTourn.registrationFee} & Confirmar Dupla`}
                 </button>
               </div>
             </form>
