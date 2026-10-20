@@ -154,7 +154,7 @@ const MainContent: React.FC = () => {
 
       {!focusMode && (
         <footer
-          className="w-full mt-auto border-t border-cyan-500/20 bg-[#020B17]/95 backdrop-blur-xl text-slate-300 transition-colors"
+          className="w-full mt-auto border-t border-cyan-500/20 bg-[#020B17]/95 backdrop-blur-xl text-slate-300 transition-colors pb-36 sm:pb-40"
           style={
             isArenaWhiteLabel && arenaPalette
               ? {
@@ -164,7 +164,7 @@ const MainContent: React.FC = () => {
               : undefined
           }
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-4">
             {/* Top Row: Brand & Sports & Badges */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-white/10">
               {/* Brand Info */}

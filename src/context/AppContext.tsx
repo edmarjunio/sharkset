@@ -351,7 +351,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [arenasMap, setArenasMap] = useState<Record<string, TenantConfig>>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.ARENAS);
-      return stored ? JSON.parse(stored) : TENANTS;
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          return parsed;
+        }
+      }
+      return TENANTS;
     } catch {
       return TENANTS;
     }
