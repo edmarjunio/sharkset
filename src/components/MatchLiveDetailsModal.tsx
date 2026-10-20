@@ -89,7 +89,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
   const [refereeNameInput, setRefereeNameInput] = useState<string>(refState.refereeName || 'Árbitro Oficial SHARK SET');
 
   // Chat state per match (persisted in localStorage so comments stay alive)
-  const storageKey = `sharkset_match_chat_${match.id}`;
+  const storageKey = `sharkset_v6_match_chat_${match.id}`;
   const [comments, setComments] = useState<MatchCommentItem[]>(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -97,31 +97,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
     } catch {
       // ignore
     }
-    const t1Name = match.team1?.player1 || 'Dupla 1';
-    const t2Name = match.team2?.player1 || 'Dupla 2';
-    return [
-      {
-        id: 'c-1',
-        author: 'Narrador SHARK SET',
-        roleBadge: 'Transmissão Oficial',
-        text: `Transmissão e súmula em tempo real abertas para o Jogo #${match.matchNumber} (${match.stageName}) na ${match.courtName || 'Quadra Central'}!`,
-        timestamp: '10:02',
-      },
-      {
-        id: 'c-2',
-        author: 'Torcedor Gustavo',
-        roleBadge: 'Arquibancada',
-        text: `Jogo muito equilibrado entre ${t1Name} e ${t2Name}! Quem fechar a diagonal longa leva o set!`,
-        timestamp: '10:08',
-      },
-      {
-        id: 'c-3',
-        author: 'Prof. Tavinho',
-        roleBadge: 'Comentarista Tático',
-        text: 'Reparem na leitura de base na defesa: quadril sempre apontado pro ombro do atacante!',
-        timestamp: '10:14',
-      },
-    ];
+    return [];
   });
   const [commentInput, setCommentInput] = useState<string>('');
   const [commentAuthor, setCommentAuthor] = useState<string>('Torcedor Shark Set');
@@ -301,7 +277,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-[#030B17] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl max-w-6xl w-full shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col">
+      <div className="aquarium-glass bg-[#030B17] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl max-w-6xl w-full shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col">
         {/* TOP HEADER: Match Stage, Court, Status, Spectators Count & Quick Actions */}
         <div className="px-4 sm:px-6 py-4 bg-[#071D3D] border-b border-[#145A9B] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -384,7 +360,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
           {/* INFO STRIP: Quadra, Juiz da Partida, Horário, Trocas de Quadra & Torneio */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Quadra Rolando */}
-            <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
+            <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#0987CE]/20 border border-[#0987CE]/40 flex items-center justify-center shrink-0">
                 <MapPin className="w-4 h-4 text-[#0987CE]" />
               </div>
@@ -402,7 +378,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
             </div>
 
             {/* Quem é o Juiz / Árbitro */}
-            <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
+            <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#12C7BB]/20 border border-[#12C7BB]/40 flex items-center justify-center shrink-0">
                 <UserCheck className="w-4 h-4 text-[#12C7BB]" />
               </div>
@@ -450,7 +426,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
             </div>
 
             {/* Quem está Sacando Agora */}
-            <div className="bg-[#071D3D] border border-[#12C7BB]/60 rounded-2xl p-3.5 flex items-start gap-3">
+            <div className="aquarium-glass bg-[#071D3D] border border-[#12C7BB]/60 rounded-2xl p-3.5 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#12C7BB] text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
                 🏐
               </div>
@@ -468,7 +444,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
             </div>
 
             {/* Trocas de Quadra & Público */}
-            <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
+            <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#0987CE]/20 border border-[#0987CE]/40 flex items-center justify-center shrink-0">
                 <RefreshCw className="w-4 h-4 text-[#5BC3FA]" />
               </div>
@@ -509,13 +485,17 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                         : 'bg-[#030B17]/70 border-[#145A9B]'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1">
+                    <div className="h-6 flex items-center justify-between gap-1 mb-1">
                       <span className="text-[10px] font-mono font-bold text-[#0987CE]">
                         DUPLA 1 #{match.team1?.seed || 1}
                       </span>
-                      {refState.servingTeam === 1 && (
+                      {refState.servingTeam === 1 ? (
                         <span className="px-2 py-0.5 rounded bg-[#12C7BB] text-slate-950 font-black text-[9px] uppercase">
                           🏐 Sacando
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-[#071D3D] text-slate-400 font-bold text-[9px] uppercase">
+                          Recepção
                         </span>
                       )}
                     </div>
@@ -530,26 +510,24 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                     )}
 
                     <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-[#145A9B]/50">
-                      <button
+                      <button aria-label="Diminuir 1 ponto da dupla 1" title="Diminuir 1 ponto da dupla 1"
                         type="button"
                         disabled={!isReady}
                         onClick={() => handleQuickSubtractPoint(1)}
-                        className="w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
-                        title="Diminuir 1 ponto"
+                        className="score-control score-control-subtract w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
                       >
                         <Minus className="w-4 h-4" />
                       </button>
                       <span className="text-4xl sm:text-5xl font-mono font-black text-white tabular-nums">
                         {score1}
                       </span>
-                      <button
+                      <button aria-label="Adicionar 1 ponto da dupla 1" title="Adicionar 1 ponto da dupla 1"
                         type="button"
                         disabled={!isReady}
                         onClick={() => handleQuickAddPoint(1)}
-                        className="px-3.5 h-10 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
+                        className="score-control score-control-add px-3.5 h-10 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
                       >
                         <Plus className="w-4 h-4 stroke-[3]" />
-                        +1 Pt
                       </button>
                     </div>
                   </div>
@@ -567,13 +545,17 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                         : 'bg-[#030B17]/70 border-[#145A9B]'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1">
+                    <div className="h-6 flex items-center justify-between gap-1 mb-1">
                       <span className="text-[10px] font-mono font-bold text-[#0987CE]">
                         DUPLA 2 #{match.team2?.seed || 2}
                       </span>
-                      {refState.servingTeam === 2 && (
+                      {refState.servingTeam === 2 ? (
                         <span className="px-2 py-0.5 rounded bg-[#12C7BB] text-slate-950 font-black text-[9px] uppercase">
                           🏐 Sacando
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-[#071D3D] text-slate-400 font-bold text-[9px] uppercase">
+                          Recepção
                         </span>
                       )}
                     </div>
@@ -588,26 +570,24 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                     )}
 
                     <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-[#145A9B]/50">
-                      <button
+                      <button aria-label="Diminuir 1 ponto da dupla 2" title="Diminuir 1 ponto da dupla 2"
                         type="button"
                         disabled={!isReady}
                         onClick={() => handleQuickSubtractPoint(2)}
-                        className="w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
-                        title="Diminuir 1 ponto"
+                        className="score-control score-control-subtract w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
                       >
                         <Minus className="w-4 h-4" />
                       </button>
                       <span className="text-4xl sm:text-5xl font-mono font-black text-white tabular-nums">
                         {score2}
                       </span>
-                      <button
+                      <button aria-label="Adicionar 1 ponto da dupla 2" title="Adicionar 1 ponto da dupla 2"
                         type="button"
                         disabled={!isReady}
                         onClick={() => handleQuickAddPoint(2)}
-                        className="px-3.5 h-10 rounded-xl bg-[#12C7BB] hover:bg-[#0ea89e] text-slate-950 font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
+                        className="score-control score-control-add px-3.5 h-10 rounded-xl bg-[#12C7BB] hover:bg-[#0ea89e] text-slate-950 font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
                       >
                         <Plus className="w-4 h-4 stroke-[3]" />
-                        +1 Pt
                       </button>
                     </div>
                   </div>
@@ -656,7 +636,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
               </div>
 
               {/* ORDEM DE SAQUE DOS 4 ATLETAS */}
-              <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-3">
+              <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-wider text-white">
                     🏐 Ordem Oficial de Rotação de Saque (4 Atletas)
@@ -690,7 +670,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
               </div>
 
               {/* RAIO-X TÉCNICO & HISTÓRICO DE PONTOS */}
-              <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4">
+              <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
                     <Trophy className="w-4 h-4 text-[#0987CE]" />
@@ -711,7 +691,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
 
                 {refState.pointHistory.length === 0 ? (
                   <div className="p-6 rounded-xl bg-[#030B17] border border-[#145A9B]/60 text-center text-xs text-slate-400">
-                    Nenhum ponto detalhado registrado ainda nesta partida. Use os botões <strong>+1 Pt</strong> acima ou abra a Súmula do Árbitro para registrar cada lance em tempo real!
+                    Nenhum ponto detalhado registrado ainda nesta partida. Use os botões <strong>+</strong> acima ou abra a Súmula do Árbitro para registrar cada lance em tempo real!
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -747,7 +727,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
             </div>
 
             {/* RIGHT 5 COLUMNS: Real-Time Match Chat & Spectator Commentary */}
-            <div className="lg:col-span-5 flex flex-col bg-[#071D3D] border border-[#145A9B] rounded-3xl p-4 sm:p-5 space-y-4">
+            <div className="aquarium-glass lg:col-span-5 flex flex-col bg-[#071D3D] border border-[#145A9B] rounded-3xl p-4 sm:p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-[#145A9B]/60 pb-3">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[#12C7BB]" />
@@ -895,3 +875,5 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
     </div>
   );
 };
+
+

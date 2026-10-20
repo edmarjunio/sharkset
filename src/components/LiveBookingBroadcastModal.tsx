@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { BroadcastOverlay } from './BroadcastOverlay';
 import { useApp } from '../context/AppContext';
 import {
   AthleteLevel,
@@ -73,13 +74,14 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
 
   // Camera WebRTC state
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStream = useRef<MediaStream | null>(null);
   const [usingWebcam, setUsingWebcam] = useState(false);
   const [webcamError, setWebcamError] = useState<string | null>(null);
 
-  const [selectedSkill, setSelectedSkill] = useState<PointSkillType>('shark_attack');
+  const [selectedSkill, setSelectedSkill] = useState<PointSkillType>('normal');
   const [streamTitleInput, setStreamTitleInput] = useState<string>(
     activeBooking?.liveBroadcast?.streamTitle ||
-      `Ao Vivo na ${activeBooking?.courtName || 'Arena'} — Vale Ranking`
+      `Ao Vivo na ${activeBooking?.courtName || 'Arena'} — Placar`
   );
   const [chatInput, setChatInput] = useState('');
   const [chatRoleMode, setChatRoleMode] = useState<'referee_broadcaster' | 'player' | 'spectator'>(
@@ -90,55 +92,20 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
     message: string;
   } | null>(null);
 
-  // Stop webcam on unmount
+  useEffect(() => () => cameraStream.current?.getTracks().forEach(track => track.stop()), []);
   useEffect(() => {
-    return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((t) => t.stop());
-      }
-    };
-  }, []);
+    if (usingWebcam && videoRef.current) videoRef.current.srcObject = cameraStream.current;
+  }, [usingWebcam]);
 
-  if (!activeBooking) return null;
+
 
   // Ensure default 4 slots exist in UI editor
   const currentParticipants: BookingParticipant[] = useMemo(() => {
-    const existing = activeBooking.participants || [];
-    const defaults: BookingParticipant[] = [
-      existing[0] || {
-        athleteId: athletes[0]?.id || 'ath-1',
-        name: activeBooking.customerName || athletes[0]?.name || 'Edmar Júnio',
-        level: athletes[0]?.level || 'serie_c',
-        teamSlot: 1,
-        confirmedPresent: true,
-        invitedBy: 'Titular da Reserva',
-      },
-      existing[1] || {
-        athleteId: athletes[1]?.id || 'ath-2',
-        name: athletes[1]?.name || 'Lucas Mendes',
-        level: athletes[1]?.level || 'iniciante',
-        teamSlot: 1,
-        confirmedPresent: true,
-        invitedBy: activeBooking.customerName,
-      },
-      existing[2] || {
-        athleteId: athletes[2]?.id || 'ath-3',
-        name: athletes[2]?.name || 'Rafael Costa',
-        level: athletes[2]?.level || 'serie_c',
-        teamSlot: 2,
-        confirmedPresent: true,
-        invitedBy: activeBooking.customerName,
-      },
-      existing[3] || {
-        athleteId: athletes[3]?.id || 'ath-4',
-        name: athletes[3]?.name || 'Bruno Oliveira',
-        level: athletes[3]?.level || 'iniciante',
-        teamSlot: 2,
-        confirmedPresent: true,
-        invitedBy: activeBooking.customerName,
-      },
-    ];
+    const existing = activeBooking?.participants || [];
+    const defaults: BookingParticipant[] = Array.from({ length: 4 }, (_, index) => existing[index] || {
+      athleteId: '', name: 'Selecionar jogador', level: 'iniciante',
+      teamSlot: index < 2 ? 1 : 2, confirmedPresent: false, invitedBy: activeBooking?.customerName || '',
+    });
     return defaults;
   }, [activeBooking, athletes]);
 
@@ -154,14 +121,14 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
     .map((p) => p.name)
     .join(' & ');
 
-  const liveState = activeBooking.liveBroadcast || {
+  const liveState = activeBooking?.liveBroadcast || {
     isLive: false,
     streamTitle: streamTitleInput,
     videoUrl:
       'https://assets.mixkit.co/videos/preview/mixkit-men-playing-volleyball-on-the-beach-at-sunset-40246-large.mp4',
     thumbnailUrl:
       'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=900&q=80',
-    spectatorsCount: 84,
+    spectatorsCount: 0,
     score1: 0,
     score2: 0,
     targetPoints: 18,
@@ -175,8 +142,9 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
 
   // Check if current logged user is Owner, Invited Participant, or Invited Referee
   const isUserAuthorizedForBooking = useMemo(() => {
+    if (!activeBooking) return '';
     const uName = userProfile.name.toLowerCase();
-    if (activeBooking.customerName.toLowerCase() === uName) return 'Titular do Agendamento';
+    if (activeBooking?.customerName.toLowerCase() === uName) return 'Titular do Agendamento';
     if (currentParticipants.some((p) => p.name.toLowerCase() === uName))
       return 'Convidado da Partida (Mesmo Horário)';
     if (activeBooking.referee?.name.toLowerCase() === uName) return 'Árbitro Convidado da Partida';
@@ -195,7 +163,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             level: found.level,
             teamSlot: (slotIdx < 2 ? 1 : 2) as 1 | 2,
             confirmedPresent: true,
-            invitedBy: activeBooking.customerName,
+            invitedBy: activeBooking?.customerName,
           }
         : item
     );
@@ -261,16 +229,16 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
       try {
         setWebcamError(null);
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
+        cameraStream.current?.getTracks().forEach(track => track.stop());
+        cameraStream.current = stream;
         setUsingWebcam(true);
       } catch {
         setWebcamError(
-          'Sinal de câmera simulado ativado em Alta Definição (permissão de câmera local não detectada no navegador).'
+          'Não foi possível abrir a câmera. Confira a permissão no navegador.'
         );
         setUsingWebcam(false);
       }
+      return; // A local preview does not publish video.
     } else {
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
@@ -281,7 +249,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
 
     updateBookingMatchSetup(activeBooking.id, (prev) => {
       const curr = prev.liveBroadcast || liveState;
-      const nextIsLive = true;
+      const nextIsLive = false;
       return {
         ...prev,
         participants: currentParticipants,
@@ -289,8 +257,8 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
           ...curr,
           isLive: nextIsLive,
           streamTitle:
-            streamTitleInput.trim() || `Ao Vivo: ${team1Names} vs ${team2Names} (Vale Ranking)`,
-          spectatorsCount: Math.max(curr.spectatorsCount || 95, 134),
+            streamTitleInput.trim() || `Ao Vivo: ${team1Names} vs ${team2Names} (Placar)`,
+          spectatorsCount: curr.spectatorsCount || 0,
           startedAt: curr.startedAt || nowStr,
           chatMessages: [
             {
@@ -356,7 +324,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
         participants: currentParticipants,
         liveBroadcast: {
           ...curr,
-          isLive: true,
+          isLive: false,
           score1: nextS1,
           score2: nextS2,
           servingTeam: team,
@@ -364,7 +332,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             team === 1
               ? `${currentParticipants[0]?.name || 'Dupla 1'} (Dupla 1)`
               : `${currentParticipants[2]?.name || 'Dupla 2'} (Dupla 2)`,
-          spectatorsCount: curr.spectatorsCount + (delta > 0 ? 3 : 0),
+          spectatorsCount: curr.spectatorsCount,
           pointHistory: newPointEvent
             ? [newPointEvent, ...(curr.pointHistory || [])].slice(0, 30)
             : curr.pointHistory,
@@ -426,9 +394,11 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
     setRankingFeedback(res);
   };
 
+  if (!activeBooking) return null;
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-3xl max-w-6xl w-full overflow-hidden shadow-2xl my-auto flex flex-col max-h-[95vh]">
+      <div className="aquarium-glass bg-white border border-slate-200 rounded-3xl max-w-6xl w-full overflow-hidden shadow-2xl my-auto flex flex-col max-h-[95vh]">
         {/* Top Modal Header */}
         <div className="bg-slate-900 text-white px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
@@ -480,7 +450,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
           {/* LEFT 7 COLUMNS: Live Video Player + Scoreboard + 4 Players Verification + Referee Invite */}
           <div className="lg:col-span-7 space-y-5">
             {/* Video Stream Container */}
-            <div className="relative rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-900 shadow-lg aspect-video">
+            <div className="aquarium-glass relative rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-900 shadow-lg aspect-video">
               {usingWebcam ? (
                 <video
                   ref={videoRef}
@@ -526,7 +496,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                   {all4IdentifiedAndPresent ? (
                     <span className="px-3 py-1 rounded-full bg-emerald-500/95 text-slate-950 text-[11px] font-black uppercase flex items-center gap-1 shadow-md">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      Prova Real 4 Atletas · Vale Ranking
+                      4 jogadores identificados
                     </span>
                   ) : (
                     <span className="px-3 py-1 rounded-full bg-amber-500/90 text-slate-950 text-[11px] font-black uppercase">
@@ -536,46 +506,9 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                 </div>
               </div>
 
-              {/* Bottom Overlay: TV Broadcast Scoreboard Bug */}
-              <div className="absolute bottom-3 left-3 right-3 bg-slate-950/90 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <div className="text-[11px] font-extrabold text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <MapPin className="w-3 h-3" />
-                    {activeBooking.arenaName} · {activeBooking.courtName} ({activeBooking.startTime})
-                  </div>
-                  <div className="text-sm font-black text-white truncate max-w-md">
-                    {liveState.streamTitle}
-                  </div>
-                  <div className="text-[11px] text-slate-300 flex items-center gap-2">
-                    <span>🎯 Sacando: {liveState.serverName}</span>
-                    {activeBooking.referee && (
-                      <span className="text-cyan-300 font-bold">
-                        · 👑 Árbitro: {activeBooking.referee.name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Live Score Pill */}
-                <div className="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-xl border border-slate-700 shrink-0">
-                  <div className="text-right">
-                    <div className="text-[10px] font-bold text-emerald-400 uppercase truncate max-w-[110px]">
-                      {team1Names}
-                    </div>
-                    <div className="text-2xl font-black tabular-nums text-white">
-                      {liveState.score1}
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-slate-500">X</span>
-                  <div className="text-left">
-                    <div className="text-[10px] font-bold text-sky-400 uppercase truncate max-w-[110px]">
-                      {team2Names}
-                    </div>
-                    <div className="text-2xl font-black tabular-nums text-white">
-                      {liveState.score2}
-                    </div>
-                  </div>
-                </div>
+              {/* Placar de Transmissão SHARKSET (Fixo no Topo Central da Tela da Transmissão) */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-xl z-20 pointer-events-none">
+                <BroadcastOverlay state={liveState} team1={team1Names} team2={team2Names} compact />
               </div>
             </div>
 
@@ -587,7 +520,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             )}
 
             {/* Broadcast Camera & Title Controls */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div className="aquarium-glass bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                   <Video className="w-4 h-4 text-orange-500" />
@@ -600,7 +533,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                     className="px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
                   >
                     <Camera className="w-3.5 h-3.5" />
-                    Abrir Câmera Ao Vivo
+                    Prévia da câmera
                   </button>
                   <button
                     type="button"
@@ -650,7 +583,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             </div>
 
             {/* STEP 1: 4 Identified Players in the Match (Prova Real for Ranking) */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
@@ -760,8 +693,13 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
 
           {/* RIGHT 5 COLUMNS: Referee Scoreboard Console + Ranking Proof Validation + Highlighted Live Chat */}
           <div className="lg:col-span-5 flex flex-col gap-5">
+            <BroadcastOverlay state={liveState} team1={team1Names} team2={team2Names}
+              onPoint={handleScorePoint}
+              onChange={patch => updateBookingMatchSetup(activeBooking.id, previous => ({
+                ...previous, liveBroadcast: { ...(previous.liveBroadcast || liveState), ...patch },
+              }))} />
             {/* Referee Live Score & Ranking Validation Panel */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
@@ -811,19 +749,19 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                     {liveState.score1}
                   </div>
                   <div className="flex items-center justify-center gap-2">
-                    <button
+                    <button aria-label="Diminuir 1 ponto da dupla 1" title="Diminuir 1 ponto da dupla 1"
                       type="button"
                       onClick={() => handleScorePoint(1, -1)}
-                      className="p-2 rounded-xl bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 cursor-pointer"
+                      className="score-control score-control-subtract p-2 rounded-xl bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 cursor-pointer"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <button
+                    <button aria-label="Adicionar 1 ponto da dupla 1" title="Adicionar 1 ponto da dupla 1"
                       type="button"
                       onClick={() => handleScorePoint(1, 1)}
-                      className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                      className="score-control score-control-add flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                     >
-                      <Plus className="w-4 h-4" /> Ponto Dupla 1
+                      <Plus className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -834,19 +772,19 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                     {liveState.score2}
                   </div>
                   <div className="flex items-center justify-center gap-2">
-                    <button
+                    <button aria-label="Diminuir 1 ponto da dupla 2" title="Diminuir 1 ponto da dupla 2"
                       type="button"
                       onClick={() => handleScorePoint(2, -1)}
-                      className="p-2 rounded-xl bg-white border border-sky-200 text-sky-800 hover:bg-sky-100 cursor-pointer"
+                      className="score-control score-control-subtract p-2 rounded-xl bg-white border border-sky-200 text-sky-800 hover:bg-sky-100 cursor-pointer"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <button
+                    <button aria-label="Adicionar 1 ponto da dupla 2" title="Adicionar 1 ponto da dupla 2"
                       type="button"
                       onClick={() => handleScorePoint(2, 1)}
-                      className="flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                      className="score-control score-control-add flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                     >
-                      <Plus className="w-4 h-4" /> Ponto Dupla 2
+                      <Plus className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -903,7 +841,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             </div>
 
             {/* Live Chat with Highlighted Referee / Broadcast Owner Messages */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex-1 flex flex-col justify-between space-y-3 min-h-[340px]">
+            <div className="aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex-1 flex flex-col justify-between space-y-3 min-h-[340px]">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
@@ -1042,3 +980,5 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
     </div>
   );
 };
+
+

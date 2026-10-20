@@ -1,23 +1,45 @@
-import React from 'react';
-import { useApp } from '../context/AppContext';
+import React, { useState, useEffect } from 'react';
+import { useApp, ArenaSubTab } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
 import { SharksetLogo } from './SharksetLogo';
+import { UserProfileModal } from './UserProfileModal';
+import { auth } from '../lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import {
   Search,
-  Video,
   Bell,
-  Palette,
   Radio,
   MapPin,
+  ArrowLeft,
+  PlusCircle,
+  LogIn,
+  Home,
+  Trophy,
+  TrendingUp,
+  Users,
+  UserCheck,
+  Calendar,
+  Award,
+  Info,
+  Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
+import { FreeSlotsNewsTicker } from './FreeSlotsNewsTicker';
+import { TopBarSlotDetailsModal } from './TopBarSlotDetailsModal';
+import { QuickBookingPaymentModal, type QuickBookingSlotData } from './QuickBookingPaymentModal';
+import type { UpcomingSlotItem } from '../hooks/useUpcomingFreeSlots';
+import type { AvailabilityCell } from '../services/bookingAvailability';
+import type { Court, TenantConfig } from '../types';
 
 export const Navbar: React.FC = () => {
   const {
     tenant,
+    setTenantId,
     activeTab,
     setActiveTab,
+    arenaSubTab,
+    setArenaSubTab,
     setCommandPaletteOpen,
-    setTenantModalOpen,
     bookings,
     waitlist,
     waitlistNotifications,
@@ -31,250 +53,649 @@ export const Navbar: React.FC = () => {
     setNotificationDrawerOpen,
   } = useSharkStore();
 
+  const [scrollY, setScrollY] = useState<number>(0);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
+  const [selectedSlotModal, setSelectedSlotModal] = useState<UpcomingSlotItem | null>(null);
+  const [checkoutSlotData, setCheckoutSlotData] = useState<QuickBookingSlotData | null>(null);
+
+  const handleSelectBookingFromModal = (arena: TenantConfig, slot: AvailabilityCell, court: Court) => {
+    setSelectedSlotModal(null);
+    setCheckoutSlotData({
+      arena,
+      courtId: court.id,
+      courtName: court.name,
+      date: slot.date,
+      time: slot.startTime,
+      endTime: slot.endTime,
+      price: slot.price,
+      sport: court.sports[0] || 'futevolei',
+    });
+  };
+
+  const handleGoToArenaFromModal = (arena: TenantConfig) => {
+    setSelectedSlotModal(null);
+    setTenantId(arena.id);
+    setArenaSubTab('agendamentos');
+    setActiveTab('scheduler');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setFirebaseUser(u));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const isScrolled = scrollY > 25;
+  const goHome = () => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
   const activeBookingsCount = bookings.filter((b) => b.status === 'confirmed').length;
   const notifiedWaitlistCount =
     waitlist.filter((w) => w.status === 'notified').length + waitlistNotifications.length;
   const unreadSmartCount = smartNotifications.filter((n) => !n.read).length;
 
-  // Check if we are viewing the Arena page with White-Label Arena Branding enabled
+  // Is viewing a dedicated Arena Page ('scheduler')
+  const isArenaPage = Boolean(tenant.id) && activeTab === 'scheduler';
+
+  // Strictly scope White-Label Arena Branding to the Arena page ('scheduler') only
   const isArenaWhiteLabelSite =
-    (activeTab === 'scheduler' || Boolean(tenant.whiteLabelEnabled)) &&
+    isArenaPage &&
     Boolean(tenant.whiteLabelEnabled && tenant.logoUrl && tenant.brandPalette);
 
   const arenaPalette = tenant.brandPalette;
 
-  const handleOpenLiveBroadcastStudio = () => {
-    const firstActive = bookings.find((b) => b.status === 'confirmed');
-    if (firstActive) {
-      setActiveLiveBroadcastBookingId(firstActive.id);
-    } else {
-      setActiveTab('scheduler');
-    }
+  const openBroadcastStudio = () => {
+    const booking = bookings.find(item => item.status === 'confirmed');
+    if (booking) setActiveLiveBroadcastBookingId(booking.id);
+    else if (tenant.id) { setActiveTab('scheduler'); setArenaSubTab('transmissoes'); } else setActiveTab('live');
   };
+  const liveButtons = (
+    <div className="navbar-live-actions flex items-center gap-2 shrink-0">
+      <button
+        type="button"
+        onClick={() => setActiveTab('live')}
+        aria-current={activeTab === 'live' ? 'page' : undefined}
+        className="navbar-live-action relative inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-red-700/30 border border-red-400/50 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+        title="Assistir partidas ao vivo agora"
+      >
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+        </span>
+        <span>LIVE</span>
+      </button>
 
-  const navItems: { id: typeof activeTab; label: string; isArena?: boolean }[] = [
-    { id: 'tournaments', label: 'CAMPEONATOS' },
-    { id: 'arenas_directory', label: 'ARENAS', isArena: true },
-    { id: 'ranking_athletes', label: 'RANKINGS' },
-    { id: 'shark_academy', label: 'COMUNIDADE' },
-    { id: 'home', label: 'AO VIVO' },
-    { id: 'register_dupla', label: 'INSCRIÇÕES' },
+      <button
+        type="button"
+        onClick={openBroadcastStudio}
+        className="navbar-live-action inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#FF6B00] via-[#FF8533] to-[#E65100] hover:from-[#FF781F] hover:to-[#FF6B00] text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,107,0,0.45)] border border-amber-300 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+        title="Abrir estúdio de transmissão ao vivo"
+      >
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+        </span>
+        <Radio size={14} className="text-slate-950 stroke-[2.5]" />
+        <span>INICIAR TRANSMISSÃO</span>
+      </button>
+    </div>
+  );
+
+  // General Platform Navigation Items with unified pill standard
+  const navItems: {
+    id: typeof activeTab;
+    label: string;
+    icon: React.FC<{ size?: number; className?: string }>;
+    isArena?: boolean;
+  }[] = [
+    { id: 'home', label: 'INÍCIO', icon: Home },
+    { id: 'tournaments', label: 'CAMPEONATOS', icon: Trophy },
+    { id: 'arenas_directory', label: 'ARENAS', icon: MapPin, isArena: true },
+    { id: 'ranking_athletes', label: 'RANKINGS', icon: TrendingUp },
+    { id: 'shark_academy', label: 'COMUNIDADE', icon: Users },
+    { id: 'register_dupla', label: 'INSCRIÇÕES', icon: UserCheck },
+  ];
+
+  // Dedicated Arena Page Navigation Items with unified pill standard
+  const arenaNavItems: {
+    id: ArenaSubTab;
+    label: string;
+    icon: React.FC<{ size?: number; className?: string }>;
+    isLive?: boolean;
+  }[] = [
+    { id: 'agendamentos', label: 'AGENDAMENTOS', icon: Calendar },
+    { id: 'ranking', label: 'RANKING', icon: Trophy },
+    { id: 'campeonatos', label: 'CAMPEONATOS', icon: Award },
+    { id: 'transmissoes', label: 'AO VIVO', icon: Radio, isLive: true },
+    { id: 'comunidade', label: 'COMUNIDADE', icon: Users },
+    { id: 'info_historico', label: 'INFORMAÇÕES', icon: Info },
   ];
 
   const activeAccentHex =
-    isArenaWhiteLabelSite && arenaPalette ? arenaPalette.primary : '#FF6B00';
+    isArenaWhiteLabelSite && arenaPalette ? arenaPalette.accent || arenaPalette.primary : '#FF6B00';
+
+  const effectiveArenaSubTab = arenaSubTab || 'agendamentos';
 
   return (
     <header
-      className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md text-slate-900 border-b border-slate-200 shadow-xs transition-colors"
+      className={`site-navbar aquarium-glass sticky top-0 z-40 w-full bg-[#030B17]/95 backdrop-blur-md text-white border-b border-cyan-500/20 shadow-md transition-all duration-300 ${
+        scrollY > 90 ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+      }`}
       style={
         isArenaWhiteLabelSite && arenaPalette
           ? {
-              borderBottomColor: `${arenaPalette.primary}33`,
+              backgroundColor: arenaPalette.headerBg,
+              borderBottomColor: `${arenaPalette.primary}66`,
             }
           : undefined
       }
     >
-      {/* Top White-Label Ribbon when Arena Custom Site Mode is Active */}
-      {isArenaWhiteLabelSite && arenaPalette && (
+      {/* Top Banner Ribbon for Arena Page */}
+      {isArenaPage && (
         <div
-          className="w-full px-4 py-1 text-[11px] font-black tracking-wider uppercase flex items-center justify-between"
+          className="w-full px-3 sm:px-6 py-1 text-[11px] font-black tracking-wider uppercase flex items-center justify-between border-b transition-colors"
           style={{
-            backgroundColor: arenaPalette.headerBg,
+            backgroundColor: arenaPalette?.primary || '#052342',
+            borderColor: arenaPalette ? `${arenaPalette.accent}44` : '#38bdf844',
             color: '#FFFFFF',
           }}
         >
           <div className="flex items-center gap-2 truncate">
-            <MapPin className="w-3 h-3 shrink-0" style={{ color: arenaPalette.accent }} />
+            <MapPin className="w-3.5 h-3.5 shrink-0 text-amber-400" />
             <span className="truncate">
-              SITE OFICIAL: {tenant.name} ({tenant.city}/{tenant.state})
+              PÁGINA OFICIAL DA ARENA: <strong>{tenant.name}</strong> ({tenant.city}/{tenant.state})
             </span>
           </div>
+
           <div className="flex items-center gap-3 shrink-0">
-            <span className="px-2 py-0.5 rounded bg-white/10 text-[10px] font-black tracking-widest text-white/90 border border-white/15">
-              DESENVOLVIDO POR SHARKSET
+            <button
+              type="button"
+              onClick={() => setActiveTab('arenas_directory')}
+              className="px-2.5 py-0.5 rounded-md bg-white/20 hover:bg-white/30 text-white font-extrabold text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              <span>Ver Outras Arenas</span>
+            </button>
+            <span className="hidden sm:inline px-2 py-0.5 rounded bg-black/25 text-[10px] font-black tracking-widest text-cyan-200 border border-cyan-400/20">
+              SHARKSET
             </span>
           </div>
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 flex items-center justify-between gap-3 min-h-[96px] sm:min-h-[108px] py-2">
-        {/* LEFT: Super Large Brand Logo (Either Arena's White-Label Logo OR Extra-Large SHARKSET Logo) */}
-        <div className="flex items-center gap-3 shrink-0">
-          {isArenaWhiteLabelSite && tenant.logoUrl ? (
-            <div className="flex items-center gap-3">
+      {/* =====================================================================
+          1. TELAS GRANDES (DESKTOP >= 1024px)
+          - Logo na esquerda: grande 3D (124px) no topo, diminuindo suavemente
+            até 36px (tamanho do avatar) ao rolar o site para baixo
+          - À direita: Linha 1 de botões e ações + Linha 2 com campo de busca
+          ===================================================================== */}
+      <div className="header-desktop hidden lg:block max-w-[1600px] mx-auto px-4 sm:px-6 py-2 transition-all duration-300">
+        <div className="header-layout flex items-center gap-4 lg:gap-5">
+
+          {/* Logo Column (Desktop) - Aumentada ocupando o círculo branco de ~124px */}
+          <div className="shrink-0 flex items-center justify-center self-stretch pr-2">
+            {isArenaWhiteLabelSite && tenant.logoUrl ? (
               <button
                 type="button"
                 onClick={() => setActiveTab('scheduler')}
-                className="flex items-center gap-3 group cursor-pointer text-left"
-                title={`Site Oficial ${tenant.name}`}
+                className="group cursor-pointer rounded-full overflow-hidden border-2 border-white/80 shadow-2xl transition-all duration-300 w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center bg-slate-900"
+                style={{ borderColor: arenaPalette?.accent || '#FF6B00' }}
+                title={tenant.name}
               >
                 <img
                   src={tenant.logoUrl}
                   alt={tenant.name}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-contain bg-slate-900 p-1.5 border-2 shadow-md transition-transform group-hover:scale-105 shrink-0"
-                  style={{ borderColor: arenaPalette?.primary || '#FF6B00' }}
+                  className="w-full h-full object-cover"
                 />
-                <div className="hidden xl:block">
-                  <div
-                    className="text-lg font-black tracking-tight leading-tight"
-                    style={{ color: arenaPalette?.headerBg || '#0F172A' }}
+              </button>
+            ) : (
+              <a
+                href="#sharkset"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveTab('home');
+                }}
+                className="navbar-coin-anchor flex items-center justify-center cursor-pointer transition-all duration-300 ease-out z-30 p-1 hover:scale-105"
+                title="SHARKSET Oficial"
+              >
+                <SharksetLogo
+                  variant="coin3d"
+                  customPx={124}
+                  className="transition-all duration-300 drop-shadow-[0_10px_28px_rgba(0,180,255,0.45)]"
+                />
+              </a>
+            )}
+          </div>
+
+          {/* Content Column: Linha 1 (Abas), Linha 2 (Ticker no Retângulo Vermelho + Ações LIVE), Linha 3 (Busca) */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
+
+            {/* Linha 1: Botões de navegação das abas */}
+            <div className="header-navigation-row flex items-center justify-between gap-2">
+              <nav aria-label="Navegação desktop" className="flex flex-wrap items-center gap-2 py-0.5">
+                {isArenaPage ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={goHome}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300 font-bold text-xs uppercase tracking-wider shadow-md active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      <Home size={14} className="text-[#12C7BB]" />
+                      <span>INÍCIO</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('arenas_directory')}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300 font-bold text-xs uppercase tracking-wider shadow-md active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap"
+                      title="Voltar para todas as arenas"
+                    >
+                      <ArrowLeft size={14} className="text-[#12C7BB]" />
+                      <span>Todas as Arenas</span>
+                    </button>
+
+                    {arenaNavItems.map((item) => {
+                      const isActive = effectiveArenaSubTab === item.id;
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          aria-current={isActive ? 'page' : undefined}
+                          onClick={() => setArenaSubTab(item.id)}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all active:translate-y-0.5 cursor-pointer whitespace-nowrap shadow-md ${
+                            isActive
+                              ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border border-cyan-300 shadow-[0_0_15px_rgba(18,199,187,0.45)]'
+                              : 'bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300'
+                          }`}
+                        >
+                          {item.isLive ? (
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                            </span>
+                          ) : (
+                            <Icon size={14} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                          )}
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                ) : (
+                  navItems.map((item) => {
+                    const isActive = activeTab === item.id;
+                    const Icon = item.icon;
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => item.id === 'home' ? goHome() : setActiveTab(item.id)}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all active:translate-y-0.5 cursor-pointer whitespace-nowrap shadow-md ${
+                          isActive
+                            ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border border-cyan-300 shadow-[0_0_15px_rgba(18,199,187,0.45)]'
+                            : 'bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300'
+                        }`}
+                      >
+                        <Icon size={14} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })
+                )}
+              </nav>
+            </div>
+
+            {/* Linha 2: ONDE O USUÁRIO DESENHOU O QUADRADO VERMELHO (Carrossel na esquerda ocupando todo o espaço restante) + Ações à direita (LIVE, INICIAR TRANSMISSÃO, etc) */}
+            <div className="flex items-center justify-between gap-3 w-full">
+              {/* O Quadrado Vermelho: Carrossel de Horários Livres esticado até o botão de LIVE */}
+              <div className="flex-1 min-w-0">
+                <FreeSlotsNewsTicker
+                  onSlotClick={(item) => setSelectedSlotModal(item)}
+                  variant="topbar"
+                />
+              </div>
+
+              {/* Botões de Ação na Direita: LIVE, INICIAR TRANSMISSÃO, Notificação, Usuário, Admin */}
+              <div className="flex items-center gap-2 shrink-0">
+                {liveButtons}
+
+                <button
+                  type="button"
+                  onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
+                  className="relative inline-flex items-center justify-center p-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-slate-200 hover:text-white border border-cyan-500/40 hover:border-cyan-300 transition-all cursor-pointer shadow-md active:translate-y-0.5"
+                  title="Alertas e Notificações"
+                >
+                  <Bell className="w-4 h-4 text-cyan-300" />
+                  {(unreadSmartCount > 0 || notifiedWaitlistCount > 0) && (
+                    <span
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-black text-white flex items-center justify-center shadow-xs bg-red-500 animate-pulse"
+                    >
+                      {unreadSmartCount + notifiedWaitlistCount}
+                    </span>
+                  )}
+                </button>
+
+                {!firebaseUser ? (
+                  <button
+                    type="button"
+                    onClick={() => setProfileModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md active:translate-y-0.5"
+                    title="Entrar com Google"
                   >
-                    {tenant.name}
-                  </div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mt-0.5">
-                    DESENVOLVIDO POR SHARKSET
-                  </div>
-                </div>
+                    <LogIn className="w-3.5 h-3.5 text-[#12C7BB]" />
+                    <span>Entrar com Google</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setProfileModalOpen(true)}
+                    className="relative inline-flex items-center gap-2.5 pl-1 pr-4 py-1 rounded-full bg-[#052445]/90 hover:bg-[#083566] border border-cyan-500/40 hover:border-cyan-300 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all active:translate-y-0.5 cursor-pointer shrink-0"
+                    title={`Perfil de ${firebaseUser.displayName || userProfile.name || 'Atleta'}`}
+                  >
+                    <div className="relative shrink-0">
+                      <div className="w-7 h-7 rounded-full overflow-hidden bg-slate-900 text-white font-black text-xs flex items-center justify-center border border-cyan-400 shadow-xs">
+                        {firebaseUser.photoURL ? (
+                          <img
+                            src={firebaseUser.photoURL}
+                            alt={firebaseUser.displayName || userProfile.name || 'Atleta'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span>{(firebaseUser.displayName || userProfile.name || 'A').charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#052445] shadow-[0_0_8px_rgba(16,185,129,0.95)] z-20 pointer-events-none" />
+                    </div>
+                    <span className="text-xs font-black text-white max-w-[80px] truncate">
+                      {(firebaseUser.displayName || userProfile.name || 'Atleta').split(' ')[0]}
+                    </span>
+                  </button>
+                )}
+
+                {/* Botão de Área do Administrador ao lado do botão com o usuário */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('arena_admin')}
+                  aria-current={activeTab === 'arena_admin' ? 'page' : undefined}
+                  className={`inline-flex items-center justify-center p-2 rounded-full font-bold transition-all active:translate-y-0.5 cursor-pointer shadow-md shrink-0 ${
+                    activeTab === 'arena_admin'
+                      ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 border border-cyan-300 shadow-[0_0_15px_rgba(18,199,187,0.45)]'
+                      : 'bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300'
+                  }`}
+                  title="Área do Administrador"
+                  aria-label="Área do Administrador"
+                >
+                  <ShieldCheck size={16} className={activeTab === 'arena_admin' ? 'text-slate-950 stroke-[2.5]' : 'text-cyan-300'} />
+                </button>
+              </div>
+            </div>
+
+            {/* Linha 3: Campo de Busca Desktop */}
+            <div className="w-full pb-1">
+              <button
+                type="button"
+                onClick={() => setCommandPaletteOpen(true)}
+                className="flex items-center gap-2.5 w-full px-4 py-2 rounded-2xl border border-cyan-500/30 bg-[#071526]/90 hover:bg-[#071526] text-cyan-200 text-xs sm:text-sm text-left shadow-inner transition-colors cursor-pointer"
+                title="Buscar atletas, arenas ou torneios (Ctrl+K)"
+              >
+                <Search className="w-4 h-4 shrink-0 text-cyan-400" />
+                <span className="truncate text-slate-300">Buscar atletas, arenas ou torneios...</span>
+                <span className="ml-auto text-[11px] opacity-60 font-mono">Ctrl + K</span>
               </button>
             </div>
-          ) : (
-            <a
-              href="#sharkset"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveTab('home');
-              }}
-              className="flex items-center gap-2.5 group cursor-pointer transition-transform hover:scale-[1.03] shrink-0"
-              title="SHARKSET Oficial"
+
+          </div>
+        </div>
+      </div>
+
+      {/* =====================================================================
+          2. TELAS PEQUENAS E CELULAR (< 1024px)
+          - Tudo centralizado
+          - Logo um pouco maior (~54px)
+          - Botões SEMPRE A MOSTRA em grid fácil de clicar (zero rolagem de aba!)
+          - Fáceis de usar em qualquer lugar do site
+          ===================================================================== */}
+      {/* =====================================================================
+          2. TELAS PEQUENAS E CELULAR (< 1024px)
+          - Mesmo padrão do PC: Logo na esquerda, Perfil na direita
+          - Entre os dois: Botão de AO VIVO bem destacado (vermelho pulsando) + Notificação
+          - Linha 2: Botões SEMPRE A MOSTRA em grid de fácil clique (zero rolagem de aba!)
+          - Linha 3: Campo de busca centralizado
+          ===================================================================== */}
+      <div className="lg:hidden max-w-2xl mx-auto px-3 sm:px-4 py-2 flex flex-col items-center gap-2">
+
+        {/* LINHA 1 (Topo Mobile):
+            ESQUERDA: Logo
+            ENTRE OS DOIS: Botão AO VIVO pulsante vermelho bem destacado + Botão de Notificação
+            DIREITA: Perfil do usuário */}
+        <div className="w-full flex items-center justify-between gap-2">
+
+          {/* ESQUERDA: LOGO AUMENTADA (ocupando o espaço com presença forte) */}
+          <div className="flex items-center shrink-0">
+            {isArenaWhiteLabelSite && tenant.logoUrl ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab('scheduler')}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-center cursor-pointer active:translate-y-0.5 transition-all"
+                title={tenant.name}
+              >
+                <img
+                  src={tenant.logoUrl}
+                  alt={tenant.name}
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setActiveTab('home')}
+                className="cursor-pointer group flex items-center justify-center shrink-0 transition-transform active:scale-95"
+                title="SHARKSET Início"
+              >
+                <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-transparent active:translate-y-0.5 transition-all">
+                  <SharksetLogo variant="coin3d" customPx={54} />
+                </div>
+              </button>
+            )}
+          </div>
+
+          {/* DIREITA: BOTÃO DE NOTIFICAÇÃO AO LADO DA FOTO DO USUÁRIO + BOLINHA ONLINE À FRENTE DA FOTO E DO ENTORNO */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* BOTÃO DA ÁREA DO ADMINISTRADOR */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('arena_admin')}
+              aria-current={activeTab === 'arena_admin' ? 'page' : undefined}
+              className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 shrink-0 shadow-xs border ${
+                activeTab === 'arena_admin'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 border-cyan-300'
+                  : 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700/80'
+              }`}
+              title="Área do Administrador"
+              aria-label="Área do Administrador"
             >
-              {/* Extra-Large Logo as requested: "Quero a logo maior do que na imagem que enviei, quero bem grande a logo marca" */}
-              <SharksetLogo size="xl" />
-            </a>
-          )}
+              <ShieldCheck className="w-4 h-4 text-cyan-300" />
+            </button>
+
+            {/* BOTÃO DE NOTIFICAÇÃO */}
+            <button
+              type="button"
+              onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
+              className="relative p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 shadow-xs cursor-pointer transition-all active:scale-95 shrink-0"
+              title="Alertas e Notificações"
+              aria-label="Notificações"
+            >
+              <Bell className="w-4 h-4 text-slate-200" />
+              {(unreadSmartCount > 0 || notifiedWaitlistCount > 0) && (
+                <span
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-black text-white bg-[#FF6B00] border border-[#030B17] flex items-center justify-center shadow-xs"
+                >
+                  {unreadSmartCount + notifiedWaitlistCount}
+                </span>
+              )}
+            </button>
+
+            {/* BOTÃO DO USUÁRIO OU LOGIN COM GOOGLE */}
+            {!firebaseUser ? (
+              <button
+                type="button"
+                onClick={() => setProfileModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/40 text-xs font-black cursor-pointer active:scale-95 transition-all shrink-0"
+                title="Entrar com Google"
+              >
+                <LogIn className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Entrar</span>
+              </button>
+            ) : (
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setProfileModalOpen(true)}
+                  className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-slate-900 border-2 border-white/90 shadow-md block cursor-pointer active:scale-95 transition-transform"
+                  title={`Perfil de ${firebaseUser.displayName || userProfile.name || 'Atleta'}`}
+                >
+                  {firebaseUser.photoURL ? (
+                    <img
+                      src={firebaseUser.photoURL}
+                      alt={firebaseUser.displayName || userProfile.name || 'Atleta'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white font-bold text-xs bg-slate-800">
+                      {(firebaseUser.displayName || userProfile.name || 'A').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </button>
+                {/* Bolinha de usuário online NA FRENTE da foto e do entorno */}
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#030B17] shadow-[0_0_8px_rgba(16,185,129,0.95)] z-20 pointer-events-none"
+                  aria-label="Usuário online"
+                />
+              </div>
+            )}
+          </div>
+
         </div>
 
-        {/* CENTER: Clean Descontraído Uppercase Navigation matching the attached print + ARENAS */}
-        <nav className="hidden lg:flex items-center gap-5 xl:gap-7 h-full">
-          {navItems.map((item) => {
-            const isActive =
-              activeTab === item.id ||
-              (item.isArena && (activeTab === 'arenas_directory' || activeTab === 'scheduler'));
+        <div className="w-full flex flex-col gap-2">
+          <FreeSlotsNewsTicker onSlotClick={(item) => setSelectedSlotModal(item)} variant="topbar" />
+          <div className="flex justify-center w-full">{liveButtons}</div>
+        </div>
 
-            return (
+        {/* LINHA 2: BOTÕES SEMPRE A MOSTRA (SEM ROLAR!)
+            Grid responsivo: 3 colunas x 2 linhas em celulares / 6 colunas em tablets.
+            Cada botão é largo, alto (py-2.5) e super fácil de tocar no dedo! */}
+        <div className="w-full">
+          <nav
+            aria-label="Navegação móvel com botões sempre à mostra"
+            className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 w-full"
+          >
+            {isArenaPage && (
               <button
-                key={item.id}
                 type="button"
-                onClick={() => setActiveTab(item.id)}
-                className={`relative py-3 text-xs xl:text-[13px] font-extrabold tracking-wider uppercase transition-colors whitespace-nowrap cursor-pointer ${
-                  isActive ? 'text-slate-950' : 'text-slate-600 hover:text-slate-950'
-                }`}
-                style={isActive ? { color: activeAccentHex } : undefined}
+                onClick={goHome}
+                className="lg:hidden min-h-10 px-3 py-2 rounded-full border border-cyan-500/40 bg-[#052445]/90 text-white text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 shadow-md active:scale-95"
               >
-                <span className="flex items-center gap-1.5">
-                  {item.id === 'home' && (
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  )}
-                  {item.label}
-                </span>
-                {isActive && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-[3px] rounded-full transition-all"
-                    style={{ backgroundColor: activeAccentHex }}
-                  />
-                )}
+                <Home size={13} className="text-[#12C7BB]" />
+                <span>INÍCIO</span>
               </button>
-            );
-          })}
-        </nav>
+            )}
+            {isArenaPage ? (
+              arenaNavItems.map((item) => {
+                const isActive = effectiveArenaSubTab === item.id;
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setArenaSubTab(item.id)}
+                    className={`min-h-10 py-2 px-1.5 text-[11px] font-bold tracking-wider uppercase transition-all rounded-full text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-md border ${
+                      isActive
+                        ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border-cyan-300 shadow-[0_0_12px_rgba(18,199,187,0.4)]'
+                        : 'text-white bg-[#052445]/90 hover:bg-[#083566] border-cyan-500/30'
+                    }`}
+                  >
+                    {item.isLive ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse shrink-0" />
+                    ) : (
+                      <Icon size={13} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                    )}
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })
+            ) : (
+              navItems.map((item) => {
+                const isActive = activeTab === item.id;
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-current={isActive ? 'page' : undefined}
+                    onClick={() => item.id === 'home' ? goHome() : setActiveTab(item.id)}
+                    className={`min-h-10 py-2 px-1.5 text-[11px] font-bold tracking-wider uppercase transition-all rounded-full text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-md border ${
+                      isActive
+                        ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border-cyan-300 shadow-[0_0_12px_rgba(18,199,187,0.4)]'
+                        : 'text-white bg-[#052445]/90 hover:bg-[#083566] border-cyan-500/30'
+                    }`}
+                  >
+                    <Icon size={13} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })
+            )}
+          </nav>
+        </div>
 
-        {/* RIGHT: Pill Search Bar + Transmitir Ao Vivo / Criar Torneio Orange Pill Button + User Avatar */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Search Input Pill (Matches screenshot "Buscar atletas ou torneios...") */}
+        {/* LINHA 3: CAMPO DE BUSCA CENTRALIZADO */}
+        <div className="w-full">
           <button
             type="button"
             onClick={() => setCommandPaletteOpen(true)}
-            className="hidden md:flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200/75 border border-slate-200/90 text-xs font-medium text-slate-500 w-48 xl:w-60 transition-all cursor-pointer text-left"
+            className="flex items-center gap-2 w-full px-3.5 py-2 rounded-xl border border-cyan-500/30 bg-[#071526]/90 hover:bg-[#071526] text-cyan-200 text-xs text-left shadow-inner transition-colors cursor-pointer"
             title="Buscar atletas, arenas ou torneios (Ctrl+K)"
           >
-            <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate">Buscar atletas ou torneios...</span>
-          </button>
-
-          {/* Direct Live Broadcast Button ("fazer uma transmissão live ao vivo direto pelo site") */}
-          <button
-            type="button"
-            onClick={handleOpenLiveBroadcastStudio}
-            className="px-3.5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all whitespace-nowrap"
-            title="Iniciar ou abrir transmissão ao vivo de agendamento na Arena"
-          >
-            <Radio className="w-3.5 h-3.5 text-red-400 animate-pulse shrink-0" />
-            <span className="hidden sm:inline">Transmitir Live</span>
-          </button>
-
-          {/* Primary Orange Pill CTA Button (Matches screenshot "Criar Torneio") */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('tournaments')}
-            className="px-4 sm:px-5 py-2.5 rounded-full text-white text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer shadow-sm hover:brightness-105 active:scale-[0.99]"
-            style={{ backgroundColor: activeAccentHex }}
-          >
-            Criar Torneio
-          </button>
-
-          {/* Notifications Bell */}
-          <button
-            type="button"
-            onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
-            className="relative p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-            title="Alertas e Notificações"
-          >
-            <Bell className="w-4 h-4" />
-            {(unreadSmartCount > 0 || notifiedWaitlistCount > 0) && (
-              <span
-                className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-black text-white flex items-center justify-center"
-                style={{ backgroundColor: activeAccentHex }}
-              >
-                {unreadSmartCount + notifiedWaitlistCount}
-              </span>
-            )}
-          </button>
-
-          {/* User Avatar Circle matching the screenshot */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('my_bookings')}
-            className="relative flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all cursor-pointer"
-            title={`Perfil de ${userProfile.name} (${activeBookingsCount} reservas)`}
-          >
-            <div className="relative w-9 h-9 rounded-full overflow-hidden bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
-                alt={userProfile.name}
-                className="w-full h-full object-cover"
-              />
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-            </div>
-            <span className="hidden xl:inline text-xs font-extrabold text-slate-800 max-w-[90px] truncate">
-              {userProfile.name.split(' ')[0]}
-            </span>
+            <Search className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+            <span className="truncate text-slate-300">Buscar atletas, arenas ou torneios...</span>
+            <span className="ml-auto text-[10px] opacity-60 font-mono">Buscar</span>
           </button>
         </div>
+
       </div>
 
-      {/* Mobile & Tablet Horizontal Navigation Bar */}
-      <div className="lg:hidden flex items-center justify-between border-t border-slate-200 bg-slate-50 px-3 py-2 overflow-x-auto gap-2">
-        {navItems.map((item) => {
-          const isActive =
-            activeTab === item.id ||
-            (item.isArena && (activeTab === 'arenas_directory' || activeTab === 'scheduler'));
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveTab(item.id)}
-              className={`px-3 py-1.5 text-[11px] font-extrabold rounded-full whitespace-nowrap cursor-pointer transition-all ${
-                isActive
-                  ? 'text-white shadow-xs'
-                  : 'text-slate-600 bg-white border border-slate-200'
-              }`}
-              style={isActive ? { backgroundColor: activeAccentHex } : undefined}
-            >
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
+
+      <TopBarSlotDetailsModal
+        isOpen={Boolean(selectedSlotModal)}
+        onClose={() => setSelectedSlotModal(null)}
+        arena={selectedSlotModal?.arena || null}
+        court={selectedSlotModal?.court || null}
+        slot={selectedSlotModal?.slot || null}
+        distanceKm={selectedSlotModal?.distanceKm}
+        onSelectBooking={handleSelectBookingFromModal}
+        onGoToArena={handleGoToArenaFromModal}
+      />
+
+      <QuickBookingPaymentModal
+        slotData={checkoutSlotData}
+        onClose={() => setCheckoutSlotData(null)}
+      />
     </header>
   );
 };

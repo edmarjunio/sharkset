@@ -1,3 +1,5 @@
+import { generateBracket } from './bracketGraph';
+import { resolveBracket, officializeMatch, resetBracketMatch, editMatchDetails } from './bracketOperations';
 import {
   BracketMatch,
   RefereeMatchState,
@@ -51,823 +53,47 @@ export function buildDefaultRefereeState(
   };
 }
 
-/**
- * Cria chave enxuta de 4 duplas quando o torneio inicia com até 4 duplas presentes.
- */
-export function createFourPairsBracket(
-  tournamentId: string,
-  orderedPairs: (TeamPair | undefined)[],
-  semiFormat: SemiFormat = 'semi_direta'
-): BracketMatch[] {
-  const getPair = (idx: number) => orderedPairs[idx];
+export { officializeMatch, resetBracketMatch, allowSemifinalException, changeMatchRules, declareWalkover, editRegisteredTeam, correctionImpact } from './bracketOperations';
 
-  if (semiFormat === 'semi_direta') {
-    const matches: BracketMatch[] = [
-      {
-        id: `${tournamentId}-m1`,
-        tournamentId,
-        matchNumber: 1,
-        stage: 'semifinals',
-        round: 1,
-        stageName: 'Semifinal Direta 1 - Jogo 1',
-        team1: getPair(0),
-        team2: getPair(3),
-        status: 'scheduled',
-        scheduledTime: '09:00',
-        courtName: 'Quadra 1 - Central SHARK SET',
-        nextMatchWinnerId: `${tournamentId}-m3`,
-        winnerDestinationSlot: 'team1',
-        nextMatchLoserId: `${tournamentId}-m4`,
-        loserDestinationSlot: 'team1',
-      },
-      {
-        id: `${tournamentId}-m2`,
-        tournamentId,
-        matchNumber: 2,
-        stage: 'semifinals',
-        round: 1,
-        stageName: 'Semifinal Direta 2 - Jogo 2',
-        team1: getPair(1),
-        team2: getPair(2),
-        status: 'scheduled',
-        scheduledTime: '09:45',
-        courtName: 'Quadra 2 - SHARK SET Palmeiras',
-        nextMatchWinnerId: `${tournamentId}-m3`,
-        winnerDestinationSlot: 'team2',
-        nextMatchLoserId: `${tournamentId}-m4`,
-        loserDestinationSlot: 'team2',
-      },
-      {
-        id: `${tournamentId}-m4`,
-        tournamentId,
-        matchNumber: 3,
-        stage: 'third_place',
-        round: 2,
-        stageName: 'Disputa de 3º Lugar - Jogo 3',
-        status: 'scheduled',
-        scheduledTime: '10:45',
-        courtName: 'Quadra 2 - SHARK SET Palmeiras',
-      },
-      {
-        id: `${tournamentId}-m3`,
-        tournamentId,
-        matchNumber: 4,
-        stage: 'grand_final',
-        round: 2,
-        stageName: 'Grande Final - Jogo 4',
-        status: 'scheduled',
-        scheduledTime: '11:30',
-        courtName: 'Quadra 1 - Central SHARK SET',
-      },
-    ];
-    return autoAdvanceByesInRound1(matches);
-  }
-
-  // 4 duplas com Repescagem (Dupla Eliminatória)
-  const matches: BracketMatch[] = [
-    {
-      id: `${tournamentId}-m1`,
-      tournamentId,
-      matchNumber: 1,
-      stage: 'winners',
-      round: 1,
-      stageName: 'Rodada 1 Principal - Jogo 1',
-      team1: getPair(0),
-      team2: getPair(3),
-      status: 'scheduled',
-      scheduledTime: '09:00',
-      courtName: 'Quadra 1 - Central SHARK SET',
-      nextMatchWinnerId: `${tournamentId}-m3`,
-      winnerDestinationSlot: 'team1',
-      nextMatchLoserId: `${tournamentId}-m2`,
-      loserDestinationSlot: 'team1',
-    },
-    {
-      id: `${tournamentId}-m2-w`,
-      tournamentId,
-      matchNumber: 2,
-      stage: 'winners',
-      round: 1,
-      stageName: 'Rodada 1 Principal - Jogo 2',
-      team1: getPair(1),
-      team2: getPair(2),
-      status: 'scheduled',
-      scheduledTime: '09:45',
-      courtName: 'Quadra 2 - SHARK SET Palmeiras',
-      nextMatchWinnerId: `${tournamentId}-m3`,
-      winnerDestinationSlot: 'team2',
-      nextMatchLoserId: `${tournamentId}-m2`,
-      loserDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m2`,
-      tournamentId,
-      matchNumber: 3,
-      stage: 'losers',
-      round: 1,
-      stageName: 'Repescagem R1 - Jogo 3',
-      status: 'scheduled',
-      scheduledTime: '10:30',
-      courtName: 'Quadra 2 - SHARK SET Palmeiras',
-      nextMatchWinnerId: `${tournamentId}-m4`,
-      winnerDestinationSlot: 'team1',
-    },
-    {
-      id: `${tournamentId}-m3`,
-      tournamentId,
-      matchNumber: 4,
-      stage: 'winners',
-      round: 2,
-      stageName: 'Final dos Vencedores - Jogo 4',
-      status: 'scheduled',
-      scheduledTime: '11:15',
-      courtName: 'Quadra 1 - Central SHARK SET',
-      nextMatchWinnerId: `${tournamentId}-m5`,
-      winnerDestinationSlot: 'team1',
-      nextMatchLoserId: `${tournamentId}-m4`,
-      loserDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m4`,
-      tournamentId,
-      matchNumber: 5,
-      stage: 'losers',
-      round: 2,
-      stageName: 'Final da Repescagem - Jogo 5',
-      status: 'scheduled',
-      scheduledTime: '12:00',
-      courtName: 'Quadra 1 - Central SHARK SET',
-      nextMatchWinnerId: `${tournamentId}-m5`,
-      winnerDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m5`,
-      tournamentId,
-      matchNumber: 6,
-      stage: 'grand_final',
-      round: 3,
-      stageName: 'Grande Final - Jogo 6',
-      status: 'scheduled',
-      scheduledTime: '13:00',
-      courtName: 'Quadra 1 - Central SHARK SET',
-    },
-  ];
-  return autoAdvanceByesInRound1(matches);
-}
-
-/**
- * Se uma partida da Rodada 1 tiver apenas 1 dupla (BYE por número ímpar de duplas presentes),
- * avança automaticamente a dupla presente para a fase seguinte sem precisar lançar placar.
- */
-export function autoAdvanceByesInRound1(matches: BracketMatch[]): BracketMatch[] {
-  const updated = matches.map((m) => ({ ...m }));
-  const round1Matches = updated.filter((m) => m.round === 1 && (m.stage === 'winners' || m.stage === 'semifinals'));
-
-  for (const m of round1Matches) {
-    const hasT1 = !!m.team1;
-    const hasT2 = !!m.team2;
-    if ((hasT1 && !hasT2) || (!hasT1 && hasT2)) {
-      const winner = hasT1 ? m.team1! : m.team2!;
-      m.score1 = hasT1 ? 18 : 0;
-      m.score2 = hasT2 ? 18 : 0;
-      m.winnerId = winner.id;
-      m.status = 'completed';
-
-      if (m.nextMatchWinnerId) {
-        const nextMatch = updated.find((nx) => nx.id === m.nextMatchWinnerId);
-        if (nextMatch) {
-          if (m.winnerDestinationSlot === 'team1') nextMatch.team1 = winner;
-          else if (m.winnerDestinationSlot === 'team2') nextMatch.team2 = winner;
-          else if (!nextMatch.team1) nextMatch.team1 = winner;
-          else nextMatch.team2 = winner;
-        }
-      }
-    }
-  }
-
-  return updated;
-}
-
-/**
- * Gera a chave de acordo com as duplas presentes no torneio, permitindo:
- * - 'random': Sorteio Aleatório
- * - 'manual': Posicionamento manual escolhido pelo organizador
- * - 'seeded': Ordem de cabeças de chave (Seed)
- */
-export function createBracketForPresentPairs(
-  tournamentId: string,
-  presentPairs: TeamPair[],
-  semiFormat: SemiFormat = 'semi_direta',
-  drawMode: 'seeded' | 'random' | 'manual' = 'seeded',
-  manualSlotPairIds?: (string | '')[]
-): BracketMatch[] {
-  const activePairs = presentPairs.filter((p) => p.enrollmentStatus !== 'rejected' && p.isPresent !== false);
-
-  let orderedSlots: (TeamPair | undefined)[] = [];
-
-  if (drawMode === 'manual' && manualSlotPairIds && manualSlotPairIds.length > 0) {
-    orderedSlots = manualSlotPairIds.map((id) => activePairs.find((p) => p.id === id));
+export function createBracketForPresentPairs(tournamentId: string, presentPairs: TeamPair[], _semiFormat: SemiFormat = 'semi_direta', drawMode: 'seeded' | 'random' | 'manual' = 'seeded', manualSlotPairIds?: (string | '')[]): BracketMatch[] {
+  let teams = presentPairs.filter(team => team.tournamentId === tournamentId && team.enrollmentStatus !== 'rejected' && team.isPresent !== false);
+  let randomSeed: number | undefined;
+  if (drawMode === 'manual') {
+    const ids = manualSlotPairIds || [];
+    if (ids.length !== teams.length || new Set(ids).size !== teams.length || ids.some(id => !teams.some(team => team.id === id))) throw new Error('A ordem manual deve conter cada dupla uma única vez, sem vagas vazias.');
+    const byId = new Map(teams.map(team => [team.id, team]));
+    teams = ids.map(id => byId.get(id)!);
   } else if (drawMode === 'random') {
-    const shuffled = [...activePairs];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    teams = [...teams];
+    randomSeed = crypto.getRandomValues(new Uint32Array(1))[0] || 1;
+    let state = randomSeed;
+    for (let i = teams.length - 1; i > 0; i--) {
+      state ^= state << 13; state ^= state >>> 17; state ^= state << 5;
+      const j = Math.floor((state >>> 0) / 4294967296 * (i + 1));
+      [teams[i], teams[j]] = [teams[j], teams[i]];
     }
-    orderedSlots = shuffled.map((p, idx) => ({ ...p, seed: idx + 1 }));
-  } else {
-    orderedSlots = [...activePairs].sort((a, b) => a.seed - b.seed);
-  }
-
-  const slotCount = manualSlotPairIds ? manualSlotPairIds.length : activePairs.length;
-
-  if (slotCount <= 4) {
-    return createFourPairsBracket(tournamentId, orderedSlots, semiFormat);
-  }
-
-  const baseMatches = createBuraco4BracketWithSlots(tournamentId, orderedSlots, semiFormat);
-  return autoAdvanceByesInRound1(baseMatches);
+  } else teams = [...teams].sort((a, b) => a.seed - b.seed);
+  const matches = generateBracket(tournamentId, teams, { directSlots: drawMode === 'manual' });
+  Object.assign(matches[0].bracketStructure!, { drawMode, randomSeed });
+  return matches;
 }
 
-/**
- * Cria a chave de Eliminatória Dupla (até 8 duplas) suportando os dois formatos:
- * 1. 'semi_direta' (Padrão Futevôlei): Repescagem vai até definir os 2 classificados do Buraco.
- *    Na Semifinal (2 invictos vs 2 da repescagem), é mata-mata direto (ninguém pode perder mais).
- * 2. 'semi_com_chance' (Padrão Challonge hs5f5865): Quem está na chave dos vencedores ainda
- *    pode perder na semifinal ou final dos vencedores e cair para a repescagem.
- */
-export function createBuraco4Bracket(
-  tournamentId: string,
-  registeredPairs: TeamPair[],
-  semiFormat: SemiFormat = 'semi_direta'
-): BracketMatch[] {
-  const active = registeredPairs
-    .filter((p) => p.enrollmentStatus !== 'rejected' && p.isPresent !== false)
-    .sort((a, b) => a.seed - b.seed);
-
-  if (active.length > 0 && active.length <= 4) {
-    return createFourPairsBracket(tournamentId, active, semiFormat);
-  }
-
-  return autoAdvanceByesInRound1(createBuraco4BracketWithSlots(tournamentId, active, semiFormat));
+export function createBuraco4Bracket(tournamentId: string, registeredPairs: TeamPair[], format: SemiFormat = 'semi_direta'): BracketMatch[] {
+  return createBracketForPresentPairs(tournamentId, registeredPairs, format);
 }
-
-function createBuraco4BracketWithSlots(
-  tournamentId: string,
-  slots: (TeamPair | undefined)[],
-  semiFormat: SemiFormat = 'semi_direta'
-): BracketMatch[] {
-  const getPair = (index: number) => slots[index];
-
-  if (semiFormat === 'semi_direta') {
-    return [
-      // RODADA 1: CHAVE PRINCIPAL (QUARTAS)
-      {
-        id: `${tournamentId}-m1`,
-        tournamentId,
-        matchNumber: 1,
-        stage: 'winners',
-        round: 1,
-        stageName: 'R1 Principal - Jogo 1',
-        team1: getPair(0),
-        team2: getPair(7),
-        status: 'scheduled',
-        scheduledTime: '08:30',
-        courtName: 'Quadra 1 - Central',
-        nextMatchWinnerId: `${tournamentId}-m7`,
-        winnerDestinationSlot: 'team1',
-        nextMatchLoserId: `${tournamentId}-m5`,
-        loserDestinationSlot: 'team1',
-      },
-      {
-        id: `${tournamentId}-m2`,
-        tournamentId,
-        matchNumber: 2,
-        stage: 'winners',
-        round: 1,
-        stageName: 'R1 Principal - Jogo 2',
-        team1: getPair(3),
-        team2: getPair(4),
-        status: 'scheduled',
-        scheduledTime: '09:15',
-        courtName: 'Quadra 2',
-        nextMatchWinnerId: `${tournamentId}-m7`,
-        winnerDestinationSlot: 'team2',
-        nextMatchLoserId: `${tournamentId}-m5`,
-        loserDestinationSlot: 'team2',
-      },
-      {
-        id: `${tournamentId}-m3`,
-        tournamentId,
-        matchNumber: 3,
-        stage: 'winners',
-        round: 1,
-        stageName: 'R1 Principal - Jogo 3',
-        team1: getPair(2),
-        team2: getPair(5),
-        status: 'scheduled',
-        scheduledTime: '10:00',
-        courtName: 'Quadra 1 - Central',
-        nextMatchWinnerId: `${tournamentId}-m8`,
-        winnerDestinationSlot: 'team1',
-        nextMatchLoserId: `${tournamentId}-m6`,
-        loserDestinationSlot: 'team1',
-      },
-      {
-        id: `${tournamentId}-m4`,
-        tournamentId,
-        matchNumber: 4,
-        stage: 'winners',
-        round: 1,
-        stageName: 'R1 Principal - Jogo 4',
-        team1: getPair(1),
-        team2: getPair(6),
-        status: 'scheduled',
-        scheduledTime: '10:45',
-        courtName: 'Quadra 2',
-        nextMatchWinnerId: `${tournamentId}-m8`,
-        winnerDestinationSlot: 'team2',
-        nextMatchLoserId: `${tournamentId}-m6`,
-        loserDestinationSlot: 'team2',
-      },
-
-      // RODADA 2 PRINCIPAL: VALE VAGA DIRETA NA SEMIFINAL
-      {
-        id: `${tournamentId}-m7`,
-        tournamentId,
-        matchNumber: 7,
-        stage: 'winners',
-        round: 2,
-        stageName: 'Qualificatória Vencedores - J7',
-        status: 'scheduled',
-        scheduledTime: '12:45',
-        courtName: 'Quadra 1 - Central',
-        nextMatchWinnerId: `${tournamentId}-m11`,
-        winnerDestinationSlot: 'team1',
-        nextMatchLoserId: `${tournamentId}-m10`,
-        loserDestinationSlot: 'team2',
-      },
-      {
-        id: `${tournamentId}-m8`,
-        tournamentId,
-        matchNumber: 8,
-        stage: 'winners',
-        round: 2,
-        stageName: 'Qualificatória Vencedores - J8',
-        status: 'scheduled',
-        scheduledTime: '13:30',
-        courtName: 'Quadra 2',
-        nextMatchWinnerId: `${tournamentId}-m12`,
-        winnerDestinationSlot: 'team1',
-        nextMatchLoserId: `${tournamentId}-m9`,
-        loserDestinationSlot: 'team2',
-      },
-
-      // REPESCAGEM / BURACO 4 (RODADA 1 E 2 DOS PERDEDORES)
-      {
-        id: `${tournamentId}-m5`,
-        tournamentId,
-        matchNumber: 5,
-        stage: 'losers',
-        round: 1,
-        stageName: 'Buraco R1 (Repescagem) - J5',
-        status: 'scheduled',
-        scheduledTime: '11:30',
-        courtName: 'Quadra 1 - Central',
-        nextMatchWinnerId: `${tournamentId}-m9`,
-        winnerDestinationSlot: 'team1',
-      },
-      {
-        id: `${tournamentId}-m6`,
-        tournamentId,
-        matchNumber: 6,
-        stage: 'losers',
-        round: 1,
-        stageName: 'Buraco R1 (Repescagem) - J6',
-        status: 'scheduled',
-        scheduledTime: '12:00',
-        courtName: 'Quadra 2',
-        nextMatchWinnerId: `${tournamentId}-m10`,
-        winnerDestinationSlot: 'team1',
-      },
-      {
-        id: `${tournamentId}-m9`,
-        tournamentId,
-        matchNumber: 9,
-        stage: 'losers',
-        round: 2,
-        stageName: 'Buraco R2 (Vale Vaga na Semi) - J9',
-        status: 'scheduled',
-        scheduledTime: '14:15',
-        courtName: 'Quadra 1 - Central',
-        nextMatchWinnerId: `${tournamentId}-m11`,
-        winnerDestinationSlot: 'team2',
-      },
-      {
-        id: `${tournamentId}-m10`,
-        tournamentId,
-        matchNumber: 10,
-        stage: 'losers',
-        round: 2,
-        stageName: 'Buraco R2 (Vale Vaga na Semi) - J10',
-        status: 'scheduled',
-        scheduledTime: '15:00',
-        courtName: 'Quadra 2',
-        nextMatchWinnerId: `${tournamentId}-m12`,
-        winnerDestinationSlot: 'team2',
-      },
-
-      // SEMIFINAIS DIRETAS (MATA-MATA PURO: VENCEU VAI PRA FINAL · PERDEU VAI PRA DISPUTA DE 3º LUGAR)
-      {
-        id: `${tournamentId}-m11`,
-        tournamentId,
-        matchNumber: 11,
-        stage: 'semifinals',
-        round: 3,
-        stageName: 'Semifinal Direta 1 (Mata-Mata) - J11',
-        status: 'scheduled',
-        scheduledTime: '16:00',
-        courtName: 'Quadra 1 - Central',
-        nextMatchWinnerId: `${tournamentId}-m13`,
-        winnerDestinationSlot: 'team1',
-        nextMatchLoserId: `${tournamentId}-m3rd`,
-        loserDestinationSlot: 'team1',
-      },
-      {
-        id: `${tournamentId}-m12`,
-        tournamentId,
-        matchNumber: 12,
-        stage: 'semifinals',
-        round: 3,
-        stageName: 'Semifinal Direta 2 (Mata-Mata) - J12',
-        status: 'scheduled',
-        scheduledTime: '16:45',
-        courtName: 'Quadra 2',
-        nextMatchWinnerId: `${tournamentId}-m13`,
-        winnerDestinationSlot: 'team2',
-        nextMatchLoserId: `${tournamentId}-m3rd`,
-        loserDestinationSlot: 'team2',
-      },
-
-      // DISPUTA DE 3º LUGAR
-      {
-        id: `${tournamentId}-m3rd`,
-        tournamentId,
-        matchNumber: 13,
-        stage: 'third_place',
-        round: 4,
-        stageName: 'Disputa de 3º Lugar - J13',
-        status: 'scheduled',
-        scheduledTime: '17:30',
-        courtName: 'Quadra 2',
-      },
-
-      // GRANDE FINAL
-      {
-        id: `${tournamentId}-m13`,
-        tournamentId,
-        matchNumber: 14,
-        stage: 'grand_final',
-        round: 4,
-        stageName: 'Grande Final - J14',
-        status: 'scheduled',
-        scheduledTime: '18:15',
-        courtName: 'Quadra 1 - Central',
-      },
-    ];
-  }
-
-  // MODO 2: SEMI COM CHANCE (PADRÃO CHALLONGE hs5f5865 COMPLETO)
-  return [
-    {
-      id: `${tournamentId}-m1`,
-      tournamentId,
-      matchNumber: 1,
-      stage: 'winners',
-      round: 1,
-      stageName: 'Quartas Vencedores - J1',
-      team1: getPair(0),
-      team2: getPair(7),
-      status: 'scheduled',
-      scheduledTime: '08:30',
-      courtName: 'Quadra 1 - Central',
-      nextMatchWinnerId: `${tournamentId}-m7`,
-      winnerDestinationSlot: 'team1',
-      nextMatchLoserId: `${tournamentId}-m5`,
-      loserDestinationSlot: 'team1',
-    },
-    {
-      id: `${tournamentId}-m2`,
-      tournamentId,
-      matchNumber: 2,
-      stage: 'winners',
-      round: 1,
-      stageName: 'Quartas Vencedores - J2',
-      team1: getPair(3),
-      team2: getPair(4),
-      status: 'scheduled',
-      scheduledTime: '09:15',
-      courtName: 'Quadra 2',
-      nextMatchWinnerId: `${tournamentId}-m7`,
-      winnerDestinationSlot: 'team2',
-      nextMatchLoserId: `${tournamentId}-m5`,
-      loserDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m3`,
-      tournamentId,
-      matchNumber: 3,
-      stage: 'winners',
-      round: 1,
-      stageName: 'Quartas Vencedores - J3',
-      team1: getPair(2),
-      team2: getPair(5),
-      status: 'scheduled',
-      scheduledTime: '10:00',
-      courtName: 'Quadra 1 - Central',
-      nextMatchWinnerId: `${tournamentId}-m8`,
-      winnerDestinationSlot: 'team1',
-      nextMatchLoserId: `${tournamentId}-m6`,
-      loserDestinationSlot: 'team1',
-    },
-    {
-      id: `${tournamentId}-m4`,
-      tournamentId,
-      matchNumber: 4,
-      stage: 'winners',
-      round: 1,
-      stageName: 'Quartas Vencedores - J4',
-      team1: getPair(1),
-      team2: getPair(6),
-      status: 'scheduled',
-      scheduledTime: '10:45',
-      courtName: 'Quadra 2',
-      nextMatchWinnerId: `${tournamentId}-m8`,
-      winnerDestinationSlot: 'team2',
-      nextMatchLoserId: `${tournamentId}-m6`,
-      loserDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m7`,
-      tournamentId,
-      matchNumber: 7,
-      stage: 'winners',
-      round: 2,
-      stageName: 'Semifinal Vencedores (Com Chance) - J7',
-      status: 'scheduled',
-      scheduledTime: '13:00',
-      courtName: 'Quadra 1 - Central',
-      nextMatchWinnerId: `${tournamentId}-m11`,
-      winnerDestinationSlot: 'team1',
-      nextMatchLoserId: `${tournamentId}-m10`,
-      loserDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m8`,
-      tournamentId,
-      matchNumber: 8,
-      stage: 'winners',
-      round: 2,
-      stageName: 'Semifinal Vencedores (Com Chance) - J8',
-      status: 'scheduled',
-      scheduledTime: '13:45',
-      courtName: 'Quadra 2',
-      nextMatchWinnerId: `${tournamentId}-m11`,
-      winnerDestinationSlot: 'team2',
-      nextMatchLoserId: `${tournamentId}-m9`,
-      loserDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m11`,
-      tournamentId,
-      matchNumber: 11,
-      stage: 'winners',
-      round: 3,
-      stageName: 'Final dos Vencedores - J11',
-      status: 'scheduled',
-      scheduledTime: '16:00',
-      courtName: 'Quadra 1 - Central',
-      nextMatchWinnerId: `${tournamentId}-m14`,
-      winnerDestinationSlot: 'team1',
-      nextMatchLoserId: `${tournamentId}-m13`,
-      loserDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m5`,
-      tournamentId,
-      matchNumber: 5,
-      stage: 'losers',
-      round: 1,
-      stageName: 'Repescagem R1 - J5',
-      status: 'scheduled',
-      scheduledTime: '11:30',
-      courtName: 'Quadra 1 - Central',
-      nextMatchWinnerId: `${tournamentId}-m9`,
-      winnerDestinationSlot: 'team1',
-    },
-    {
-      id: `${tournamentId}-m6`,
-      tournamentId,
-      matchNumber: 6,
-      stage: 'losers',
-      round: 1,
-      stageName: 'Repescagem R1 - J6',
-      status: 'scheduled',
-      scheduledTime: '12:15',
-      courtName: 'Quadra 2',
-      nextMatchWinnerId: `${tournamentId}-m10`,
-      winnerDestinationSlot: 'team1',
-    },
-    {
-      id: `${tournamentId}-m9`,
-      tournamentId,
-      matchNumber: 9,
-      stage: 'losers',
-      round: 2,
-      stageName: 'Repescagem R2 (Recebe Perdedor Semi) - J9',
-      status: 'scheduled',
-      scheduledTime: '14:30',
-      courtName: 'Quadra 1 - Central',
-      nextMatchWinnerId: `${tournamentId}-m12`,
-      winnerDestinationSlot: 'team1',
-    },
-    {
-      id: `${tournamentId}-m10`,
-      tournamentId,
-      matchNumber: 10,
-      stage: 'losers',
-      round: 2,
-      stageName: 'Repescagem R2 (Recebe Perdedor Semi) - J10',
-      status: 'scheduled',
-      scheduledTime: '15:15',
-      courtName: 'Quadra 2',
-      nextMatchWinnerId: `${tournamentId}-m12`,
-      winnerDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m12`,
-      tournamentId,
-      matchNumber: 12,
-      stage: 'losers',
-      round: 3,
-      stageName: 'Semifinal da Repescagem - J12',
-      status: 'scheduled',
-      scheduledTime: '16:45',
-      courtName: 'Quadra 2',
-      nextMatchWinnerId: `${tournamentId}-m13`,
-      winnerDestinationSlot: 'team1',
-    },
-    {
-      id: `${tournamentId}-m13`,
-      tournamentId,
-      matchNumber: 13,
-      stage: 'losers',
-      round: 4,
-      stageName: 'Final da Repescagem - J13',
-      status: 'scheduled',
-      scheduledTime: '17:30',
-      courtName: 'Quadra 1 - Central',
-      nextMatchWinnerId: `${tournamentId}-m14`,
-      winnerDestinationSlot: 'team2',
-    },
-    {
-      id: `${tournamentId}-m14`,
-      tournamentId,
-      matchNumber: 14,
-      stage: 'grand_final',
-      round: 5,
-      stageName: 'Grande Final - J14',
-      status: 'scheduled',
-      scheduledTime: '18:30',
-      courtName: 'Quadra 1 - Central',
-    },
-  ];
+export function createFourPairsBracket(tournamentId: string, teams: (TeamPair | undefined)[], format: SemiFormat = 'semi_direta'): BracketMatch[] {
+  return createBracketForPresentPairs(tournamentId, teams.filter((team): team is TeamPair => Boolean(team)), format);
 }
-
-/**
- * Avança o vencedor de uma partida e posiciona o perdedor na chave de repescagem assim que o resultado é confirmado.
- */
-export function advanceWinner(
-  matches: BracketMatch[],
-  matchId: string,
-  winningTeam: 1 | 2,
-  score1: number,
-  score2: number
-): BracketMatch[] {
-  const updated = matches.map((m) => ({ ...m }));
-  const matchIndex = updated.findIndex((m) => m.id === matchId);
-  if (matchIndex === -1) return matches;
-
-  const current = updated[matchIndex];
-  if (!current.team1 || !current.team2) return matches;
-
-  const winner = winningTeam === 1 ? current.team1 : current.team2;
-  const loser = winningTeam === 1 ? current.team2 : current.team1;
-
-  current.score1 = score1;
-  current.score2 = score2;
-  current.winnerId = winner.id;
-  current.loserId = loser.id;
-  current.status = 'completed';
-
-  // 1. Move WINNER to next match deterministically
-  if (current.nextMatchWinnerId) {
-    const nextWinnerMatch = updated.find((m) => m.id === current.nextMatchWinnerId);
-    if (nextWinnerMatch) {
-      if (current.winnerDestinationSlot === 'team1') {
-        nextWinnerMatch.team1 = winner;
-      } else if (current.winnerDestinationSlot === 'team2') {
-        nextWinnerMatch.team2 = winner;
-      } else {
-        if (!nextWinnerMatch.team1 || nextWinnerMatch.team1.id === winner.id) {
-          nextWinnerMatch.team1 = winner;
-        } else {
-          nextWinnerMatch.team2 = winner;
-        }
-      }
-    }
-  }
-
-  // 2. Move LOSER to Buraco / Repescagem slot deterministically (if applicable)
-  if (current.nextMatchLoserId) {
-    const nextLoserMatch = updated.find((m) => m.id === current.nextMatchLoserId);
-    if (nextLoserMatch) {
-      if (current.loserDestinationSlot === 'team1') {
-        nextLoserMatch.team1 = loser;
-      } else if (current.loserDestinationSlot === 'team2') {
-        nextLoserMatch.team2 = loser;
-      } else {
-        if (!nextLoserMatch.team1 || nextLoserMatch.team1.id === loser.id) {
-          nextLoserMatch.team1 = loser;
-        } else {
-          nextLoserMatch.team2 = loser;
-        }
-      }
-    }
-  }
-
-  return updated;
+export function autoAdvanceByesInRound1(matches: BracketMatch[]): BracketMatch[] { return resolveBracket(matches); }
+export function advanceWinner(matches: BracketMatch[], id: string, winner: 1 | 2, score1: number, score2: number): BracketMatch[] {
+  if (![1, 2].includes(winner) || (score1 > score2 ? 1 : 2) !== winner) throw new Error('Vencedor incompatível com o placar.');
+  const target = matches.find(m => m.id === id);
+  const neededWins = target?.rules?.bestOf ? Math.ceil(target.rules.bestOf / 2) : 1;
+  const sets = Array.from({ length: neededWins }, () => ({ score1, score2 }));
+  return officializeMatch(matches, id, sets);
 }
-
-/**
- * Reseta o resultado de uma partida para permitir correção livre ("nada congelado")
- */
-export function resetMatch(matches: BracketMatch[], matchId: string): BracketMatch[] {
-  const updated = matches.map((m) => ({ ...m }));
-  const matchIndex = updated.findIndex((m) => m.id === matchId);
-  if (matchIndex === -1) return matches;
-
-  const current = updated[matchIndex];
-  const previousWinnerId = current.winnerId;
-  const previousLoserId = current.loserId;
-
-  current.score1 = undefined;
-  current.score2 = undefined;
-  current.winnerId = undefined;
-  current.loserId = undefined;
-  current.status = 'scheduled';
-
-  if (current.nextMatchWinnerId && previousWinnerId) {
-    const nextWinnerMatch = updated.find((m) => m.id === current.nextMatchWinnerId);
-    if (nextWinnerMatch) {
-      if (nextWinnerMatch.team1?.id === previousWinnerId) nextWinnerMatch.team1 = undefined;
-      if (nextWinnerMatch.team2?.id === previousWinnerId) nextWinnerMatch.team2 = undefined;
-    }
-  }
-
-  if (current.nextMatchLoserId && previousLoserId) {
-    const nextLoserMatch = updated.find((m) => m.id === current.nextMatchLoserId);
-    if (nextLoserMatch) {
-      if (nextLoserMatch.team1?.id === previousLoserId) nextLoserMatch.team1 = undefined;
-      if (nextLoserMatch.team2?.id === previousLoserId) nextLoserMatch.team2 = undefined;
-    }
-  }
-
-  return updated;
-}
-
-/**
- * Permite edição manual livre de duplas, quadra e horário em qualquer confronto ("nada congelado")
- */
-export function overrideMatchDetails(
-  matches: BracketMatch[],
-  matchId: string,
-  updates: {
-    team1?: TeamPair;
-    team2?: TeamPair;
-    courtName?: string;
-    scheduledTime?: string;
-  }
-): BracketMatch[] {
-  return matches.map((m) => {
-    if (m.id === matchId) {
-      return {
-        ...m,
-        ...updates,
-      };
-    }
-    return m;
-  });
-}
+export const resetMatch = resetBracketMatch;
+export const overrideMatchDetails = editMatchDetails;
 
 /**
  * Extrai o pódio final do campeonato (1º, 2º e 3º colocados)
@@ -895,17 +121,6 @@ export function getPodium(matches: BracketMatch[]): {
       thirdPlaceMatch.winnerId === thirdPlaceMatch.team1?.id
         ? thirdPlaceMatch.team1
         : thirdPlaceMatch.team2;
-  } else {
-    const semiOrRepescagem =
-      matches.find((m) => m.stage === 'semifinals' && m.status === 'completed') ||
-      matches.find((m) => m.matchNumber === 13 && m.stage === 'losers' && m.status === 'completed');
-
-    if (semiOrRepescagem && semiOrRepescagem.loserId) {
-      thirdPlace =
-        semiOrRepescagem.loserId === semiOrRepescagem.team1?.id
-          ? semiOrRepescagem.team1
-          : semiOrRepescagem.team2;
-    }
   }
 
   return { champion, runnerUp, thirdPlace };
@@ -979,7 +194,7 @@ export function computeTournamentStandings(
       };
     }
 
-    const t1Won = m.winnerId === t1.id || s1 > s2;
+    const t1Won = m.winnerId === t1.id;
     const winnerTeam = t1Won ? t1 : t2;
     const loserTeam = t1Won ? t2 : t1;
     const winScore = t1Won ? s1 : s2;
@@ -1014,6 +229,13 @@ export function computeTournamentStandings(
     }
   });
 
+  const eliminationLosses = new Map<string, number>();
+  for (const match of matches) if (match.status === 'completed' && match.loserId && ['winners', 'losers'].includes(match.stage)) {
+    eliminationLosses.set(match.loserId, (eliminationLosses.get(match.loserId) || 0) + 1);
+  }
+  const third = matches.find(match => match.stage === 'third_place');
+  const final = matches.find(match => match.stage === 'grand_final');
+  const contains = (match: BracketMatch | undefined, id: string) => match?.team1?.id === id || match?.team2?.id === id;
   const rows = Object.values(statsMap).map((st) => {
     const pointsDiff = st.pointsFor - st.pointsAgainst;
     const winRate = st.matchesPlayed > 0 ? Math.round((st.wins / st.matchesPlayed) * 100) : 0;
@@ -1022,8 +244,12 @@ export function computeTournamentStandings(
     if (podium.champion?.id === st.pair.id) statusBadge = '🥇 Campeão';
     else if (podium.runnerUp?.id === st.pair.id) statusBadge = '🥈 Vice-Campeão';
     else if (podium.thirdPlace?.id === st.pair.id) statusBadge = '🥉 3º Colocado';
-    else if (st.losses >= 2) statusBadge = 'Eliminado (2D)';
-    else if (st.losses === 1) statusBadge = 'Na Repescagem';
+    else if (third?.status === 'completed' && third.loserId === st.pair.id) statusBadge = '4º Colocado';
+    else if (contains(final, st.pair.id)) statusBadge = 'Finalista';
+    else if (contains(third, st.pair.id)) statusBadge = 'Disputa de 3º lugar';
+    else if (matches.some(match => match.stage === 'semifinals' && contains(match, st.pair.id))) statusBadge = 'Semifinalista';
+    else if ((eliminationLosses.get(st.pair.id) || 0) >= 2) statusBadge = 'Eliminado (2D)';
+    else if (eliminationLosses.get(st.pair.id) === 1) statusBadge = 'Na Repescagem';
     else if (st.wins > 0 && st.losses === 0) statusBadge = 'Invicto';
 
     return {

@@ -1,8 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { HISTORICAL_LEGEND_VIDEOS, INITIAL_LIVE_CHAT } from '../data/initialData';
 import { BracketMatch, HistoricalLegendVideo, LiveChatMessage } from '../types';
+
+const HISTORICAL_LEGEND_VIDEOS: HistoricalLegendVideo[] = [];
+const INITIAL_LIVE_CHAT: LiveChatMessage[] = [];
 import {
+  X,
   Radio,
   Tv,
   Users,
@@ -43,7 +47,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
       });
     });
     return list.sort(
-      (a, b) => (b.match.spectatorsCount || 150) - (a.match.spectatorsCount || 150)
+      (a, b) => a.match.matchNumber - b.match.matchNumber
     );
   }, [matchesByTournament, tournaments]);
 
@@ -125,136 +129,95 @@ export const PersistentLiveStreamDock: React.FC = () => {
   // When user is NOT on Home and hasn't expanded Theater mode, show a sleek Floating PiP Mini-Player
   const showFloatingPiP = activeTab !== 'home' && !isTheaterExpanded;
 
-  if (showFloatingPiP) {
-    if (isMinimized) {
-      return (
-        <div className="fixed bottom-20 md:bottom-4 right-4 z-40">
-          <button
-            onClick={() => setIsMinimized(false)}
-            className="px-4 py-2.5 rounded-2xl bg-[#071D3D] text-white border-2 border-[#0987CE] shadow-2xl flex items-center gap-2.5 cursor-pointer hover:bg-[#0B254E] transition-all"
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-            <span className="text-xs font-black text-[#5BC3FA]">
-              TV SHARK AO VIVO ({activeLiveEntry ? `${activeLiveEntry.match.score1 ?? 0}x${activeLiveEntry.match.score2 ?? 0}` : 'Lendas'})
-            </span>
-            <Maximize2 className="w-3.5 h-3.5 text-white" />
-          </button>
-        </div>
-      );
-    }
+  useEffect(() => {
+    if (activeTab === 'home') setIsMinimized(false);
+  }, [activeTab]);
 
-    return (
-      <div className="fixed bottom-20 md:bottom-4 right-4 z-40 w-80 sm:w-96 bg-[#030B17] text-white rounded-2xl border-2 border-[#0987CE] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
-        {/* Top PiP Bar */}
-        <div className="px-3 py-2 bg-[#071D3D] border-b border-[#145A9B] flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 truncate">
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-black uppercase animate-pulse">
-              <Radio className="w-2.5 h-2.5" />
-              AO VIVO · PIP
-            </span>
-            <span className="text-[11px] font-bold text-slate-200 truncate">
-              {streamMode === 'live' && activeLiveEntry
-                ? `Jogo ${activeLiveEntry.match.matchNumber} · ${activeLiveEntry.match.courtName || 'Quadra Central'}`
-                : activeLegend.title}
-            </span>
-          </div>
+  useEffect(() => {
+    if (!showFloatingPiP || isMinimized) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if ((event.target as HTMLElement)?.closest('input, textarea, [contenteditable="true"], [role="dialog"]')) return;
+      setIsMinimized(true);
+    };
+    window.addEventListener('keydown', dismiss);
+    return () => window.removeEventListener('keydown', dismiss);
+  }, [showFloatingPiP, isMinimized]);
 
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={() => setIsTheaterExpanded(true)}
-              className="p-1 text-slate-300 hover:text-[#12C7BB] rounded cursor-pointer"
-              title="Expandir Transmissão + Chat"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setIsMinimized(true)}
-              className="p-1 text-slate-300 hover:text-white rounded cursor-pointer"
-              title="Minimizar player"
-            >
-              <Minimize2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Uninterrupted Video Feed Canvas */}
-        <div className="relative h-40 bg-[#030B17] overflow-hidden">
-          <img
-            src={
-              streamMode === 'live'
-                ? 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=900&auto=format&fit=crop&q=80'
-                : activeLegend.thumbnailUrl
-            }
-            alt="Transmissão Ao Vivo"
-            className="w-full h-full object-cover opacity-75"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#030B17] via-[#030B17]/30 to-transparent" />
-
-          {/* Live Viewers & Audio Toggle */}
-          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px]">
-            <span className="px-2 py-0.5 rounded-md bg-[#030B17]/80 text-white font-bold flex items-center gap-1 backdrop-blur-xs border border-[#145A9B]">
-              <Eye className="w-3 h-3 text-[#12C7BB]" />
-              {streamMode === 'live'
-                ? `${activeLiveEntry?.match.spectatorsCount || 342} assistindo`
-                : `${activeLegend.viewsCount} views`}
-            </span>
-            <button
-              onClick={() => setIsMuted(!isMuted)}
-              className="p-1.5 rounded-lg bg-[#030B17]/80 text-white hover:bg-[#071D3D] cursor-pointer"
-              title={isMuted ? 'Ativar som' : 'Mutar'}
-            >
-              {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-[#12C7BB]" />}
-            </button>
-          </div>
-
-          {/* Scoreboard Overlay inside PiP */}
-          {streamMode === 'live' && activeLiveEntry && (
-            <div className="absolute bottom-2.5 left-2.5 right-2.5 bg-[#071D3D]/95 border border-[#145A9B] rounded-xl p-2.5 backdrop-blur-xs">
-              <div className="flex items-center justify-between text-xs">
-                <div className="truncate pr-2">
-                  <div className="font-extrabold text-white truncate">
-                    {activeLiveEntry.match.team1?.player1} / {activeLiveEntry.match.team1?.player2}
-                  </div>
-                  <div className="font-extrabold text-slate-300 truncate">
-                    {activeLiveEntry.match.team2?.player1} / {activeLiveEntry.match.team2?.player2}
-                  </div>
-                </div>
-                <div className="px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-mono font-black text-sm shrink-0">
-                  {activeLiveEntry.match.score1 ?? 0} x {activeLiveEntry.match.score2 ?? 0}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Quick Navigation Switcher between Tabela and Full Stream */}
-        <div className="p-2.5 bg-[#030B17] flex items-center justify-between gap-2 text-[11px]">
-          <button
-            onClick={() => setActiveTab('tournaments')}
-            className={`flex-1 py-1.5 px-2 rounded-lg font-extrabold cursor-pointer flex items-center justify-center gap-1 ${
-              activeTab === 'tournaments'
-                ? 'bg-[#0987CE] text-white'
-                : 'bg-[#071D3D] text-slate-200 hover:bg-[#0B254E]'
-            }`}
-          >
-            <Trophy className="w-3 h-3" />
-            Ver na Tabela
-          </button>
-          <button
-            onClick={() => {
-              setIsTheaterExpanded(false);
-              setActiveTab('home');
-            }}
-            className="flex-1 py-1.5 px-2 rounded-lg bg-[#12C7BB] hover:brightness-110 text-slate-950 font-black cursor-pointer flex items-center justify-center gap-1"
-          >
-            <Tv className="w-3 h-3" />
-            Voltar p/ Transmissão
-          </button>
-        </div>
-      </div>
-    );
+  if (!activeLiveEntry && !activeLegend) {
+    return null;
   }
 
+  if (showFloatingPiP) {
+    if (isMinimized) return null;
+
+    const title = streamMode === 'live' && activeLiveEntry
+      ? `Jogo ${activeLiveEntry.match.matchNumber} · ${activeLiveEntry.match.courtName || 'Quadra Central'}`
+      : activeLegend?.title || 'Transmissão Ao Vivo';
+    const expandPlayer = () => {
+      setIsTheaterExpanded(false);
+      if (streamMode === 'live' && activeLiveEntry) useBroadcastNavigation.getState().open({ kind: 'match', id: activeLiveEntry.match.id, tournamentId: activeLiveEntry.match.tournamentId });
+      else setActiveTab('home');
+    };
+
+    return (
+      <section className="shark-miniplayer" aria-label="Miniplayer da transmissão">
+        <div className="shark-miniplayer-screen">
+          <img
+            src={streamMode === 'live'
+              ? 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=900&auto=format&fit=crop&q=80'
+              : activeLegend.thumbnailUrl}
+            alt="Prévia da transmissão"
+            className="broadcast-media w-full h-full object-cover"
+          />
+          <div className="shark-miniplayer-shade" />
+          <div className="shark-miniplayer-top">
+            <button type="button" onClick={expandPlayer} aria-label="Expandir transmissão"
+              title="Expandir transmissão" className="shark-player-control">
+              <Maximize2 size={20} />
+            </button>
+            <button type="button" onClick={() => setIsMinimized(true)} aria-label="Fechar miniplayer"
+              title="Fechar (Esc)" className="shark-player-control">
+              <X size={22} />
+            </button>
+          </div>
+          {streamMode === 'live' && activeLiveEntry && (
+            <div className="shark-miniplayer-score">
+              <div className="min-w-0">
+                <p className="truncate">{activeLiveEntry.match.team1?.player1} / {activeLiveEntry.match.team1?.player2}</p>
+                <p className="truncate">{activeLiveEntry.match.team2?.player1} / {activeLiveEntry.match.team2?.player2}</p>
+              </div>
+              <strong className="shrink-0 tabular-nums">{activeLiveEntry.match.score1 ?? 0} × {activeLiveEntry.match.score2 ?? 0}</strong>
+            </div>
+          )}
+          <div className="shark-miniplayer-bottom">
+            <button type="button" disabled className="shark-player-control"
+              aria-label="Áudio indisponível nesta prévia" title="Áudio indisponível nesta prévia">
+              <VolumeX size={20} />
+            </button>
+            <span className="text-xs text-white/80">Prévia</span>
+            <button type="button" onClick={expandPlayer} className="shark-player-control ml-auto"
+              aria-label="Voltar à transmissão" title="Voltar à transmissão">
+              <Tv size={20} />
+            </button>
+          </div>
+        </div>
+        <div className="shark-miniplayer-info">
+          <button type="button" onClick={expandPlayer} className="min-w-0 flex-1 text-left"
+            title={title}>
+            <strong className="block truncate text-xs">{title}</strong>
+            <span className="text-[11px] text-cyan-200/70">SHARKSET · Abrir transmissão</span>
+          </button>
+          {streamMode === 'live' && activeLiveEntry && (
+            <button type="button" onClick={() => setActiveTab('tournaments')}
+              className="shark-player-control" title="Ver tabela" aria-label="Ver tabela do campeonato">
+              <Trophy size={18} />
+            </button>
+          )}
+        </div>
+      </section>
+    );
+  }
   // Full Broadcast Hub (Rendered inside Home OR when Theater Modal is expanded)
   return (
     <div
@@ -264,7 +227,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
           : 'max-w-7xl mx-auto px-4 sm:px-6 pt-6'
       }
     >
-      <div className="w-full max-w-7xl bg-[#030B17] text-white border-2 border-[#145A9B] rounded-3xl overflow-hidden shadow-xl">
+      <div className="aquarium-glass w-full max-w-7xl bg-[#030B17] text-white border-2 border-[#145A9B] rounded-3xl overflow-hidden shadow-xl">
         {/* Top Broadcast Bar */}
         <div className="px-4 sm:px-6 py-3.5 bg-[#071D3D] border-b border-[#145A9B] flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -329,7 +292,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
           {/* Left Column: Video Stage + Stream Selector */}
           <div className="lg:col-span-8 p-4 sm:p-6 space-y-4 border-b lg:border-b-0 lg:border-r border-[#145A9B]">
             {/* Main Video Stage */}
-            <div className="relative rounded-2xl overflow-hidden bg-[#071D3D] border border-[#145A9B] aspect-video group">
+            <div className="aquarium-glass relative rounded-2xl overflow-hidden bg-[#071D3D] border border-[#145A9B] aspect-video group">
               <img
                 src={
                   streamMode === 'live'
@@ -337,9 +300,9 @@ export const PersistentLiveStreamDock: React.FC = () => {
                     : activeLegend.thumbnailUrl
                 }
                 alt="Quadra Central Ao Vivo"
-                className="w-full h-full object-cover opacity-80 group-hover:scale-[1.01] transition-transform duration-500"
+                className="w-full h-full object-cover broadcast-media group-hover:scale-[1.01] transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#030B17] via-[#030B17]/25 to-black/40" />
+              <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#030B17]/25 via-transparent to-transparent" />
 
               {/* Top Overlay: Viewers Count + Camera Label */}
               <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2">
@@ -351,7 +314,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
                   <span className="px-2.5 py-1 rounded-lg bg-[#030B17]/85 text-[#12C7BB] text-xs font-extrabold flex items-center gap-1.5 backdrop-blur-xs border border-[#145A9B]">
                     <Users className="w-3.5 h-3.5" />
                     {streamMode === 'live'
-                      ? `${activeLiveEntry?.match.spectatorsCount || 342} espectadores simultâneos`
+                      ? 'Acompanhar jogo'
                       : `${activeLegend.viewsCount} visualizações`}
                   </span>
                 </div>
@@ -482,7 +445,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
                             <span>#{idx + 1} MAIS VISTO</span>
                             <span>·</span>
                             <span className="text-[#12C7BB]">
-                              {match.spectatorsCount || 210} assistindo
+                              Acompanhar jogo
                             </span>
                           </div>
                           <div className="text-xs font-extrabold text-white truncate mt-0.5">
@@ -552,7 +515,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
           <div className="lg:col-span-4 p-4 sm:p-5 flex flex-col justify-between bg-[#030B17] space-y-4">
             {/* Interactive Crowd Poll */}
             {activeLiveEntry && (
-              <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 space-y-2.5">
+              <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-black text-[#12C7BB] uppercase flex items-center gap-1">
                     <Flame className="w-3.5 h-3.5" />
@@ -671,3 +634,4 @@ export const PersistentLiveStreamDock: React.FC = () => {
     </div>
   );
 };
+

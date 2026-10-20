@@ -10,6 +10,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    match /broadcasts/{broadcastId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /athlete_contacts/{athleteId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create, update: if isVerifiedUser() &&
+        get(/databases/$(database)/documents/athletes_public/$(athleteId)).data.ownerId == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['ownerId', 'phone', 'whatsappOptIn']) &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.phone is string && request.resource.data.phone.matches('^[0-9]{10,15}$') &&
+        request.resource.data.whatsappOptIn is bool;
+    }
+
     function isVerifiedUser() {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
@@ -30,13 +44,85 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == ownerId;
     }
 
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'edmarjuniob@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Ensures only the authenticated organizer who owns the arena can access or mutate its isolated resources
+    function isArenaOrganizer(arenaId) {
+      return isSignedIn() &&
+        isValidId(arenaId) &&
+        exists(/databases/$(database)/documents/arenas/$(arenaId)) &&
+        get(/databases/$(database)/documents/arenas/$(arenaId)).data.ownerId == request.auth.uid;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['id', 'displayName', 'email', 'level', 'experienceCategory', 'role', 'ownerId']) &&
+        data.keys().hasOnly([
+          'id', 'displayName', 'email', 'photoURL', 'level',
+          'experienceCategory', 'role', 'managedArenaId', 'ownerId'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        data.email is string && data.email.size() >= 1 && data.email.size() <= 160 &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+        data.level is string && data.level in ['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'] &&
+        data.experienceCategory is string && data.experienceCategory in ['amador', 'profissional'] &&
+        data.role is string && data.role in ['athlete', 'admin'] &&
+        (!('managedArenaId' in data) || isValidId(data.managedArenaId)) &&
+        (
+          data.role == 'athlete' ||
+          isAdmin() ||
+          ('managedArenaId' in data && isArenaOrganizer(data.managedArenaId))
+        ) &&
+        data.ownerId is string && data.ownerId == request.auth.uid;
+    }
+
     function isValidArena(data) {
       return data.keys().hasAll(['id', 'name', 'city', 'state', 'ownerId']) &&
-        data.keys().hasOnly(['id', 'name', 'city', 'state', 'distanceKm', 'rating', 'whatsapp', 'ownerId']) &&
+        data.keys().hasOnly([
+          'id', 'name', 'city', 'state', 'distanceKm', 'rating', 'whatsapp',
+          'address', 'tagline', 'lat', 'lng', 'ownerName', 'subscriptionPlan', 'ownerId'
+        ]) &&
         data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
         data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
         data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
         data.state is string && data.state.size() >= 1 && data.state.size() <= 10 &&
+        (!('lat' in data) || (data.lat is number && data.lat >= -90 && data.lat <= 90)) &&
+        (!('lng' in data) || (data.lng is number && data.lng >= -180 && data.lng <= 180)) &&
+        data.ownerId is string && data.ownerId == request.auth.uid;
+    }
+
+    function isValidTournament(data) {
+      return data.keys().hasAll(['id', 'tenantId', 'name', 'sport', 'category', 'date', 'ownerId']) &&
+        data.keys().hasOnly([
+          'id', 'tenantId', 'name', 'sport', 'category', 'modalityFormat',
+          'semiFormat', 'date', 'location', 'specificRules', 'maxPairs',
+          'registrationFee', 'responsibleName', 'responsiblePhone',
+          'isOpenForRegistration', 'isFinished', 'ownerId'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.tenantId is string && data.tenantId.size() >= 1 && data.tenantId.size() <= 64 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 140 &&
+        data.sport is string && data.sport in ['futevolei', 'beach_tennis', 'volei_praia'] &&
+        data.date is string && data.date.size() >= 1 && data.date.size() <= 20 &&
+        data.ownerId is string && data.ownerId == request.auth.uid;
+    }
+
+    function isValidCourtBlock(data) {
+      return data.keys().hasAll(['id', 'tenantId', 'courtId', 'date', 'startTime', 'endTime', 'ownerId']) &&
+        data.keys().hasOnly([
+          'id', 'tenantId', 'courtId', 'date', 'startTime', 'endTime', 'reason', 'status', 'ownerId'
+        ]) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.tenantId is string && data.tenantId.size() >= 1 && data.tenantId.size() <= 64 &&
+        data.courtId is string && data.courtId.size() >= 1 && data.courtId.size() <= 64 &&
+        data.date is string && data.date.size() >= 1 && data.date.size() <= 20 &&
+        data.startTime is string && data.startTime.size() >= 1 && data.startTime.size() <= 10 &&
+        data.endTime is string && data.endTime.size() >= 1 && data.endTime.size() <= 10 &&
         data.ownerId is string && data.ownerId == request.auth.uid;
     }
 
@@ -45,7 +131,8 @@ service cloud.firestore {
         data.keys().hasOnly([
           'id', 'name', 'level', 'experienceCategory', 'points', 'wins',
           'matchesPlayed', 'titlesCount', 'country', 'state', 'city',
-          'arenaId', 'arenaName', 'ownerId'
+          'arenaId', 'arenaName', 'ownerId', 'lastMatchAt', 'rankingInactive',
+          'highestHistoricalLevel', 'levelMatches', 'levelWins', 'levelPoints'
         ]) &&
         data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
         data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
@@ -128,8 +215,76 @@ service cloud.firestore {
       allow update: if isVerifiedUser() && isValidId(arenaId) && isValidArena(incoming()) &&
         isOwner(existing().ownerId) &&
         incoming().ownerId == existing().ownerId &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'distanceKm', 'rating', 'whatsapp']);
+        incoming().id == existing().id &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'distanceKm', 'rating', 'whatsapp', 'address',
+          'tagline', 'lat', 'lng', 'ownerName', 'subscriptionPlan'
+        ]);
       allow delete: if isVerifiedUser() && isValidId(arenaId) && isOwner(existing().ownerId);
+
+      // Isolated arena subcollections accessible strictly by the arena's organizer
+      match /courts/{courtId} {
+        allow read, write: if isValidId(courtId) && isArenaOrganizer(arenaId);
+      }
+
+      match /tournaments/{tournamentId} {
+        allow read, write: if isValidId(tournamentId) && isArenaOrganizer(arenaId);
+      }
+
+      match /bookings/{bookingId} {
+        allow read, write: if isValidId(bookingId) && isArenaOrganizer(arenaId);
+      }
+
+      match /students/{studentId} {
+        allow read, write: if isValidId(studentId) && isArenaOrganizer(arenaId);
+      }
+    }
+
+    match /tournaments/{tournamentId} {
+      allow get: if isValidId(tournamentId) && (isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId));
+      allow list: if isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId);
+      allow create: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) &&
+        isArenaOrganizer(incoming().tenantId);
+      allow update: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) &&
+        isOwner(existing().ownerId) &&
+        isArenaOrganizer(existing().tenantId) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().tenantId == existing().tenantId &&
+        incoming().id == existing().id;
+      allow delete: if isVerifiedUser() && isValidId(tournamentId) &&
+        isOwner(existing().ownerId) &&
+        isArenaOrganizer(existing().tenantId);
+    }
+
+    match /court_blocks/{blockId} {
+      allow get: if isValidId(blockId) && (isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId));
+      allow list: if isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId);
+      allow create: if isVerifiedUser() && isValidId(blockId) && isValidCourtBlock(incoming()) &&
+        isArenaOrganizer(incoming().tenantId);
+      allow update: if isVerifiedUser() && isValidId(blockId) && isValidCourtBlock(incoming()) &&
+        isOwner(existing().ownerId) &&
+        isArenaOrganizer(existing().tenantId) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().tenantId == existing().tenantId &&
+        incoming().id == existing().id;
+      allow delete: if isVerifiedUser() && isValidId(blockId) &&
+        isOwner(existing().ownerId) &&
+        isArenaOrganizer(existing().tenantId);
+    }
+
+    match /user_profiles/{userId} {
+      allow get: if isValidId(userId) && isOwner(existing().ownerId);
+      allow list: if isOwner(existing().ownerId);
+      allow create: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid && isValidUserProfile(incoming());
+      allow update: if isVerifiedUser() && isValidId(userId) && isValidUserProfile(incoming()) &&
+        isOwner(existing().ownerId) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().id == existing().id &&
+        incoming().email == existing().email &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'level', 'experienceCategory', 'role', 'managedArenaId'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(userId) && isOwner(existing().ownerId);
     }
 
     match /athletes_public/{athleteId} {
@@ -141,21 +296,18 @@ service cloud.firestore {
         incoming().ownerId == existing().ownerId &&
         incoming().diff(existing()).affectedKeys().hasOnly([
           'name', 'level', 'experienceCategory', 'points', 'wins', 'matchesPlayed',
-          'titlesCount', 'country', 'state', 'city', 'arenaId', 'arenaName'
+          'titlesCount', 'country', 'state', 'city', 'arenaId', 'arenaName',
+          'lastMatchAt', 'rankingInactive', 'highestHistoricalLevel',
+          'levelMatches', 'levelWins', 'levelPoints'
         ]);
       allow delete: if isVerifiedUser() && isValidId(athleteId) && isOwner(existing().ownerId);
     }
 
     match /bookings/{bookingId} {
-      allow get: if isValidId(bookingId) && isOwner(existing().ownerId);
-      allow list: if isOwner(existing().ownerId);
-      allow create: if isVerifiedUser() && isValidId(bookingId) && isValidBookingRecord(incoming());
-      allow update: if isVerifiedUser() && isValidId(bookingId) && isValidBookingRecord(incoming()) &&
-        isOwner(existing().ownerId) &&
-        existing().status != 'cancelled' &&
-        incoming().ownerId == existing().ownerId &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['status']);
-      allow delete: if isVerifiedUser() && isValidId(bookingId) && isOwner(existing().ownerId);
+      allow get: if isValidId(bookingId) && (isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId));
+      allow list: if isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId);
+      // Booking creation, cancellation and payment transitions belong to the server.
+      allow create, update, delete: if false;
     }
 
     match /notifications/{notificationId} {

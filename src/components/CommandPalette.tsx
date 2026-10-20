@@ -36,21 +36,11 @@ export const CommandPalette: React.FC = () => {
       },
       {
         id: 'nav-classes',
-        label: 'Gerenciar Aulas & Cobrança Mensal ou Diária',
+        label: 'Consultar aulas e treinos',
         category: 'Arena',
         icon: GraduationCap,
         action: () => {
           setArenaSubTab('aulas');
-          setActiveTab('scheduler');
-        },
-      },
-      {
-        id: 'nav-owner-config',
-        label: 'Configurar Valores e Horários por Quadra (Dono)',
-        category: 'Proprietário',
-        icon: Settings,
-        action: () => {
-          setArenaSubTab('config_dono');
           setActiveTab('scheduler');
         },
       },
@@ -115,7 +105,7 @@ export const CommandPalette: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/40 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center px-4 border-b border-slate-100">
           <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
           <input

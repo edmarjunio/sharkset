@@ -7,4 +7,4 @@ output/
 *.log
 .env*
 !.env.example
-
+technical_table/

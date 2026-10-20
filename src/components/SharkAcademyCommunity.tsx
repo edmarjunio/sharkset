@@ -229,91 +229,9 @@ const TACTICAL_MODULES: TacticalModule[] = [
   },
 ];
 
-const INITIAL_ACADEMY_POSTS: AcademyPost[] = [
-  {
-    id: 'post-acad-1',
-    title: 'Masterclass: Marcação Padrão Diagonal vs Paralela no Buraco 4',
-    category: 'marcacao_padrao',
-    mediaType: 'video',
-    mediaUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    summary:
-      'Análise em câmera lenta mostrando como o homem de rede induz o atacante a bater onde o defensor de fundo já está posicionado esperando de peito.',
-    tacticalKeyPoints: [
-      'Sinalização oculta antes do saque',
-      'Finta de bloqueio na rede para forçar o lob',
-      'Transição rápida após a defesa de peito',
-    ],
-    authorName: 'Prof. Rodrigo "Tubarão"',
-    authorRole: 'Head Coach SHARK SET',
-    arenaName: 'Arena Conflora Matriz',
-    level: 'intermediario',
-    likesCount: 48,
-    createdAt: 'Hoje · 10:30',
-  },
-  {
-    id: 'post-acad-2',
-    title: 'Guia Biomecânico: Corrida na Areia Fofa sem Perder Explosão',
-    category: 'corrida_areia',
-    mediaType: 'document',
-    mediaUrl: '#apostila-pdf-biom-areia',
-    summary:
-      'Documento técnico detalhando os exercícios de pliometria na areia, apoio no metatarso e passinhos de ajuste para chegar equilibrado nas bolas curtas e longas.',
-    tacticalKeyPoints: [
-      'Proibido cravar o calcanhar na arrancada',
-      'Drills de escada de agilidade na areia fofa',
-      '3 micro-passos de frenagem antes do toque',
-    ],
-    authorName: 'Dr. Felipe Moura · Preparador Físico',
-    authorRole: 'Especialista em Biomecânica de Praia',
-    arenaName: 'CT Shark Set Goiânia',
-    level: 'todos',
-    likesCount: 64,
-    createdAt: 'Ontem · 18:15',
-  },
-  {
-    id: 'post-acad-3',
-    title: 'Diagrama Oficial: Como Deixar a Base Direcionada em 45° na Defesa',
-    category: 'base_defesa',
-    mediaType: 'image',
-    mediaUrl:
-      'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=900&auto=format&fit=crop&q=80',
-    summary:
-      'Infográfico visual demonstrando o posicionamento do pé externo à frente para fechar o corredor lateral e canalizar todas as defesas para o centro da rede.',
-    tacticalKeyPoints: [
-      'Pé de fora 15cm adiantado',
-      'Quadril aberto apontando para o levantador',
-      'Split-step sincronizado com o salto do atacante',
-    ],
-    authorName: 'Lucas "Tubarão" & Gabriel "Pingo"',
-    authorRole: 'Dupla Campeã Série A',
-    arenaName: 'Arena Conflora',
-    level: 'iniciante',
-    likesCount: 92,
-    createdAt: 'Há 2 dias',
-  },
-  {
-    id: 'post-acad-4',
-    title: 'Posicionamento em Pêndulo: Nunca Mais Deixe o Meio da Quadra Aberto',
-    category: 'posicionamento_quadra',
-    mediaType: 'video',
-    mediaUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    summary:
-      'Treino prático de sombra em dupla ensinando a cobertura automática quando seu parceiro vai buscar o segundo toque colado na rede.',
-    tacticalKeyPoints: [
-      'Sincronia visual com as costas do parceiro',
-      'Cobertura de bola de segunda do adversário',
-      'Voz de comando: "Minha!", "Vai na curta!", "Fundo livre!"',
-    ],
-    authorName: 'Coach Matheus Areia',
-    authorRole: 'Instrutor Oficial SHARK SET',
-    arenaName: 'Arena Praia Clube',
-    level: 'intermediario',
-    likesCount: 39,
-    createdAt: 'Há 3 dias',
-  },
-];
+const INITIAL_ACADEMY_POSTS: AcademyPost[] = [];
 
-const LOCAL_ACADEMY_STORAGE_KEY = 'sharkset_v1_academy_posts';
+const LOCAL_ACADEMY_STORAGE_KEY = 'sharkset_v6_academy_posts';
 
 const CATEGORY_LABELS: Record<AcademyCategory, string> = {
   marcacao_padrao: 'Marcação Padrão',
@@ -499,7 +417,7 @@ export const SharkAcademyCommunity: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8 text-[#F7FAFD]">
       {/* Toast Feedback */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-[#071D3D] text-white px-4 py-3 rounded-2xl shadow-2xl border-2 border-[#12C7BB] flex items-center gap-3 text-xs font-bold">
+        <div className="aquarium-glass fixed bottom-6 right-6 z-50 max-w-md bg-[#071D3D] text-white px-4 py-3 rounded-2xl shadow-2xl border-2 border-[#12C7BB] flex items-center gap-3 text-xs font-bold">
           <CheckCircle2 className="w-4 h-4 text-[#12C7BB] shrink-0" />
           <span>{toastMsg}</span>
         </div>
@@ -543,7 +461,7 @@ export const SharkAcademyCommunity: React.FC = () => {
               <button
                 type="button"
                 onClick={handleDownloadPlaybookPDF}
-                className="px-4 py-2.5 rounded-2xl bg-[#030B17] hover:bg-[#0B254E] border border-[#12C7BB] text-[#12C7BB] font-black text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
+                className="aquarium-glass px-4 py-2.5 rounded-2xl bg-[#030B17] hover:bg-[#0B254E] border border-[#12C7BB] text-[#12C7BB] font-black text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
                 Baixar Apostila Tática Completa (PDF)
@@ -563,7 +481,7 @@ export const SharkAcademyCommunity: React.FC = () => {
       {/* =================================================================== */}
       {/* BLOCO 1: LABORATÓRIO TÁTICO INTERATIVO (OS 4 PILARES DO FUTEVÔLEI)  */}
       {/* =================================================================== */}
-      <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 sm:p-7 shadow-xl space-y-6">
+      <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 sm:p-7 shadow-xl space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#145A9B]/70 pb-4">
           <div>
             <span className="text-[11px] font-black uppercase tracking-wider text-[#12C7BB] block">
@@ -575,7 +493,7 @@ export const SharkAcademyCommunity: React.FC = () => {
           </div>
 
           {/* 4 Module Selector Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-[#030B17] p-1.5 rounded-2xl border border-[#145A9B]">
+          <div className="aquarium-glass flex flex-wrap items-center gap-1.5 bg-[#030B17] p-1.5 rounded-2xl border border-[#145A9B]">
             {TACTICAL_MODULES.map((mod) => {
               const IconComp = mod.icon;
               const isSelected = mod.id === activeTacticalId;
@@ -602,7 +520,7 @@ export const SharkAcademyCommunity: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left 7 Columns: Step-by-Step Breakdown */}
           <div className="lg:col-span-7 space-y-4">
-            <div className="p-4 rounded-2xl bg-[#030B17] border border-[#0987CE]/60 space-y-1.5">
+            <div className="aquarium-glass p-4 rounded-2xl bg-[#030B17] border border-[#0987CE]/60 space-y-1.5">
               <span className="px-2.5 py-0.5 rounded bg-[#0987CE]/20 text-[#5BC3FA] font-black text-[10px] uppercase tracking-wider">
                 {activeModule.badge}
               </span>
@@ -636,7 +554,7 @@ export const SharkAcademyCommunity: React.FC = () => {
 
             {/* Common Mistake vs Pro Correction */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-3.5 rounded-2xl bg-[#030B17] border border-[#145A9B] space-y-1">
+              <div className="aquarium-glass p-3.5 rounded-2xl bg-[#030B17] border border-[#145A9B] space-y-1">
                 <span className="text-[10px] font-black uppercase text-slate-400 block">
                   ❌ Erro Mais Comum na Areia
                 </span>
@@ -652,7 +570,7 @@ export const SharkAcademyCommunity: React.FC = () => {
           </div>
 
           {/* Right 5 Columns: Interactive SVG Futevolei Court Tactical Diagram */}
-          <div className="lg:col-span-5 bg-[#030B17] border-2 border-[#0987CE] rounded-3xl p-4 sm:p-5 space-y-3 shadow-inner">
+          <div className="aquarium-glass lg:col-span-5 bg-[#030B17] border-2 border-[#0987CE] rounded-3xl p-4 sm:p-5 space-y-3 shadow-inner">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black uppercase text-[#5BC3FA] flex items-center gap-1.5">
                 <Target className="w-4 h-4 text-[#12C7BB]" />
@@ -666,7 +584,7 @@ export const SharkAcademyCommunity: React.FC = () => {
             <div className="w-full flex justify-center">
               <svg
                 viewBox="0 0 280 300"
-                className="w-full max-w-[320px] rounded-2xl border border-[#145A9B] bg-[#071D3D]"
+                className="aquarium-glass w-full max-w-[320px] rounded-2xl border border-[#145A9B] bg-[#071D3D]"
                 aria-label="Diagrama Tático da Quadra de Futevôlei"
               >
                 {/* Court Outer Lines */}
@@ -870,7 +788,7 @@ export const SharkAcademyCommunity: React.FC = () => {
       {/* BLOCO 2: MURAL DA COMUNIDADE (VÍDEOS, DOCUMENTOS PDF & IMAGENS)     */}
       {/* =================================================================== */}
       <div className="space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4">
+        <div className="aquarium-glass flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4">
           <div className="space-y-0.5">
             <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-[#0987CE]" />
@@ -925,7 +843,7 @@ export const SharkAcademyCommunity: React.FC = () => {
           {filteredPosts.map((post) => (
             <div
               key={post.id}
-              className="bg-[#071D3D] border-2 border-[#145A9B] hover:border-[#0987CE] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4 transition-all"
+              className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] hover:border-[#0987CE] rounded-3xl p-5 shadow-lg flex flex-col justify-between space-y-4 transition-all"
             >
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -957,7 +875,7 @@ export const SharkAcademyCommunity: React.FC = () => {
                 <p className="text-xs text-slate-300 leading-relaxed">{post.summary}</p>
 
                 {post.tacticalKeyPoints && post.tacticalKeyPoints.length > 0 && (
-                  <div className="p-3 rounded-2xl bg-[#030B17] border border-[#145A9B]/70 space-y-1.5">
+                  <div className="aquarium-glass p-3 rounded-2xl bg-[#030B17] border border-[#145A9B]/70 space-y-1.5">
                     <span className="text-[10px] font-black uppercase text-[#5BC3FA] block">
                       Pontos-Chave do Material:
                     </span>
@@ -1040,7 +958,7 @@ export const SharkAcademyCommunity: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="p-4 rounded-2xl bg-[#030B17] border border-[#145A9B] space-y-2">
+          <div className="aquarium-glass p-4 rounded-2xl bg-[#030B17] border border-[#145A9B] space-y-2">
             <span className="px-2 py-0.5 rounded bg-[#0987CE]/20 text-[#5BC3FA] font-black text-[10px] uppercase">
               ETAPA 1 · CAPTURA & RASTREAMENTO
             </span>
@@ -1052,7 +970,7 @@ export const SharkAcademyCommunity: React.FC = () => {
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#030B17] border border-[#145A9B] space-y-2">
+          <div className="aquarium-glass p-4 rounded-2xl bg-[#030B17] border border-[#145A9B] space-y-2">
             <span className="px-2 py-0.5 rounded bg-[#0987CE]/20 text-[#5BC3FA] font-black text-[10px] uppercase">
               ETAPA 2 · ANÁLISE TÁTICA EM TEMPO REAL
             </span>
@@ -1064,7 +982,7 @@ export const SharkAcademyCommunity: React.FC = () => {
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#030B17] border border-[#145A9B] space-y-2">
+          <div className="aquarium-glass p-4 rounded-2xl bg-[#030B17] border border-[#145A9B] space-y-2">
             <span className="px-2 py-0.5 rounded bg-[#12C7BB]/20 text-[#12C7BB] font-black text-[10px] uppercase">
               ETAPA 3 · NARRAÇÃO & COMENTÁRIOS DE VOZ
             </span>
@@ -1083,7 +1001,7 @@ export const SharkAcademyCommunity: React.FC = () => {
       {/* =================================================================== */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-          <div className="w-full max-w-lg bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-6 shadow-2xl space-y-4 text-[#F7FAFD]">
+          <div className="aquarium-glass w-full max-w-lg bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-6 shadow-2xl space-y-4 text-[#F7FAFD]">
             <div className="flex items-center justify-between border-b border-[#145A9B] pb-3">
               <div className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-[#12C7BB]" />
@@ -1240,7 +1158,7 @@ export const SharkAcademyCommunity: React.FC = () => {
       {/* =================================================================== */}
       {selectedPostPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-          <div className="w-full max-w-2xl bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-6 shadow-2xl space-y-4 text-[#F7FAFD]">
+          <div className="aquarium-glass w-full max-w-2xl bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-6 shadow-2xl space-y-4 text-[#F7FAFD]">
             <div className="flex items-center justify-between border-b border-[#145A9B] pb-3">
               <div>
                 <span className="text-[10px] font-black uppercase text-[#12C7BB] block">
@@ -1260,7 +1178,7 @@ export const SharkAcademyCommunity: React.FC = () => {
             </div>
 
             {selectedPostPreview.mediaType === 'image' && selectedPostPreview.mediaUrl && (
-              <div className="rounded-2xl overflow-hidden border border-[#145A9B] max-h-72 bg-[#030B17]">
+              <div className="aquarium-glass rounded-2xl overflow-hidden border border-[#145A9B] max-h-72 bg-[#030B17]">
                 <img
                   src={selectedPostPreview.mediaUrl}
                   alt={selectedPostPreview.title}
@@ -1270,7 +1188,7 @@ export const SharkAcademyCommunity: React.FC = () => {
             )}
 
             {selectedPostPreview.mediaType === 'video' && (
-              <div className="p-6 rounded-2xl bg-[#030B17] border border-[#145A9B] text-center space-y-2">
+              <div className="aquarium-glass p-6 rounded-2xl bg-[#030B17] border border-[#145A9B] text-center space-y-2">
                 <Play className="w-10 h-10 text-[#0987CE] mx-auto" />
                 <p className="text-xs font-bold text-white">
                   Aula Técnica em Vídeo · {selectedPostPreview.authorName}

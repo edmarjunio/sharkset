@@ -97,7 +97,7 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl my-auto">
+      <div className="aquarium-glass bg-white border border-slate-200 rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl my-auto">
         {/* Header */}
         <div
           className="px-6 py-5 text-white flex items-center justify-between"
@@ -132,7 +132,7 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
 
         <form onSubmit={handleSaveWhiteLabel} className="p-6 space-y-6 max-h-[82vh] overflow-y-auto">
           {/* Explanation Box */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="aquarium-glass p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="text-xs font-black text-slate-900 uppercase">
                 Como funciona o Modo Site da Arena (White-Label)
@@ -170,7 +170,7 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-4 px-4 rounded-2xl border-2 border-dashed border-slate-300 hover:border-orange-500 bg-slate-50 hover:bg-orange-50/40 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 text-center"
+                className="aquarium-glass w-full py-4 px-4 rounded-2xl border-2 border-dashed border-slate-300 hover:border-orange-500 bg-slate-50 hover:bg-orange-50/40 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 text-center"
               >
                 <Upload className="w-6 h-6 text-orange-500" />
                 <span className="text-xs font-black text-slate-900">
@@ -206,7 +206,7 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
                     key={preset.id}
                     type="button"
                     onClick={() => handleSelectPreset(preset)}
-                    className="p-2.5 rounded-2xl border border-slate-200 hover:border-slate-900 bg-white text-left flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs"
+                    className="aquarium-glass p-2.5 rounded-2xl border border-slate-200 hover:border-slate-900 bg-white text-left flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs"
                   >
                     <img
                       src={preset.logoUrl}

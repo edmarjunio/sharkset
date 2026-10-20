@@ -1,0 +1,273 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "SHARKSET LiveKit",
+    "version": "1.0.0"
+  },
+  "schemes": [
+    "https"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "firebase": {
+      "type": "oauth2",
+      "flow": "implicit",
+      "authorizationUrl": "",
+      "x-google-issuer": "https://securetoken.google.com/sharkset-70de4",
+      "x-google-jwks_uri": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+      "x-google-audiences": "sharkset-70de4"
+    }
+  },
+  "paths": {
+    "/api/livekit/start": {
+      "post": {
+        "operationId": "livekit_start",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "consumes": [
+          "application/json"
+        ]
+      },
+      "options": {
+        "operationId": "options_start",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "CORS preflight"
+          }
+        }
+      }
+    },
+    "/api/livekit/status": {
+      "post": {
+        "operationId": "livekit_status",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "consumes": [
+          "application/json"
+        ]
+      },
+      "options": {
+        "operationId": "options_status",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "CORS preflight"
+          }
+        }
+      }
+    },
+    "/api/livekit/viewer": {
+      "post": {
+        "operationId": "livekit_viewer",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "consumes": [
+          "application/json"
+        ]
+      },
+      "options": {
+        "operationId": "options_viewer",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "CORS preflight"
+          }
+        }
+      }
+    },
+    "/api/livekit/confirm": {
+      "post": {
+        "operationId": "livekit_confirm",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "consumes": [
+          "application/json"
+        ]
+      },
+      "options": {
+        "operationId": "options_confirm",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "CORS preflight"
+          }
+        }
+      }
+    },
+    "/api/livekit/stop": {
+      "post": {
+        "operationId": "livekit_stop",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "consumes": [
+          "application/json"
+        ]
+      },
+      "options": {
+        "operationId": "options_stop",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitSession",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "CORS preflight"
+          }
+        }
+      }
+    },
+    "/api/livekit/directory": {
+      "get": {
+        "operationId": "livekit_directory",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitDirectory",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitDirectory",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "options": {
+        "operationId": "options_directory",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitDirectory",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitDirectory",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "CORS preflight"
+          }
+        }
+      }
+    },
+    "/api/livekit/webhook": {
+      "post": {
+        "operationId": "livekit_webhook",
+        "x-google-backend": {
+          "address": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitWebhook",
+          "jwt_audience": "https://us-central1-sharkset-70de4.cloudfunctions.net/livekitWebhook",
+          "path_translation": "APPEND_PATH_TO_ADDRESS",
+          "deadline": 30
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "consumes": [
+          "application/webhook+json",
+          "application/json"
+        ]
+      }
+    }
+  }
+}

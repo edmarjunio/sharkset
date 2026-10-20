@@ -1,16 +1,23 @@
+import { LocationScopeFilter } from './LocationScopeFilter';
+import { PodiumCardStudio } from './PodiumCardStudio';
+import { useScopedCatalog } from '../hooks/useScopedCatalog';
+import { useImmersiveMode } from '../hooks/useImmersiveMode';
+import { matchPhaseLabel } from '../services/bracketPresentation';
+import { TournamentOperationsPanel } from './TournamentOperationsPanel';
 import React, { useState, useMemo, useEffect } from 'react';
 import gsap from 'gsap';
 import { useApp } from '../context/AppContext';
 import {
   AthleteLevel,
   BracketMatch,
+  MatchSet,
   SemiFormat,
   TeamPair,
   TournamentCategory,
   TournamentModalityFormat,
 } from '../types';
 import { generateMatchCallWhatsAppLink } from '../services/whatsappAdapter';
-import { computeTournamentStandings, getPodium } from '../services/bracketEngine';
+import { computeTournamentStandings, getPodium, officializeMatch } from '../services/bracketEngine';
 import {
   ATHLETE_LEVEL_LABELS,
   TOURNAMENT_CATEGORY_LABELS,
@@ -29,6 +36,7 @@ import { ShareBracketModal } from './ShareBracketModal';
 import { MatchHistoryModal } from './MatchHistoryModal';
 import { SharksetLogo } from './SharksetLogo';
 import { MostWatchedGamesMiniRail } from './MostWatchedGamesMiniRail';
+import { IntegrityReportModal } from './IntegrityReportModal';
 import {
   Trophy,
   MessageSquare,
@@ -48,6 +56,7 @@ import {
   ArrowDown,
   Play,
   ShieldAlert,
+  Flag,
   Timer,
   Download,
   FileSpreadsheet,
@@ -60,13 +69,20 @@ import {
   Zap,
 } from 'lucide-react';
 
-export const DoubleEliminationBracket: React.FC = () => {
+interface DoubleEliminationBracketProps {
+  minimalistPlayerView?: boolean;
+}
+
+export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> = ({
+  minimalistPlayerView = false,
+}) => {
   const {
     tenant,
     tournaments,
     activeTournamentId,
     setActiveTournamentId,
     tournamentMatches,
+    applyTournamentEdit,
     registeredPairs,
     registerDouble,
     togglePairPlayerPayment,
@@ -86,16 +102,19 @@ export const DoubleEliminationBracket: React.FC = () => {
     availableTenants,
   } = useApp();
 
+  const scopedTournaments = useScopedCatalog(tournaments, tournament => availableTenants.find(arena => arena.id === tournament.tenantId) || {});
+
   const [activeStageTab, setActiveStageTab] = useState<
     'all' | 'standings' | 'winners' | 'losers' | 'final'
   >('all');
   const [bracketViewMode, setBracketViewMode] = useState<'chaveamento' | 'lista'>('chaveamento');
   const [editingMatch, setEditingMatch] = useState<BracketMatch | null>(null);
+  const [operationsMatchId, setOperationsMatchId] = useState('');
   const [refereeModalMatchId, setRefereeModalMatchId] = useState<string | null>(null);
   const [selectedLiveMatchId, setSelectedLiveMatchId] = useState<string | null>(null);
 
   // Fullscreen & Semifinals Knockout Focus Mode
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const { active: isFullscreen, setFullscreen: setIsFullscreen } = useImmersiveMode();
   const [manualKnockoutToggle, setManualKnockoutToggle] = useState<boolean | null>(null);
 
   // Share & Match History / MVP Voting Modal States
@@ -118,15 +137,7 @@ export const DoubleEliminationBracket: React.FC = () => {
     completedMatch: BracketMatch;
   } | null>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreen) {
-        setIsFullscreen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreen]);
+  const [reportMatchTarget, setReportMatchTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleOpenShare = (match?: BracketMatch) => {
     setShareMatch(match || null);
@@ -183,12 +194,12 @@ export const DoubleEliminationBracket: React.FC = () => {
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
   const activeTournament = tournaments.find((t) => t.id === activeTournamentId) || tournaments[0];
-  const isSingles = activeTournament.modalityFormat === 'simples';
+  const isSingles = activeTournament?.modalityFormat === 'simples';
 
-  const currentMatches = tournamentMatches.filter((m) => m.tournamentId === activeTournament.id);
-  const pairsInTourn = registeredPairs.filter((p) => p.tournamentId === activeTournament.id);
+  const currentMatches = activeTournament ? tournamentMatches.filter((m) => m.tournamentId === activeTournament.id) : [];
+  const pairsInTourn = activeTournament ? registeredPairs.filter((p) => p.tournamentId === activeTournament.id) : [];
   const activePairsInTourn = pairsInTourn.filter((p) => p.enrollmentStatus !== 'rejected');
-  const presentPairsInTourn = activePairsInTourn.filter((p) => p.isPresent !== false);
+  const presentPairsInTourn = activePairsInTourn.filter((p) => p.isPresent !== false && p.enrollmentStatus === 'confirmed');
   const confirmedPairsCount = activePairsInTourn.filter((p) => p.enrollmentStatus === 'confirmed').length;
 
   const liveMatches = useMemo(() => {
@@ -238,15 +249,14 @@ export const DoubleEliminationBracket: React.FC = () => {
       )
       .sort((a, b) => a.matchNumber - b.matchNumber);
 
-    qualifying.forEach((m) => {
-      if (m.status !== 'completed' && m.team1 && m.team2) {
-        handleAdvanceMatch(m.id, 1, 18, 14);
-      }
-    });
+    if (qualifying.some(match => match.status !== 'completed')) {
+      triggerToast('Finalize os jogos classificatórios antes de abrir as semifinais.');
+      return;
+    }
     setManualKnockoutToggle(true);
     setBracketViewMode('chaveamento');
     triggerToast(
-      '⚡ Fase Semifinal ativada! Jogos classificatórios passados foram minimizados e a tabela exibe o Mata-Mata (Semifinais, Grande Final e Disputa de 3º Lugar).'
+      '⚡ Fase Semifinal ativada! Jogos classificatórios passados foram minimizados e a tabela exibe o Mata-Mata (Semifinais, Grande Final e DISPUTA DE 3º).'
     );
   };
 
@@ -269,8 +279,8 @@ export const DoubleEliminationBracket: React.FC = () => {
   };
 
   const handleConfirmStartTournamentDraw = () => {
-    if (presentPairsInTourn.length < 2) {
-      triggerToast('Marque pelo menos 2 duplas como PRESENTES para iniciar o torneio e gerar a tabela.');
+    if (presentPairsInTourn.length < 4) {
+      triggerToast('Confirme a inscrição e a presença de pelo menos 4 duplas para gerar a tabela.');
       return;
     }
     const presentIds = presentPairsInTourn.map((p) => p.id);
@@ -282,7 +292,8 @@ export const DoubleEliminationBracket: React.FC = () => {
           ]
         : presentIds;
 
-    startTournamentWithDraw(activeTournament.id, drawMode, orderedIds);
+    try { startTournamentWithDraw(activeTournament.id, drawMode, orderedIds); }
+    catch (error) { triggerToast(error instanceof Error ? error.message : 'Falha ao gerar tabela.'); return; }
     setManualKnockoutToggle(null);
     setShowStartDrawModal(false);
     triggerToast(
@@ -316,9 +327,9 @@ export const DoubleEliminationBracket: React.FC = () => {
     setTimeout(() => setFeedbackToast(null), 4800);
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
-      exportBracketToPDF(activeTournament, currentMatches, standings, podium, tenant);
+      await exportBracketToPDF(activeTournament, currentMatches, standings, podium, tenant);
       triggerToast('📄 PDF Oficial do Torneio gerado e baixado com sucesso!');
     } catch {
       triggerToast('Aviso: Erro ao gerar PDF. Use a opção de Impressão ou Planilha CSV.');
@@ -357,7 +368,7 @@ export const DoubleEliminationBracket: React.FC = () => {
     setFormMaxParticipants(8);
     setFormFee(120);
     setFormRules(
-      'Sets de 18 pontos (diferença mínima de 2 pontos, teto em 21). Semifinal direta com disputa de 3º lugar. Pontuação automática para o Ranking Oficial de Futevôlei.'
+      'Preliminares: set único de 18 pontos, diferença de 2. Semifinais, final e 3º lugar: melhor de 3 sets (18/18/15), diferença de 2. Sem reinício da final.'
     );
     setFormResponsible(userProfile.name);
     setShowTournamentModal('create');
@@ -601,8 +612,8 @@ export const DoubleEliminationBracket: React.FC = () => {
 
     const s1Raw = getInlineScore(match, 's1');
     const s2Raw = getInlineScore(match, 's2');
-    const s1 = s1Raw === '' ? 18 : parseInt(s1Raw, 10);
-    const s2 = s2Raw === '' ? 14 : parseInt(s2Raw, 10);
+    const s1 = s1Raw === '' ? NaN : Number(s1Raw);
+    const s2 = s2Raw === '' ? NaN : Number(s2Raw);
 
     if (isNaN(s1) || isNaN(s2) || s1 === s2) {
       triggerToast('Insira um placar válido sem empate (ex: 18 x 14) para avançar o vencedor.');
@@ -611,14 +622,56 @@ export const DoubleEliminationBracket: React.FC = () => {
 
     const winningTeam: 1 | 2 = s1 > s2 ? 1 : 2;
     const winner = winningTeam === 1 ? match.team1 : match.team2;
-    handleAdvanceMatch(match.id, winningTeam, s1, s2);
+    try { handleAdvanceMatch(match.id, winningTeam, s1, s2); }
+    catch (error) { triggerToast(error instanceof Error ? error.message : 'Placar inválido.'); return; }
     triggerGsapWinningPathAnimation(winner, match);
     triggerToast(
       `Jogo ${match.matchNumber} finalizado (${s1}x${s2}): ${formatParticipantName(winner)} avançou! Trajetória GSAP destacada e votação de MVP liberada!`
     );
   };
 
+  const handleToggleLiveMatch = (match: BracketMatch) => {
+    if (!match.team1 || !match.team2 || match.status === 'completed') return;
+    const nextStatus = match.status === 'in_progress' ? 'scheduled' : 'in_progress';
+    updateLiveRefereeMatch(match.id, (prev) => ({
+      ...prev,
+      status: nextStatus,
+      score1: prev.score1 ?? 0,
+      score2: prev.score2 ?? 0,
+    }));
+    triggerToast(
+      nextStatus === 'in_progress'
+        ? `🔴 Jogo #${match.matchNumber} marcado como AO VIVO! Destaque com borda vermelha ativado na tabela.`
+        : `Jogo #${match.matchNumber} retirado do modo Ao Vivo.`
+    );
+  };
+
+  const handleQuickOfficialize = (match: BracketMatch, sets: MatchSet[]) => {
+    const nextMatches = officializeMatch(currentMatches, match.id, sets, {
+      reason: 'Resultado oficial lançado rapidamente na tabela',
+    });
+    applyTournamentEdit(activeTournament.id, nextMatches);
+    const updated = nextMatches.find((m) => m.id === match.id);
+    const winner =
+      updated?.winnerId === match.team1?.id
+        ? match.team1
+        : updated?.winnerId === match.team2?.id
+        ? match.team2
+        : undefined;
+    if (winner) {
+      triggerGsapWinningPathAnimation(winner, updated || match);
+      triggerToast(
+        `✅ Jogo #${match.matchNumber} encerrado (${sets.map((s) => `${s.score1}x${s.score2}`).join(' / ')})! ${formatParticipantName(winner)} avançou automaticamente na chave!`
+      );
+    }
+  };
+
   const handleOpenMatchEditor = (match: BracketMatch) => {
+    if (match.source1) {
+      setOperationsMatchId(match.id);
+      document.getElementById('tournament-operations')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     setEditingMatch(match);
     setInputScore1(match.score1 ?? 18);
     setInputScore2(match.score2 ?? 14);
@@ -635,26 +688,10 @@ export const DoubleEliminationBracket: React.FC = () => {
     const newT1 = pairsInTourn.find((p) => p.id === overrideTeam1Id);
     const newT2 = pairsInTourn.find((p) => p.id === overrideTeam2Id);
 
-    handleOverrideMatch(editingMatch.id, {
-      team1: newT1,
-      team2: newT2,
-      courtName: overrideCourt,
-      scheduledTime: overrideTime,
-    });
-
-    if (newT1 && newT2 && inputScore1 !== inputScore2) {
-      const winningTeam: 1 | 2 = inputScore1 > inputScore2 ? 1 : 2;
-      const winner = winningTeam === 1 ? newT1 : newT2;
-      setTimeout(() => {
-        handleAdvanceMatch(editingMatch.id, winningTeam, inputScore1, inputScore2);
-        triggerGsapWinningPathAnimation(winner, editingMatch);
-      }, 10);
-      triggerToast(
-        `Jogo ${editingMatch.matchNumber} salvo! Trajetória GSAP do vencedor e Ranking atualizados!`
-      );
-    } else {
-      triggerToast(`Configuração do Jogo ${editingMatch.matchNumber} salva!`);
-    }
+    try {
+      handleOverrideMatch(editingMatch.id, { team1: newT1, team2: newT2, courtName: overrideCourt, scheduledTime: overrideTime });
+      triggerToast('Participantes e agenda atualizados. Para registrar sets, use Administrar tabela.');
+    } catch (error) { triggerToast(error instanceof Error ? error.message : 'Falha ao editar partida.'); return; }
 
     setEditingMatch(null);
   };
@@ -663,14 +700,16 @@ export const DoubleEliminationBracket: React.FC = () => {
     updateTournamentConfig(activeTournament.id, { semiFormat: newFormat });
     triggerToast(
       newFormat === 'semi_direta'
-        ? 'Formato alterado para Semifinal Direta (Padrão Futevôlei: Semifinais + Grande Final + Disputa de 3º Lugar)!'
+        ? 'Formato alterado para Semifinal Direta (Padrão Futevôlei: Semifinais + Grande Final + DISPUTA DE 3º)!'
         : 'Formato alterado para Semi com Chance (Padrão Challonge: perdedor da semi cai pra repescagem)!'
     );
   };
 
   const renderMatchCard = (match: BracketMatch) => {
     const isCompleted = match.status === 'completed';
-    const isLive = match.status === 'in_progress';
+    const isLive =
+      match.status === 'in_progress' ||
+      (!isCompleted && Boolean(match.liveReferee) && ((match.score1 ?? 0) > 0 || (match.score2 ?? 0) > 0));
     const isReady = !!match.team1 && !!match.team2;
 
     const team1Won = isCompleted && match.winnerId === match.team1?.id;
@@ -696,18 +735,18 @@ export const DoubleEliminationBracket: React.FC = () => {
       routingNote = 'Valendo o Título Geral';
     }
 
-    // Soft Green for Winners Bracket, Soft Red for Losers Bracket, Sharkset Blue for Semis/Final/3rd Place
+    // Green for Winners Bracket, Yellow/Amber for Losers Bracket, Sharkset Blue for Semis/Final/3rd Place
     const isWinnersStage = match.stage === 'winners';
     const isLosersStage =
       match.stage === 'losers' && !match.stageName.toLowerCase().includes('3º lugar');
 
-    const cardToneClasses = isLive
-      ? 'bg-[#071D3D] border-rose-500 ring-2 ring-rose-500/30'
-      : isWinnersStage
-      ? 'bg-emerald-950/35 border-emerald-500/40 hover:border-emerald-400/80'
-      : isLosersStage
-      ? 'bg-rose-950/35 border-rose-500/40 hover:border-rose-400/80'
-      : 'bg-[#071D3D] border-[#0987CE]/60 hover:border-[#12C7BB]';
+    const cardToneClasses = `${
+      isWinnersStage
+        ? 'bracket-card-winners'
+        : isLosersStage
+        ? 'bracket-card-losers'
+        : 'bracket-card-central'
+    } ${isLive ? 'bracket-card-live' : ''}`;
 
     return (
       <div
@@ -715,40 +754,58 @@ export const DoubleEliminationBracket: React.FC = () => {
         data-match-id={match.id}
         data-winner-id={match.winnerId || ''}
         onClick={() => setSelectedLiveMatchId(match.id)}
-        className={`bracket-match-node border-2 rounded-2xl p-3.5 transition-all shadow-md text-[#F7FAFD] cursor-pointer group ${cardToneClasses}`}
+        className={`bracket-match-node rounded-2xl p-3.5 transition-all shadow-md text-[#F7FAFD] cursor-pointer group ${cardToneClasses}`}
       >
-        <div className="flex items-center justify-between text-xs text-slate-300 pb-2 mb-2 border-b border-white/10">
+        <div className="flex items-center justify-between text-xs text-slate-200 pb-2 mb-2 border-b border-white/15">
           <div className="flex items-center gap-1.5 min-w-0">
             <span
               className={`px-2 py-0.5 rounded font-black text-[10px] uppercase shrink-0 ${
                 isWinnersStage
-                  ? 'bg-emerald-600/80 text-white'
+                  ? 'bg-emerald-400 text-slate-950'
                   : isLosersStage
-                  ? 'bg-rose-600/80 text-white'
+                  ? 'bg-amber-400 text-slate-950'
                   : 'bg-[#0987CE] text-white'
               }`}
             >
               Jogo {match.matchNumber}
             </span>
+            {match.stage !== 'winners' && match.stage !== 'losers' && <span className="font-black text-xs">{matchPhaseLabel(match)}</span>}
             {isLive && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-black uppercase animate-pulse shrink-0">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-black uppercase shrink-0 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-white -ml-3.5" />
                 AO VIVO
               </span>
             )}
-            <span className="text-[11px] font-mono text-slate-300 truncate">
+            <span className="text-[11px] text-white/85 truncate">
               {match.courtName || 'Quadra 1'}
             </span>
           </div>
 
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {isReady && !isCompleted && (
+              <button
+                type="button"
+                onClick={() => handleToggleLiveMatch(match)}
+                className={`px-2 py-0.5 rounded-lg font-extrabold text-[10px] flex items-center gap-1 transition-colors cursor-pointer ${
+                  isLive
+                    ? 'bg-red-600 text-white'
+                    : 'bg-black/30 hover:bg-red-600/80 text-white'
+                }`}
+                title="Ativar ou desativar destaque de Jogo Ao Vivo (borda vermelha)"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-white animate-ping' : 'bg-red-400'}`} />
+                Ao Vivo
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setSelectedLiveMatchId(match.id)}
-              className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+              className="px-2 py-0.5 rounded-lg bg-black/30 hover:bg-black/45 text-white font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
               title="Abrir página da partida em tempo real (Chat, Saque, Juiz, Histórico de Pontos)"
             >
               <Eye className="w-3 h-3 text-[#12C7BB]" />
-              {match.spectatorsCount || (isLive ? 186 : 64)} assistindo
+              Detalhes
             </button>
             {isReady && (
               <button
@@ -764,10 +821,23 @@ export const DoubleEliminationBracket: React.FC = () => {
             <button
               type="button"
               onClick={() => handleOpenMatchEditor(match)}
-              className="p-1 text-slate-300 hover:text-white rounded cursor-pointer"
+              className="p-1 text-slate-200 hover:text-white rounded cursor-pointer"
               title="Editar participantes, horário ou placar livremente"
             >
               <Sliders className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setReportMatchTarget({
+                  id: match.id,
+                  name: `Jogo #${match.matchNumber} (${formatParticipantName(match.team1)} vs ${formatParticipantName(match.team2)})`,
+                })
+              }
+              className="p-1 text-red-400 hover:text-red-300 rounded cursor-pointer hover:bg-red-950/40"
+              title="Denunciar suspeita de fraude, conluio ou entrega de pontos nesta partida"
+            >
+              <Flag className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -922,8 +992,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    handleResetMatch(match.id);
-                    triggerToast(`Jogo ${match.matchNumber} voltou atrás (resetado).`);
+                    handleOpenMatchEditor(match);
                   }}
                   className="p-1 text-slate-400 hover:text-rose-400 hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                   title="Voltar atrás / desfazer resultado"
@@ -938,15 +1007,112 @@ export const DoubleEliminationBracket: React.FC = () => {
     );
   };
 
+  if (!activeTournament) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 space-y-6 text-white text-center">
+        <div className="aquarium-glass rounded-3xl p-8 border border-cyan-500/30 max-w-xl mx-auto space-y-4">
+          <Trophy className="w-16 h-16 text-amber-400 mx-auto" />
+          <h2 className="text-2xl font-black">Nenhum Torneio Cadastrado</h2>
+          <p className="text-sm text-slate-300">
+            Você está operando em produção com o banco limpo! Crie o seu primeiro torneio oficial para gerar chaves, cadastrar duplas e acompanhar as partidas em tempo real.
+          </p>
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#FF6B00] to-[#FF8800] text-white font-black text-base shadow-lg hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            + Criar Primeiro Torneio
+          </button>
+        </div>
+        {showTournamentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 text-left">
+            <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#145A9B] max-h-[90vh] overflow-y-auto">
+              <form onSubmit={handleSaveTournamentModal} className="space-y-4 text-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
+                      Gestão de Torneios de Futevôlei
+                    </span>
+                    <h3 className="text-base font-bold text-white">Criar Novo Torneio de Futevôlei</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTournamentModal(null)}
+                    className="text-slate-400 hover:text-white p-1 cursor-pointer font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Nome do Torneio:</label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder="Ex: Copa Regional de Futevôlei Mineiros"
+                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-sm text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Data do Torneio:</label>
+                    <input
+                      type="date"
+                      required
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Local / Arena:</label>
+                    <input
+                      type="text"
+                      required
+                      value={formLocation}
+                      onChange={(e) => setFormLocation(e.target.value)}
+                      placeholder="Ex: SHARK SET Arena Matriz - Mineiros/GO"
+                      className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
+                    />
+                  </div>
+                </div>
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTournamentModal(null)}
+                    className="px-4 py-2 text-xs font-medium text-slate-300 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl cursor-pointer"
+                  >
+                    Criar Torneio Oficial
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className={
         isFullscreen
-          ? 'fixed inset-0 z-50 bg-[#030B17] overflow-y-auto p-3 sm:p-6 space-y-5'
+          ? 'max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6'
           : 'max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6'
       }
     >
       {/* Toast Feedback */}
+      {!minimalistPlayerView && activeTournament && (
+        <PodiumCardStudio key={activeTournament.id} tournament={activeTournament} matches={currentMatches}
+          arena={availableTenants.find(arena => arena.id === activeTournament.tenantId)} />
+      )}
       {feedbackToast && (
         <div className="p-3.5 bg-[#071D3D] text-white border border-[#0987CE] rounded-xl text-xs flex items-center justify-between shadow-lg animate-in fade-in">
           <div className="flex items-center gap-2">
@@ -963,6 +1129,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       )}
 
       {/* Miniature Most-Watched Live Games Rail */}
+      {!isFullscreen && <div className="rounded-2xl bg-slate-950 p-4 border border-slate-700"><LocationScopeFilter /><p className="text-xs text-slate-400 mt-3">{scopedTournaments.length} campeonatos neste local. Use o seletor para abrir a tabela.</p></div>}
       {!isFullscreen && (
         <MostWatchedGamesMiniRail
           onSelectTournamentMatch={(m) => setSelectedLiveMatchId(m.id)}
@@ -971,7 +1138,7 @@ export const DoubleEliminationBracket: React.FC = () => {
 
       {/* Coastal Beach Stadium Hero Banner matching the User's Print */}
       {!isFullscreen && (
-        <div className="relative rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-slate-900">
+        <div className="aquarium-glass relative rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-slate-900">
           <img
             src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=85"
             alt={activeTournament.name}
@@ -1019,9 +1186,9 @@ export const DoubleEliminationBracket: React.FC = () => {
         </div>
       )}
 
-      {/* Ultra-Intuitive 3-Step Visual Guide (Hidden in Fullscreen Mode for maximum bracket space) */}
-      {!isFullscreen && (
-        <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-white">
+      {/* Ultra-Intuitive 3-Step Visual Guide (Hidden in Fullscreen Mode and Minimalist Player View) */}
+      {!isFullscreen && !minimalistPlayerView && (
+        <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-2xl p-4 sm:p-5 shadow-md flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-white">
           <div className="space-y-2.5 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="px-2.5 py-0.5 rounded bg-[#0987CE] text-white font-black uppercase text-[10px]">
@@ -1095,7 +1262,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       )}
 
       {/* Tournament Management Header — Clean Responsive Hierarchy (Never overflows horizontally) */}
-      <div className="bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
+      <div className="aquarium-glass bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div className="space-y-1.5 min-w-0">
@@ -1137,7 +1304,8 @@ export const DoubleEliminationBracket: React.FC = () => {
                 }}
                 className="px-3 py-2 text-xs font-extrabold bg-[#030B17] text-white border border-[#145A9B] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0987CE] max-w-full sm:max-w-[280px]"
               >
-                {tournaments.map((t) => (
+                {!scopedTournaments.some(t => t.id === activeTournamentId) && <option value={activeTournamentId}>Atual: {activeTournament.name} (fora do filtro)</option>}
+                  {scopedTournaments.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
@@ -1202,7 +1370,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                 : 'Fase Semifinal (Minimizar Jogos Passados)'}
             </button>
 
-            {!knockoutOnlyMode && (
+            {!minimalistPlayerView && !knockoutOnlyMode && (
               <button
                 type="button"
                 onClick={handleSimulateAdvanceToSemifinals}
@@ -1262,19 +1430,21 @@ export const DoubleEliminationBracket: React.FC = () => {
               Imprimir
             </button>
 
-            <button
-              onClick={openCreateModal}
-              className="px-3 py-2 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              Novo Torneio
-            </button>
+            {!minimalistPlayerView && (
+              <button
+                onClick={openCreateModal}
+                className="px-3 py-2 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                Novo Torneio
+              </button>
+            )}
           </div>
         </div>
 
         {/* Real-Time Live Match Scoreboard Banner (Clickable to open MatchLiveDetailsModal) */}
         {liveMatches.length > 0 && (
-          <div className="bg-[#030B17] border-2 border-[#0987CE]/80 rounded-2xl p-4 space-y-3">
+          <div className="aquarium-glass bg-[#030B17] border-2 border-[#0987CE]/80 rounded-2xl p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#145A9B]/60 pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-black uppercase animate-pulse">
@@ -1378,40 +1548,12 @@ export const DoubleEliminationBracket: React.FC = () => {
           </div>
         )}
 
-        {/* Format Switcher: Semi Direta (Futevôlei) vs Semi com Chance (Challonge) */}
-        <div className="pt-3 border-t border-[#145A9B]/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="space-y-0.5 text-xs">
-            <span className="font-extrabold text-[#12C7BB] uppercase tracking-wider block text-[11px]">
-              Formato da Semifinal & Pontuação Automática no Ranking SHARK SET:
-            </span>
-            <span className="text-slate-300">
-              Clique em qualquer cartão de jogo para abrir a <strong>Transmissão em Tempo Real + Chat + Histórico de Pontos</strong>.
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-[#030B17] p-1.5 rounded-xl border border-[#145A9B] shrink-0">
-            <button
-              onClick={() => handleSwitchSemiFormat('semi_direta')}
-              className={`px-3.5 py-2 text-xs font-black rounded-lg transition-all cursor-pointer ${
-                activeTournament.semiFormat === 'semi_direta'
-                  ? 'bg-[#0987CE] text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              ⚽ Semi Direta + 3º Lugar (Futevôlei)
-            </button>
-            <button
-              onClick={() => handleSwitchSemiFormat('semi_com_chance')}
-              className={`px-3.5 py-2 text-xs font-black rounded-lg transition-all cursor-pointer ${
-                activeTournament.semiFormat === 'semi_com_chance'
-                  ? 'bg-[#0987CE] text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              🏆 Semi com Chance (Challonge)
-            </button>
-          </div>
-        </div>
+        {!minimalistPlayerView && (
+          currentMatches.length > 0 && currentMatches.every(match => match.source1) ? (
+            <div id="tournament-operations"><TournamentOperationsPanel matches={currentMatches} teams={pairsInTourn} focusedMatchId={operationsMatchId}
+              onApply={(matches, teams) => { applyTournamentEdit(activeTournament.id, matches, teams); triggerToast('Tabela atualizada. Histórico preservado.'); }} /></div>
+          ) : <p className="p-4 border border-amber-400 rounded-xl">Esta tabela usa o motor antigo ou ainda não foi gerada. Use o sorteio para gerar uma nova versão conforme o regulamento. A versão anterior será arquivada localmente.</p>
+        )}
 
         {/* Podium Highlight */}
         {podium.champion && (
@@ -1422,7 +1564,7 @@ export const DoubleEliminationBracket: React.FC = () => {
               </div>
               <div>
                 <span className="text-[11px] font-bold text-[#12C7BB] uppercase tracking-wider block">
-                  Pódio Oficial Homologado
+                  Pódio registrado na tabela
                 </span>
                 <span className="text-base font-extrabold text-white">
                   🥇 1º Lugar: {formatParticipantName(podium.champion)}
@@ -1453,7 +1595,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       </div>
 
       {/* Dual View Mode Switcher + Stage Filter */}
-      <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-3.5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-black text-slate-300 uppercase tracking-wider px-2">
             Modo de Visualização:
@@ -1526,8 +1668,8 @@ export const DoubleEliminationBracket: React.FC = () => {
             }}
             className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
               activeStageTab === 'losers'
-                ? 'bg-rose-600 text-white shadow-xs'
-                : 'text-rose-300 hover:text-white hover:bg-rose-950/60'
+                ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                : 'text-amber-300 hover:text-white hover:bg-amber-950/60'
             }`}
           >
             Perdedores ({losersMatches.length})
@@ -1655,11 +1797,17 @@ export const DoubleEliminationBracket: React.FC = () => {
           getInlineScore={getInlineScore}
           onInlineScoreChange={handleInlineScoreChange}
           onInlineSubmit={handleInlineSubmit}
-          onOpenRefereeModal={(mId) => setRefereeModalMatchId(mId)}
+          onOpenRefereeModal={(mId) => {
+            const match = currentMatches.find(item => item.id === mId);
+            if (match && (match.status === 'completed' || match.rules && match.rules.bestOf > 1)) handleOpenMatchEditor(match);
+            else setRefereeModalMatchId(mId);
+          }}
           onOpenMatchEditor={handleOpenMatchEditor}
           onSelectMatchCard={(m) => setSelectedLiveMatchId(m.id)}
           onShareMatch={(m) => handleOpenShare(m)}
           onHistoryMatch={(m) => handleOpenMatchHistory(m.team1, m.team2, m.id)}
+          onToggleLiveMatch={handleToggleLiveMatch}
+          onQuickOfficialize={handleQuickOfficialize}
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => setIsFullscreen((f) => !f)}
           knockoutOnlyMode={knockoutOnlyMode}
@@ -1675,7 +1823,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* TABELA DE CLASSIFICAÇÃO AUTOMÁTICA DO TORNEIO                         */}
       {/* ===================================================================== */}
       {(activeStageTab === 'all' || activeStageTab === 'standings') && (
-        <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-6 shadow-xl space-y-4 text-[#F7FAFD]">
+        <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-6 shadow-xl space-y-4 text-[#F7FAFD]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#145A9B]/60">
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
@@ -1787,13 +1935,13 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* VISUALIZAÇÃO 2: EM LISTA (CARDS POR FASE / RODADA) */}
       {activeStageTab !== 'standings' && bracketViewMode === 'lista' && (
         <div className="space-y-8">
-          {/* SECTION 1: CHAVE DOS VENCEDORES (VERDE SUAVE) */}
+          {/* SECTION 1: CHAVE DOS VENCEDORES (FUNDO VERDE) */}
           {(activeStageTab === 'all' || activeStageTab === 'winners') && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-emerald-400 flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                  Chave dos Vencedores (Verde Suave)
+                  Chave dos Vencedores (Fundo Verde)
                 </h2>
                 <span className="text-xs text-slate-400">
                   Clique em qualquer cartão para abrir o jogo em tempo real com chat e histórico de pontos
@@ -1833,13 +1981,13 @@ export const DoubleEliminationBracket: React.FC = () => {
             </div>
           )}
 
-          {/* SECTION 2: CHAVE DOS PERDEDORES (VERMELHO SUAVE) */}
+          {/* SECTION 2: CHAVE DOS PERDEDORES (FUNDO AMARELO) */}
           {(activeStageTab === 'all' || activeStageTab === 'losers') && (
             <div className="space-y-3 pt-4 border-t border-[#145A9B]/60">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-rose-400 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                  Chave dos Perdedores / Repescagem (Vermelho Suave)
+                <h2 className="text-base font-bold text-amber-400 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                  Chave dos Perdedores / Repescagem (Fundo Amarelo)
                 </h2>
                 <span className="text-xs text-slate-400">Quem perde 2 vezes está eliminado</span>
               </div>
@@ -1850,14 +1998,14 @@ export const DoubleEliminationBracket: React.FC = () => {
                 } gap-4`}
               >
                 <div className="space-y-3">
-                  <div className="text-xs font-bold text-rose-300 uppercase tracking-wide px-1">
+                  <div className="text-xs font-bold text-amber-300 uppercase tracking-wide px-1">
                     Repescagem R1 (Perdedores da R1 - J5 e J6)
                   </div>
                   {losersMatches.filter((m) => m.round === 1).map((m) => renderMatchCard(m))}
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-xs font-bold text-rose-300 uppercase tracking-wide px-1">
+                  <div className="text-xs font-bold text-amber-300 uppercase tracking-wide px-1">
                     {activeTournament.semiFormat === 'semi_direta'
                       ? 'Repescagem R2: Vale Vaga na Semifinal Direta (J9 e J10)'
                       : 'Repescagem R2: Cruzamento c/ Perdedores da Semi (J9 e J10)'}
@@ -1868,14 +2016,14 @@ export const DoubleEliminationBracket: React.FC = () => {
                 {activeTournament.semiFormat === 'semi_com_chance' && (
                   <>
                     <div className="space-y-3">
-                      <div className="text-xs font-bold text-rose-300 uppercase tracking-wide px-1">
+                      <div className="text-xs font-bold text-amber-300 uppercase tracking-wide px-1">
                         Repescagem R3: Semifinal Perdedores (J12)
                       </div>
                       {losersMatches.filter((m) => m.round === 3).map((m) => renderMatchCard(m))}
                     </div>
 
                     <div className="space-y-3">
-                      <div className="text-xs font-bold text-rose-300 uppercase tracking-wide px-1">
+                      <div className="text-xs font-bold text-amber-300 uppercase tracking-wide px-1">
                         Repescagem R4: Final Perdedores (J13)
                       </div>
                       {losersMatches.filter((m) => m.round === 4).map((m) => renderMatchCard(m))}
@@ -1893,7 +2041,7 @@ export const DoubleEliminationBracket: React.FC = () => {
                 <h2 className="text-base font-bold text-[#5BC3FA] flex items-center gap-2">
                   <Trophy className="w-4 h-4 text-[#12C7BB]" />
                   {activeTournament.semiFormat === 'semi_direta'
-                    ? 'Mata-Mata Final: Semifinais, Grande Final & Disputa de 3º Lugar'
+                    ? 'Mata-Mata Final: Semifinais, Grande Final & DISPUTA DE 3º'
                     : 'Grande Final (Campeão Vencedores vs Campeão Repescagem)'}
                 </h2>
               </div>
@@ -1902,19 +2050,19 @@ export const DoubleEliminationBracket: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-3">
                     <div className="text-xs font-bold text-[#5BC3FA] uppercase tracking-wide px-1">
-                      Semifinais Diretas (Mata-Mata)
+                      SEMI FINAL
                     </div>
                     {semiMatches.map((m) => renderMatchCard(m))}
                   </div>
                   <div className="space-y-3">
                     <div className="text-xs font-bold text-[#12C7BB] uppercase tracking-wide px-1">
-                      🏆 Grande Final (1º e 2º Lugar)
+                      🏆 FINAL
                     </div>
                     {grandFinalMatches.map((m) => renderMatchCard(m))}
                   </div>
                   <div className="space-y-3">
                     <div className="text-xs font-bold text-slate-300 uppercase tracking-wide px-1">
-                      🥉 Disputa de 3º Lugar
+                      🥉 DISPUTA DE 3º
                     </div>
                     {thirdPlaceMatches.map((m) => renderMatchCard(m))}
                   </div>
@@ -1934,7 +2082,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* ===================================================================== */}
       {showTournamentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleSaveTournamentModal} className="space-y-4 text-xs">
               <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
                 <div>
@@ -2047,16 +2195,10 @@ export const DoubleEliminationBracket: React.FC = () => {
 
                 <div>
                   <label className="block font-semibold text-slate-300 mb-1">Limite de Participantes:</label>
-                  <select
-                    value={formMaxParticipants}
-                    onChange={(e) => setFormMaxParticipants(parseInt(e.target.value, 10))}
-                    className="w-full px-2.5 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono font-bold text-white"
-                  >
-                    <option value={4}>4 Vagas</option>
-                    <option value={8}>8 Vagas (Padrão Buraco 4)</option>
-                    <option value={12}>12 Vagas</option>
-                    <option value={16}>16 Vagas</option>
-                  </select>
+                  <input type="number" min={4} max={1024} step={1} value={formMaxParticipants}
+                    onChange={event => setFormMaxParticipants(Number(event.target.value))}
+                    className="w-full px-2.5 py-2 rounded-lg" />
+                  <p className="text-xs mt-1">Qualquer quantidade inteira entre 4 e 1.024 duplas.</p>
                 </div>
 
                 <div>
@@ -2108,7 +2250,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* ===================================================================== */}
       {showQuickEnrollModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
             <form onSubmit={handleQuickEnrollSubmit} className="space-y-4 text-xs">
               <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
                 <div>
@@ -2251,14 +2393,14 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* Full Unfrozen Match Editor Modal */}
       {editingMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
               <div>
                 <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
                   Edição Livre de Partida (Nada Congelado)
                 </span>
                 <h3 className="text-base font-bold text-white">
-                  Jogo {editingMatch.matchNumber} · {editingMatch.stageName}
+                  Jogo {editingMatch.matchNumber} · {matchPhaseLabel(editingMatch)}
                 </h3>
               </div>
               <button
@@ -2383,7 +2525,7 @@ export const DoubleEliminationBracket: React.FC = () => {
       {/* Start Tournament & Dynamic Draw Builder Modal */}
       {showStartDrawModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-[#071D3D] text-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-[#145A9B] space-y-5 my-6">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-[#145A9B] space-y-5 my-6">
             <div className="flex items-start justify-between border-b border-[#145A9B]/60 pb-4">
               <div>
                 <span className="px-2.5 py-0.5 rounded-md bg-[#0987CE] text-white font-black uppercase text-[10px]">
@@ -2539,7 +2681,7 @@ export const DoubleEliminationBracket: React.FC = () => {
               </div>
 
               {drawMode === 'manual' && (
-                <div className="bg-[#030B17] border border-[#145A9B] rounded-2xl p-4 space-y-2.5">
+                <div className="aquarium-glass bg-[#030B17] border border-[#145A9B] rounded-2xl p-4 space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-extrabold text-white">
                       Ordem Manual dos Confrontos (1ª Rodada):
@@ -2638,7 +2780,8 @@ export const DoubleEliminationBracket: React.FC = () => {
           onConfirmFinalResult={(matchId, winningTeam, s1, s2) => {
             const winPair =
               winningTeam === 1 ? selectedLiveMatch.team1 : selectedLiveMatch.team2;
-            handleAdvanceMatch(matchId, winningTeam, s1, s2);
+            try { handleAdvanceMatch(matchId, winningTeam, s1, s2); }
+            catch (error) { triggerToast(error instanceof Error ? error.message : 'Confira os sets em Administrar tabela.'); return; }
             setSelectedLiveMatchId(null);
             if (winPair) {
               triggerGsapWinningPathAnimation(winPair, selectedLiveMatch);
@@ -2667,6 +2810,8 @@ export const DoubleEliminationBracket: React.FC = () => {
         <RefereeConsoleModal
           match={activeRefereeMatch}
           arenaName={tenant.name}
+          arenaId={tenant.id}
+          tournamentMatches={tournamentMatches}
           onClose={() => setRefereeModalMatchId(null)}
           onUpdateLiveMatch={(matchId, updater) => {
             updateLiveRefereeMatch(matchId, updater);
@@ -2674,7 +2819,8 @@ export const DoubleEliminationBracket: React.FC = () => {
           onConfirmFinalResult={(matchId, winningTeam, s1, s2) => {
             const winPair =
               winningTeam === 1 ? activeRefereeMatch.team1 : activeRefereeMatch.team2;
-            handleAdvanceMatch(matchId, winningTeam, s1, s2);
+            try { handleAdvanceMatch(matchId, winningTeam, s1, s2); }
+            catch (error) { triggerToast(error instanceof Error ? error.message : 'Confira os sets em Administrar tabela.'); return; }
             setRefereeModalMatchId(null);
             if (winPair) {
               triggerGsapWinningPathAnimation(winPair, activeRefereeMatch);
@@ -2713,6 +2859,64 @@ export const DoubleEliminationBracket: React.FC = () => {
         tournamentId={activeTournament.id}
         tournamentName={activeTournament.name}
       />
+
+      {/* Integrity Report Modal (Denunciar Partida) */}
+      {reportMatchTarget && (
+        <IntegrityReportModal
+          isOpen={!!reportMatchTarget}
+          onClose={() => setReportMatchTarget(null)}
+          targetType="match"
+          targetId={reportMatchTarget.id}
+          targetName={reportMatchTarget.name}
+          onReportSubmitted={(rep) => {
+            triggerToast(`🚨 Denúncia registrada: ${rep.targetName}. Enviada para o comitê de integridade.`);
+          }}
+        />
+      )}
+      {/* Seção Educativa: Como Funciona a Chave de Dupla Eliminação no SHARKSET */}
+      <section className="rounded-3xl border border-cyan-800/40 bg-[#041529]/90 p-6 sm:p-8 text-white space-y-6 shadow-xl">
+        <div className="flex items-center gap-3 border-b border-cyan-800/50 pb-4">
+          <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
+            <Trophy className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-white">Como Funciona a Tabela de Dupla Eliminação</h3>
+            <p className="text-xs text-slate-400">Entenda a chave dos vencedores, repescagem e avanço até a grande final.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-emerald-400 font-black">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              <span>Chave dos Vencedores (Winners)</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Todas as duplas iniciam na chave principal (verde). Ao vencer, continuam avançando. Quem perde o primeiro jogo não é eliminado: cai imediatamente para a Repescagem (Losers).
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-amber-400 font-black">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+              <span>Repescagem (Losers Bracket)</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Na repescagem (amarela), a dupla luta pela sobrevida. Se vencer todos os jogos da repescagem, chega até a Semifinal/Final. Apenas a 2ª derrota elimina a dupla do campeonato.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-[#0987CE] font-black">
+              <ShieldAlert className="w-4 h-4 text-cyan-300" />
+              <span>Passaporte Único Anti-Gato</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              O nível do atleta no Sharkset é único e nacional. Se um jogador joga Série A ou B em sua cidade, o sistema bloqueia automaticamente a inscrição dele como Iniciante ou C em qualquer outra arena do Brasil.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

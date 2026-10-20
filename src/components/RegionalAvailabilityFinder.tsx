@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { AthleteLevel, ClassScheduleConfig, Court, TenantConfig } from '../types';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
-import { WEEKDAY_SHORT_NAMES, WEEKDAY_FULL_NAMES } from '../data/initialData';
+import { WEEKDAY_SHORT_NAMES, WEEKDAY_FULL_NAMES } from '../services/courtSlotPricing';
 import {
   Calendar,
   Clock,
@@ -202,7 +202,7 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
   };
 
   return (
-    <div className="bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 sm:p-6 shadow-xl space-y-5 text-white">
+    <div className="aquarium-glass bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl p-5 sm:p-6 shadow-xl space-y-5 text-white">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#145A9B]/60">
         <div className="space-y-1">
@@ -212,8 +212,14 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
             </span>
             <span aria-hidden="true">·</span>
             <span>
-              Seu Nível Atual:{' '}
-              <strong className="text-white">{ATHLETE_LEVEL_LABELS[userProfile.level]}</strong>
+              {userProfile.level ? (
+                <>
+                  Sua Categoria Oficial:{' '}
+                  <strong className="text-white">{ATHLETE_LEVEL_LABELS[userProfile.level]}</strong>
+                </>
+              ) : (
+                <span className="text-slate-400">Faça login para definir sua categoria</span>
+              )}
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
@@ -280,7 +286,7 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
       )}
 
       {/* Filter Controls Row: 1. Days of Week | 2. Time Interval | 3. Level */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#030B17] p-4 rounded-2xl border border-[#145A9B]">
+      <div className="aquarium-glass grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#030B17] p-4 rounded-2xl border border-[#145A9B]">
         {/* Step 1: Select 2 Days of the Week */}
         <div className="md:col-span-5 space-y-1.5">
           <label className="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
@@ -421,7 +427,7 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
                 return (
                   <div
                     key={`${arena.id}-${cls.id}`}
-                    className="rounded-2xl border-2 border-[#145A9B] bg-[#030B17] p-4 flex flex-col justify-between gap-3 hover:border-[#0987CE] transition-all"
+                    className="aquarium-glass rounded-2xl border-2 border-[#145A9B] bg-[#030B17] p-4 flex flex-col justify-between gap-3 hover:border-[#0987CE] transition-all"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2 text-xs text-slate-300">

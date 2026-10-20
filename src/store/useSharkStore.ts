@@ -1,12 +1,11 @@
 import { create } from 'zustand';
 import { SmartNotificationItem } from '../types';
-import { INITIAL_SMART_NOTIFICATIONS } from '../data/initialData';
 import {
   dispatchPushNotificationChannel,
   requestBrowserPushPermission,
 } from '../services/smartAlertEngine';
 
-const NOTIFICATIONS_STORAGE_KEY = 'sharkset_v2_smart_notifications';
+const NOTIFICATIONS_STORAGE_KEY = 'sharkset_v6_smart_notifications';
 
 interface SharkStoreState {
   smartNotifications: SmartNotificationItem[];
@@ -26,9 +25,9 @@ interface SharkStoreState {
 function loadInitialNotifications(): SmartNotificationItem[] {
   try {
     const raw = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : INITIAL_SMART_NOTIFICATIONS;
+    return raw ? JSON.parse(raw) : [];
   } catch {
-    return INITIAL_SMART_NOTIFICATIONS;
+    return [];
   }
 }
 

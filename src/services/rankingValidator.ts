@@ -73,6 +73,27 @@ export const ATHLETE_TIERS: TierMeta[] = [
   },
 ];
 
+export function getInitialFloorPointsForLevel(level: AthleteLevel): number {
+  const tier = ATHLETE_TIERS.find((t) => t.level === level);
+  return tier ? tier.minPoints : 0;
+}
+
+export function resolveMmrCategoryLevel(
+  points: number,
+  minimumBaseLevel?: AthleteLevel
+): AthleteLevel {
+  let resolved: AthleteLevel = 'iniciante';
+  for (const tier of ATHLETE_TIERS) {
+    if (points >= tier.minPoints) {
+      resolved = tier.level;
+    }
+  }
+  if (minimumBaseLevel && ATHLETE_LEVEL_WEIGHT[minimumBaseLevel] > ATHLETE_LEVEL_WEIGHT[resolved]) {
+    return minimumBaseLevel;
+  }
+  return resolved;
+}
+
 export const TOURNAMENT_CATEGORY_LABELS: Record<TournamentCategory, string> = {
   iniciante: 'Iniciante Puro (Só Iniciantes)',
   iniciante_serie_c: 'Iniciante + Série C (Proibido 2 Série C)',
@@ -301,11 +322,13 @@ export function getRankingPromotionSuggestion(
   const reachedTitles = tier.minTitlesForAutoPromo ? titlesCount >= tier.minTitlesForAutoPromo : false;
   const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
   const reachedDominance =
-    (currentLevel === 'iniciante' && wins >= 10 && winRate >= 75) ||
-    (currentLevel === 'serie_c' && wins >= 15 && winRate >= 75) ||
-    (currentLevel === 'serie_b' && wins >= 22 && winRate >= 75);
+    (currentLevel === 'iniciante' && wins >= 8 && winRate >= 70) ||
+    (currentLevel === 'serie_c' && wins >= 12 && winRate >= 70) ||
+    (currentLevel === 'serie_b' && wins >= 18 && winRate >= 70);
 
-  if (reachedPoints || reachedTitles || reachedDominance) {
+  // Trava de Consistência rigorosa: Mínimo de 6 partidas com 4 vitórias e taxa de vitória >= 60%
+  const hasConsistencyLockSatisfied = matchesPlayed >= 6 && wins >= 4 && winRate >= 60;
+  if (hasConsistencyLockSatisfied && (reachedPoints || reachedTitles || reachedDominance)) {
     const reasonDetail = reachedPoints
       ? `atingiu ${points} pts (teto: ${tier.maxPoints} pts)`
       : reachedTitles
@@ -315,7 +338,7 @@ export function getRankingPromotionSuggestion(
     return {
       shouldPromote: true,
       recommendedLevel: tier.nextLevel,
-      explanation: `SUBIDA OBRIGATÓRIA: Atleta ${reasonDetail} em torneios oficiais. Promovido para ${ATHLETE_LEVEL_LABELS[tier.nextLevel]} (bloqueado de atuar em ${ATHLETE_LEVEL_LABELS[currentLevel]}).`,
+      explanation: `SUBIDA OBRIGATÓRIA: Atleta ${reasonDetail} com consistência comprovada. Promovido para ${ATHLETE_LEVEL_LABELS[tier.nextLevel]} (bloqueado de atuar em ${ATHLETE_LEVEL_LABELS[currentLevel]}).`,
       progressPercent: 100,
       pointsToNext: 0,
       triggeredByDominance: reachedDominance,
@@ -325,7 +348,9 @@ export function getRankingPromotionSuggestion(
   return {
     shouldPromote: false,
     recommendedLevel: currentLevel,
-    explanation: `Faltam ${pointsToNext} pts em torneios oficiais para subir para ${ATHLETE_LEVEL_LABELS[tier.nextLevel]}.`,
+    explanation: reachedPoints && !hasConsistencyLockSatisfied
+      ? `Pontuação atingida (${points} pts), mas aguardando trava de consistência (mínimo 5 jogos com 60% win rate ou 1 título).`
+      : `Para subir: ${pointsToNext} pts restantes (${progressPercent}% XP) + trava de consistência (mínimo 5 jogos com 60% win rate ou título).`,
     progressPercent,
     pointsToNext,
   };
@@ -453,6 +478,8 @@ export function calculateFutevoleiMatchPoints(params: {
   winnerScore: number;
   loserScore: number;
   stage?: BracketStage;
+  isBroadcastFriendly?: boolean; // Amistoso com transmissão validada em arena
+  priorHeadToHeadMatchesThisWeek?: number; // Proteção anti-farming/conluio
 }): {
   winnerPoints: number;
   loserPoints: number;
@@ -460,48 +487,74 @@ export function calculateFutevoleiMatchPoints(params: {
   opponentDifficultyBonus: number;
   stageBonus: number;
   explanation: string;
+  isCappedByAntiFarm?: boolean;
 } {
-  const { winnerLevels, loserLevels, winnerScore, loserScore, stage = 'winners' } = params;
+  const {
+    winnerLevels,
+    loserLevels,
+    winnerScore,
+    loserScore,
+    stage = 'winners',
+    isBroadcastFriendly = false,
+    priorHeadToHeadMatchesThisWeek = 0,
+  } = params;
 
   const avgWinnerWeight =
     winnerLevels.reduce((acc, l) => acc + ATHLETE_LEVEL_WEIGHT[l], 0) / Math.max(1, winnerLevels.length);
   const avgLoserWeight =
     loserLevels.reduce((acc, l) => acc + ATHLETE_LEVEL_WEIGHT[l], 0) / Math.max(1, loserLevels.length);
 
-  // Base points for winning a match
-  const baseWin = 25;
+  // Base points: Torneio tem peso maior (25 pts), amistoso com transmissão tem base padrão equilibrada (16 pts)
+  const baseWin = isBroadcastFriendly ? 16 : 25;
 
-  // Stage bonus
+  // Stage bonus (apenas para torneios oficiais)
   let stageBonus = 0;
-  if (stage === 'semifinals') stageBonus = 12;
-  if (stage === 'grand_final' || stage === 'super_final') stageBonus = 28;
+  if (!isBroadcastFriendly) {
+    if (stage === 'semifinals') stageBonus = 12;
+    if (stage === 'grand_final' || stage === 'super_final') stageBonus = 28;
+  }
 
   // Performance bonus based on score margin (e.g. 18x10 -> diff 8 -> +8 pts)
   const scoreDiff = Math.max(1, winnerScore - loserScore);
-  const performanceBonus = Math.min(15, Math.round(scoreDiff * 1.0));
+  const performanceBonus = Math.min(12, Math.round(scoreDiff * 0.9));
 
-  // Opponent difficulty bonus (ELO-like adjustment based on opponent's level vs winner's level)
+  // Opponent difficulty bonus (Underdog Bonus & Anti-Farm Clamp)
+  // weightDiff > 0: Venceu alguém de nível superior!
+  // weightDiff < 0: Venceu alguém de nível inferior (favorito)
   const weightDiff = avgLoserWeight - avgWinnerWeight;
   let opponentDifficultyBonus = 0;
+
   if (weightDiff > 0) {
-    // Beat a stronger opponent! High reward
-    opponentDifficultyBonus = Math.round(weightDiff * 16);
+    // Venceu adversário mais forte: super bônus proporcional à diferença de categorias
+    // Ex: +1 categoria acima = +18 pts; +2 categorias acima = +36 pts!
+    opponentDifficultyBonus = Math.round(weightDiff * (isBroadcastFriendly ? 18 : 16));
   } else if (weightDiff === 0) {
-    // Same level opponent
-    opponentDifficultyBonus = 6;
+    // Mesma categoria
+    opponentDifficultyBonus = isBroadcastFriendly ? 5 : 6;
   } else {
-    // Beat a lower level opponent (minimum +2 bonus)
-    opponentDifficultyBonus = Math.max(2, Math.round(6 + weightDiff * 2));
+    // Favorito venceu categoria inferior: ganho mínimo para desestimular farming
+    // Ex: Profissional ganhando de Série C ganha no máximo +2 pts de bônus
+    opponentDifficultyBonus = Math.max(1, Math.round(4 + weightDiff * 2));
   }
 
-  const winnerPoints = baseWin + stageBonus + performanceBonus + opponentDifficultyBonus;
+  let winnerPoints = baseWin + stageBonus + performanceBonus + opponentDifficultyBonus;
 
-  // Loser gets participation + close-match resilience bonus if they scored well or played stronger opponents
-  const closeMatchBonus = loserScore >= 14 ? 5 : 2;
-  const strongerOpponentResilience = avgWinnerWeight > avgLoserWeight ? 4 : 0;
-  const loserPoints = 4 + closeMatchBonus + strongerOpponentResilience;
+  // Proteção Anti-Farm / Conluio entre amigos no amistoso:
+  // Se jogarem mais de 2 partidas na mesma semana entre si, a pontuação sofre corte de 80% (1/5)
+  let isCappedByAntiFarm = false;
+  if (isBroadcastFriendly && priorHeadToHeadMatchesThisWeek >= 2) {
+    winnerPoints = Math.max(2, Math.round(winnerPoints * 0.2));
+    isCappedByAntiFarm = true;
+  }
 
-  const explanation = `Base +${baseWin} | Fase +${stageBonus} | Performance (${winnerScore}x${loserScore}) +${performanceBonus} | Nível Oponente +${opponentDifficultyBonus}`;
+  // Loser points: resiliência ao enfrentar categoria superior ou fazer jogo apertado
+  const closeMatchBonus = loserScore >= 14 ? 4 : 1;
+  const underdogResilience = avgWinnerWeight > avgLoserWeight ? Math.round((avgWinnerWeight - avgLoserWeight) * 4) : 0;
+  const loserPoints = isCappedByAntiFarm ? 1 : 3 + closeMatchBonus + underdogResilience;
+
+  const typePrefix = isBroadcastFriendly ? 'Amistoso Transmitido' : 'Torneio';
+  const farmNote = isCappedByAntiFarm ? ' [⚠️ Trava Anti-Farm: Limite semanal atingido]' : '';
+  const explanation = `${typePrefix}: Base +${baseWin} | Dif. Nível +${opponentDifficultyBonus} | Performance (${winnerScore}x${loserScore}) +${performanceBonus}${stageBonus > 0 ? ` | Fase +${stageBonus}` : ''}${farmNote}`;
 
   return {
     winnerPoints,
@@ -510,6 +563,7 @@ export function calculateFutevoleiMatchPoints(params: {
     opponentDifficultyBonus,
     stageBonus,
     explanation,
+    isCappedByAntiFarm,
   };
 }
 
@@ -623,4 +677,20 @@ export function filterAndRankAthletesByScope(
     return true;
   });
 }
+
+/**
+ * Formata a data de entrada do atleta na plataforma SHARK SET (ex: "Out/2026")
+ */
+export function formatSharksetSince(dateStr?: string): string {
+  if (!dateStr) return 'Out/2026';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Out/2026';
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return `${months[d.getMonth()]}/${d.getFullYear()}`;
+  } catch {
+    return 'Out/2026';
+  }
+}
+
 

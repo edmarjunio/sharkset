@@ -1,5 +1,12 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+} from 'firebase/auth';
 import {
   collection,
   doc,
@@ -15,10 +22,25 @@ import {
 import { AcademyPost, AthleteProfile, MatchMvpVoteRecord } from '../types';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+interface ExtendedFirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId: string;
+  measurementId?: string;
+  firestoreDatabaseId?: string;
+}
+
+const config = firebaseConfig as ExtendedFirebaseConfig;
+const app = initializeApp(config);
+export const db = config.firestoreDatabaseId
+  ? getFirestore(app, config.firestoreDatabaseId)
+  : getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export enum OperationType {
   CREATE = 'create',
@@ -89,6 +111,14 @@ testFirestoreConnection();
 
 export async function signInWithGooglePopup() {
   return signInWithPopup(auth, googleProvider);
+}
+
+export async function signInWithGoogleRedirect() {
+  return signInWithRedirect(auth, googleProvider);
+}
+
+export async function getGoogleRedirectResult() {
+  return getRedirectResult(auth);
 }
 
 export async function signOutFirebase() {
@@ -292,6 +322,12 @@ export async function fetchTopAthletesFromFirestore(
         name: data.name || 'Atleta SHARK SET',
         phone: '(64) 99999-0000',
         level: data.level || 'serie_c',
+        lastMatchAt: data.lastMatchAt,
+        rankingInactive: data.rankingInactive,
+        highestHistoricalLevel: data.highestHistoricalLevel,
+        levelMatches: data.levelMatches,
+        levelWins: data.levelWins,
+        levelPoints: data.levelPoints,
         experienceCategory: data.experienceCategory || 'amador',
         points: Number(data.points) || 0,
         wins: Number(data.wins) || 0,
@@ -327,6 +363,12 @@ export async function persistAthleteToFirestore(athlete: AthleteProfile): Promis
       id: cleanId,
       name: athlete.name.slice(0, 120),
       level: athlete.level,
+      ...(athlete.lastMatchAt ? { lastMatchAt: athlete.lastMatchAt } : {}),
+      rankingInactive: athlete.rankingInactive || false,
+      highestHistoricalLevel: athlete.highestHistoricalLevel || athlete.level,
+      levelMatches: athlete.levelMatches || 0,
+      levelWins: athlete.levelWins || 0,
+      levelPoints: athlete.levelPoints || 0,
       experienceCategory: athlete.experienceCategory || 'amador',
       points: Number(athlete.points) || 0,
       wins: Number(athlete.wins) || 0,

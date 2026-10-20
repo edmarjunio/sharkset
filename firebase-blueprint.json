@@ -2,19 +2,57 @@
   "entities": {
     "Arena": {
       "title": "Arena",
-      "description": "Unidade esportiva da rede SHARK SET com quadras e horários de funcionamento.",
+      "description": "Unidade esportiva da rede SHARK SET isolada por organizador (ownerId) com coordenadas geográficas.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "name": { "type": "string", "maxLength": 120 },
         "city": { "type": "string", "maxLength": 80 },
         "state": { "type": "string", "maxLength": 10 },
+        "address": { "type": "string", "maxLength": 200 },
+        "tagline": { "type": "string", "maxLength": 140 },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
         "distanceKm": { "type": "number" },
         "rating": { "type": "number" },
         "whatsapp": { "type": "string", "maxLength": 30 },
+        "ownerName": { "type": "string", "maxLength": 120 },
+        "subscriptionPlan": { "type": "string", "maxLength": 40 },
         "ownerId": { "type": "string", "maxLength": 128 }
       },
       "required": ["id", "name", "city", "state", "ownerId"]
+    },
+    "Tournament": {
+      "title": "Tournament",
+      "description": "Campeonato oficial vinculado a uma arena específica e isolado para o organizador proprietário.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "tenantId": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 140 },
+        "sport": { "type": "string", "enum": ["futevolei", "beach_tennis", "volei_praia"] },
+        "category": { "type": "string", "maxLength": 40 },
+        "date": { "type": "string", "maxLength": 20 },
+        "ownerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "tenantId", "name", "sport", "category", "date", "ownerId"]
+    },
+    "CourtBlock": {
+      "title": "CourtBlock",
+      "description": "Bloqueio administrativo de horário de quadra isolado por arena e organizador.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "tenantId": { "type": "string", "maxLength": 64 },
+        "courtId": { "type": "string", "maxLength": 64 },
+        "date": { "type": "string", "maxLength": 20 },
+        "startTime": { "type": "string", "maxLength": 10 },
+        "endTime": { "type": "string", "maxLength": 10 },
+        "reason": { "type": "string", "maxLength": 160 },
+        "status": { "type": "string", "maxLength": 20 },
+        "ownerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "tenantId", "courtId", "date", "startTime", "endTime", "ownerId"]
     },
     "AthletePublic": {
       "title": "AthletePublic",
@@ -133,12 +171,50 @@
         "ownerId": { "type": "string", "maxLength": 128 }
       },
       "required": ["id", "title", "category", "mediaType", "summary", "authorName", "level", "likesCount", "ownerId"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil autenticado via Google com isolamento privado de PII e papel de atleta ou administrador de arena.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "email": { "type": "string", "maxLength": 160 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "level": {
+          "type": "string",
+          "enum": ["iniciante", "serie_c", "serie_b", "serie_a", "profissional"]
+        },
+        "experienceCategory": {
+          "type": "string",
+          "enum": ["amador", "profissional"]
+        },
+        "role": {
+          "type": "string",
+          "enum": ["athlete", "admin"]
+        },
+        "managedArenaId": { "type": "string", "maxLength": 64 },
+        "ownerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "displayName", "email", "level", "experienceCategory", "role", "ownerId"]
     }
   },
   "firestore": {
+    "/user_profiles/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Perfis privados de atletas e administradores autenticados com Google"
+    },
     "/arenas/{arenaId}": {
       "schema": { "$ref": "#/entities/Arena" },
-      "description": "Unidades SHARK SET cadastradas"
+      "description": "Unidades SHARK SET cadastradas e isoladas por organizador (ownerId)"
+    },
+    "/tournaments/{tournamentId}": {
+      "schema": { "$ref": "#/entities/Tournament" },
+      "description": "Campeonatos isolados por arena (tenantId) e organizador (ownerId)"
+    },
+    "/court_blocks/{blockId}": {
+      "schema": { "$ref": "#/entities/CourtBlock" },
+      "description": "Bloqueios de quadra isolados por arena (tenantId) e organizador (ownerId)"
     },
     "/athletes_public/{athleteId}": {
       "schema": { "$ref": "#/entities/AthletePublic" },
@@ -146,7 +222,7 @@
     },
     "/bookings/{bookingId}": {
       "schema": { "$ref": "#/entities/BookingRecord" },
-      "description": "Reservas de quadras de areia do usuário autenticado"
+      "description": "Reservas de quadras de areia do usuário autenticado ou da arena do organizador"
     },
     "/notifications/{notificationId}": {
       "schema": { "$ref": "#/entities/SmartNotification" },

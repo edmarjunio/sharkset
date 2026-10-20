@@ -5,7 +5,7 @@ import {
   buildDefaultDayOfWeekPricing,
   WEEKDAY_FULL_NAMES,
   WEEKDAY_SHORT_NAMES,
-} from '../data/initialData';
+} from '../services/courtSlotPricing';
 import {
   Check,
   Clock,
@@ -203,7 +203,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner: Court Selector & Global Replicate Button */}
-      <div className="bg-slate-950 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-5">
+      <div className="aquarium-glass bg-slate-950 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-black uppercase text-[10px]">
@@ -264,7 +264,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
       </div>
 
       {/* Section 1: Operating Hours & Peak Hour Window Configuration */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+      <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div>
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
@@ -382,7 +382,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
       </div>
 
       {/* Section 2: Quick Batch Pricing (Segunda a Quinta · Sexta-Feira · Sábado e Domingo) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+      <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
         <div>
           <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" />
@@ -530,7 +530,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
       </div>
 
       {/* Section 3: Detailed Day-by-Day Pricing Matrix (Segunda a Domingo) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+      <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div>
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
@@ -686,7 +686,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
       </div>
 
       {/* Section 4: Live Hourly Price Simulator Timeline */}
-      <div className="bg-slate-950 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-4">
+      <div className="aquarium-glass bg-slate-950 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
@@ -752,7 +752,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
       </div>
 
       {/* Section 5: Fixed Class Schedules Management on this Court */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+      <div className="aquarium-glass bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div>
             <h3 className="text-base font-black text-slate-900">

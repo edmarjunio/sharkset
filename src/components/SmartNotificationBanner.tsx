@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
+import { generateWeeklySlots } from '../services/courtSlotPricing';
+import type { Court, TenantConfig, TimeSlot } from '../types';
 import {
   buildBooking15MinReminderNotification,
   buildMatch10PointsRemainingNotification,
@@ -10,6 +12,7 @@ import {
   findBookingsStartingSoon,
   findStudentsWithTuitionDueToday,
   findVacantSlotsInNext2Hours,
+  timeStrToMinutes,
 } from '../services/smartAlertEngine';
 import {
   Bell,
@@ -24,12 +27,25 @@ import {
   Zap,
   CheckCheck,
   Cloud,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { signInWithGooglePopup, signOutFirebase } from '../lib/firebase';
+
+interface NearbyAvailableSlotItem {
+  arena: TenantConfig;
+  court: Court;
+  slot: TimeSlot;
+  minutesUntilStart: number;
+  isWithinNext2h: boolean;
+}
 
 export const SmartNotificationBanner: React.FC = () => {
   const {
     tenant,
+    setTenantId,
+    availableTenants,
     slots,
     bookings,
     waitlist,
@@ -54,10 +70,151 @@ export const SmartNotificationBanner: React.FC = () => {
     firebaseUserEmail,
   } = useSharkStore();
 
+  const [selectedArenaFilter, setSelectedArenaFilter] = useState<string>('all');
+  const [rotatingIndex, setRotatingIndex] = useState<number>(0);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+
   const vacantSlotsNext2h = React.useMemo(
     () => findVacantSlotsInNext2Hours(slots, tenant.courts, referenceClockTime),
     [slots, tenant.courts, referenceClockTime]
   );
+
+  // Gather ALL available slots across ALL nearby arenas in the upcoming hours (and fallback to all available slots if none in next 2h)
+  const nearbyArenaSlots = React.useMemo(() => {
+    const todayIso = new Date().toISOString().split('T')[0];
+    const nowMinutes = timeStrToMinutes(referenceClockTime);
+    const sortedArenas = [...availableTenants].sort((a, b) => a.distanceKm - b.distanceKm);
+
+    const nextHoursItems: NearbyAvailableSlotItem[] = [];
+    const fallbackItems: NearbyAvailableSlotItem[] = [];
+
+    for (const arena of sortedArenas) {
+      const rawArenaSlots =
+        arena.id === tenant.id ? slots : generateWeeklySlots(arena.courts);
+
+      const courtMap = new Map<string, Court>(arena.courts.map((c) => [c.id, c]));
+
+      for (const s of rawArenaSlots) {
+        if (s.slotType === 'class') continue;
+        // Check if booked in active bookings
+        const isBooked = bookings.some(
+          (b) =>
+            b.status === 'confirmed' &&
+            b.courtId === s.courtId &&
+            b.date === s.date &&
+            b.startTime === s.startTime
+        );
+        if (!s.isAvailable || isBooked) continue;
+        const court = courtMap.get(s.courtId);
+        if (!court) continue;
+
+        const slotMin = timeStrToMinutes(s.startTime);
+        const diff = slotMin - nowMinutes;
+
+        if (s.date === todayIso && diff > 0 && diff <= 240) {
+          nextHoursItems.push({
+            arena,
+            court,
+            slot: s,
+            minutesUntilStart: diff,
+            isWithinNext2h: diff <= 120,
+          });
+        } else if (s.date === todayIso && diff > 240) {
+          fallbackItems.push({
+            arena,
+            court,
+            slot: s,
+            minutesUntilStart: diff,
+            isWithinNext2h: false,
+          });
+        } else if (s.date >= todayIso) {
+          fallbackItems.push({
+            arena,
+            court,
+            slot: s,
+            minutesUntilStart: diff > 0 ? diff : 1440 + diff,
+            isWithinNext2h: false,
+          });
+        }
+      }
+    }
+
+    // Interleave arenas so the ticker rotates across different nearby arenas and times
+    const sourceList = nextHoursItems.length > 0 ? nextHoursItems : fallbackItems;
+    sourceList.sort((a, b) => a.minutesUntilStart - b.minutesUntilStart || a.arena.distanceKm - b.arena.distanceKm);
+    return {
+      allItems: sourceList,
+      hasImmediateNextHours: nextHoursItems.length > 0,
+      sortedArenas,
+    };
+  }, [availableTenants, tenant.id, slots, bookings, referenceClockTime]);
+
+  const filteredRotatingItems = React.useMemo(() => {
+    if (selectedArenaFilter === 'all') return nearbyArenaSlots.allItems;
+    return nearbyArenaSlots.allItems.filter((item) => item.arena.id === selectedArenaFilter);
+  }, [nearbyArenaSlots.allItems, selectedArenaFilter]);
+
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (!carouselRef.current) return;
+    const amount = direction === 'left' ? -280 : 280;
+    carouselRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+  };
+
+  // Group available slots by arena for clean horizontal carousel without expanding downwards
+  const slotsGroupedByArena = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        arena: TenantConfig;
+        slots: typeof nearbyArenaSlots.allItems;
+      }
+    >();
+
+    for (const item of filteredRotatingItems) {
+      if (!map.has(item.arena.id)) {
+        map.set(item.arena.id, {
+          arena: item.arena,
+          slots: [],
+        });
+      }
+      map.get(item.arena.id)!.slots.push(item);
+    }
+
+    return Array.from(map.values());
+  }, [filteredRotatingItems]);
+
+  useEffect(() => {
+    setRotatingIndex(0);
+  }, [selectedArenaFilter, referenceClockTime]);
+
+  useEffect(() => {
+    if (isPaused || filteredRotatingItems.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setRotatingIndex((prev) => (prev + 1) % filteredRotatingItems.length);
+    }, 3500);
+    return () => window.clearInterval(timer);
+  }, [isPaused, filteredRotatingItems.length]);
+
+  // Smooth carousel auto-rotation from right to left every 4 seconds
+  useEffect(() => {
+    if (isPaused || slotsGroupedByArena.length <= 1) return;
+    const interval = window.setInterval(() => {
+      if (!carouselRef.current) return;
+      const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+      if (scrollLeft + clientWidth >= scrollWidth - 10) {
+        carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        carouselRef.current.scrollBy({ left: 280, behavior: 'smooth' });
+      }
+    }, 4200);
+    return () => window.clearInterval(interval);
+  }, [isPaused, slotsGroupedByArena.length]);
+
+  const activeRotatingSlot =
+    filteredRotatingItems[rotatingIndex % Math.max(1, filteredRotatingItems.length)] ||
+    nearbyArenaSlots.allItems[0];
 
   const bookingsStartingIn15m = React.useMemo(
     () => findBookingsStartingSoon(bookings, referenceClockTime),
@@ -72,9 +229,19 @@ export const SmartNotificationBanner: React.FC = () => {
   const unreadCount = smartNotifications.filter((n) => !n.read).length;
   const primaryVacant = vacantSlotsNext2h[0];
 
-  const handleQuickFillVacantSlot = () => {
+  const handleBookArenaSlot = (targetArenaId: string) => {
+    setTenantId(targetArenaId);
     setArenaSubTab('agenda');
     setActiveTab('scheduler');
+  };
+
+  const handleQuickFillVacantSlot = () => {
+    if (activeRotatingSlot) {
+      handleBookArenaSlot(activeRotatingSlot.arena.id);
+    } else {
+      setArenaSubTab('agenda');
+      setActiveTab('scheduler');
+    }
   };
 
   const handleTriggerVacant2hPush = () => {
@@ -187,86 +354,14 @@ export const SmartNotificationBanner: React.FC = () => {
     }
   };
 
+  if (!notificationDrawerOpen) return null;
+
   return (
-    <section className="bg-[#030B17] border-b border-[#145A9B]/60 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 space-y-2.5">
-        {/* TOP VISUAL BADGE & CALLOUT: Vacant Court Slot in the Next 2 Hours */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-[#071D3D] via-[#0B254E]/80 to-[#030B17] border border-[#145A9B] rounded-xl px-4 py-2.5">
-          <div className="flex flex-wrap items-center gap-2.5 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-black uppercase tracking-tight text-[11px] shadow-xs">
-              <Flame className="w-3.5 h-3.5" />
-              {vacantSlotsNext2h.length > 0
-                ? `${vacantSlotsNext2h.length} HORÁRIO(S) VAGO(S) NAS PRÓXIMAS 2H`
-                : 'AGENDA NAS PRÓXIMAS 2H'}
-            </span>
-
-            {primaryVacant ? (
-              <div className="flex flex-wrap items-center gap-1.5 text-slate-200">
-                <span className="font-extrabold text-white">
-                  {primaryVacant.court.name.split(' - ')[0]}
-                </span>
-                <span className="text-[#5BC3FA] font-mono font-bold">
-                  às {primaryVacant.slot.startTime} (em {primaryVacant.minutesUntilStart} min)
-                </span>
-                <span className="text-slate-400">·</span>
-                <span className="text-[#12C7BB] font-mono font-bold">
-                  R$ {primaryVacant.slot.price.toFixed(2)}
-                </span>
-                <span className="hidden sm:inline text-slate-300">
-                  — Preencha a agenda agora com 1 clique!
-                </span>
-              </div>
-            ) : (
-              <span className="text-slate-300 font-medium">
-                Todas as quadras das próximas 2h estão ocupadas. Use o relógio de referência ao lado para inspecionar outros horários.
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1 bg-[#030B17] border border-[#145A9B] rounded-lg px-2 py-1 text-[11px]">
-              <Clock className="w-3 h-3 text-[#0987CE]" />
-              <span className="text-slate-400">Agora:</span>
-              <select
-                value={referenceClockTime}
-                onChange={(e) => setReferenceClockTime(e.target.value)}
-                className="bg-transparent text-white font-mono font-bold focus:outline-none cursor-pointer"
-                title="Horário de referência para radar de 2h e alerta de 15 min"
-              >
-                <option value="16:45" className="bg-[#030B17]">16:45</option>
-                <option value="17:45" className="bg-[#030B17]">17:45</option>
-                <option value="18:45" className="bg-[#030B17]">18:45</option>
-                <option value="19:45" className="bg-[#030B17]">19:45</option>
-              </select>
-            </div>
-
-            {primaryVacant && (
-              <button
-                onClick={handleQuickFillVacantSlot}
-                className="px-3 py-1.5 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                Preencher Horário ({primaryVacant.slot.startTime})
-              </button>
-            )}
-
-            <button
-              onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 border ${
-                notificationDrawerOpen
-                  ? 'bg-[#0987CE] text-white border-[#0987CE]'
-                  : 'bg-[#030B17] hover:bg-[#0B254E] text-white border-[#145A9B]'
-              }`}
-            >
-              <BellRing className="w-3.5 h-3.5 text-[#12C7BB]" />
-              Central Push ({unreadCount})
-            </button>
-          </div>
-        </div>
-
+    <section className="aquarium-glass bg-[#041529] border-b border-[#145A9B]/40 text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-2.5">
         {/* EXPANDABLE SMART PUSH NOTIFICATION DRAWER */}
         {notificationDrawerOpen && (
-          <div className="bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4 animate-in fade-in">
+          <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4 animate-in fade-in">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#145A9B]/60">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">

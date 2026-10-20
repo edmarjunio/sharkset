@@ -1,8 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import { LocationScopeFilter } from './LocationScopeFilter';
+import { useDirectoryScope } from '../store/useDirectoryScope';
+import { useScopedCatalog } from '../hooks/useScopedCatalog';
+import { validCoordinates } from '../store/useBookingLocation';
+import { useBookingLocation } from '../store/useBookingLocation';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { SportType, TenantConfig } from '../types';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
+import { FreeSlotsDateTimeFilter } from './FreeSlotsDateTimeFilter';
 import { ARENA_BRAND_PRESETS } from '../services/logoPaletteExtractor';
+import { calculateHaversineDistance, GeoCoordinates, DEFAULT_BASE_COORDINATES } from '../utils/geoUtils';
 import {
   MapPin,
   Navigation,
@@ -13,6 +20,10 @@ import {
   Zap,
   Clock,
   Palette,
+  Compass,
+  RotateCw,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 export const ArenasDirectory: React.FC = () => {
@@ -20,8 +31,6 @@ export const ArenasDirectory: React.FC = () => {
     availableTenants,
     tenant,
     setTenantId,
-    radiusKm,
-    setRadiusKm,
     selectedSport,
     setSelectedSport,
     setActiveTab,
@@ -31,15 +40,11 @@ export const ArenasDirectory: React.FC = () => {
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [showRegionalClassFinder, setShowRegionalClassFinder] = useState(true);
+  const [activeFinderSection, setActiveFinderSection] = useState<'free_slots' | 'classes' | 'none'>('free_slots');
 
-  const radiusOptions = [
-    { km: 5, label: 'Até 5 km' },
-    { km: 15, label: 'Até 15 km' },
-    { km: 30, label: 'Até 30 km' },
-    { km: 50, label: 'Até 50 km' },
-    { km: 500, label: 'Todo o Estado' },
-  ];
+  const { filter: locationFilter, setFilter: setLocationFilter } = useDirectoryScope();
+  const { coords: userCoords, status: geoStatus, request: requestUserLocation } = useBookingLocation();
+  const scopedArenas = useScopedCatalog(availableTenants, arena => arena);
 
   const sportNames: Record<SportType, string> = {
     futevolei: 'Futevôlei',
@@ -47,11 +52,30 @@ export const ArenasDirectory: React.FC = () => {
     volei_praia: 'Vôlei de Praia',
   };
 
+  // Compute calculated distance for each arena using browser GPS if available, with fallback to reference distanceKm
+  const arenasWithCalculatedDistance = useMemo(() => {
+    return scopedArenas.map((arena) => {
+      let distanceKm = Number.isFinite(arena.distanceKm) ? arena.distanceKm : Infinity;
+      if (validCoordinates(userCoords) && validCoordinates({ lat: arena.lat!, lng: arena.lng! })) {
+        distanceKm = calculateHaversineDistance(
+          userCoords.lat,
+          userCoords.lng,
+          arena.lat!,
+          arena.lng!
+        );
+      }
+      return {
+        ...arena,
+        calculatedDistanceKm: distanceKm,
+      };
+    });
+  }, [scopedArenas, userCoords]);
+
   // Filter arenas by radius, sport, and search query
   const filteredArenas = useMemo(() => {
-    return availableTenants
+    return arenasWithCalculatedDistance
       .filter((arena) => {
-        if (arena.distanceKm > radiusKm) return false;
+
 
         if (selectedSport !== 'all') {
           const hasSport = arena.courts.some((c) => c.sports.includes(selectedSport));
@@ -68,11 +92,14 @@ export const ArenasDirectory: React.FC = () => {
 
         return true;
       })
-      .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [availableTenants, radiusKm, selectedSport, searchQuery]);
+      .sort((a, b) => a.calculatedDistanceKm - b.calculatedDistanceKm);
+  }, [arenasWithCalculatedDistance, selectedSport, searchQuery]);
 
   // Enter selected Arena
-  const handleSelectArena = (arena: TenantConfig, targetSubTab: 'agenda' | 'aulas' | 'campeonatos' = 'agenda') => {
+  const handleSelectArena = (
+    arena: TenantConfig,
+    targetSubTab: 'agendamentos' | 'ranking' | 'campeonatos' | 'transmissoes' | 'comunidade' | 'info_historico' = 'agendamentos'
+  ) => {
     setTenantId(arena.id);
     setArenaSubTab(targetSubTab);
     setActiveTab('scheduler');
@@ -81,43 +108,104 @@ export const ArenasDirectory: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* High-Impact Minimalist Hero & Filter Bar */}
-      <div className="bg-slate-950 text-white rounded-2xl p-6 shadow-md space-y-5 border border-slate-800">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-400">
-              <Navigation className="w-3.5 h-3.5" />
-              <span>LOCALIZAÇÃO BASE: MINEIROS, GO</span>
-              <span>·</span>
-              <span className="text-emerald-400">
-                RAIO ATIVO: {radiusKm >= 500 ? 'TODO O ESTADO' : `${radiusKm} KM`}
+      <div className="aquarium-glass bg-slate-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 border border-slate-800">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-2">
+            {/* Geolocation status pill */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <div
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-black uppercase tracking-wider border ${
+                  geoStatus === 'granted'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : geoStatus === 'locating'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 animate-pulse'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>
+                  {geoStatus === 'granted'
+                    ? 'GPS DO NAVEGADOR ATIVO'
+                    : geoStatus === 'locating'
+                    ? 'LOCALIZANDO...'
+                    : 'LOCALIZAÇÃO NÃO INFORMADA'}
+                </span>
+              </div>
+
+              <span className="text-slate-400">·</span>
+
+              <span className="text-amber-400 font-extrabold">
+                {locationFilter.mode === 'nearby'
+                  ? `ATÉ ${locationFilter.radiusKm ?? 50} KM`
+                  : locationFilter.mode === 'city'
+                  ? locationFilter.city
+                  : 'TODAS NO SITE'}
               </span>
+
+              {/* Refresh GPS Button */}
+              <button
+                type="button"
+                onClick={requestUserLocation}
+                disabled={geoStatus === 'locating'}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-300 hover:text-white px-2 py-0.5 rounded-lg bg-cyan-950/60 border border-cyan-500/30 cursor-pointer transition-colors"
+                title="Recalcular distâncias usando GPS atual"
+              >
+                <RotateCw className={`w-3 h-3 ${geoStatus === 'locating' ? 'animate-spin' : ''}`} />
+                <span>Atualizar GPS</span>
+              </button>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Arenas na Sua Região — Agende e Pague em 2 Cliques
+
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
+              Arenas Mais Próximas de Você — Agende em 2 Cliques
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
-              Escolha a arena abaixo para reservar seu horário imediatamente ou busque aulas por dia e horário na sua região.
+            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+              Busque por localização, cidade ou veja todas as arenas do site.
             </p>
           </div>
 
-          {/* Search Input & Toggle Class Finder */}
+          {/* Quick Filter Section Switchers */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowRegionalClassFinder((v) => !v)}
-              className="px-4 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <Clock className="w-4 h-4" />
-              {showRegionalClassFinder ? 'Ocultar Busca por Horário' : 'Buscar Aula por Dia/Horário'}
-            </button>
-            <div className="relative w-full sm:w-64">
+            <div className="flex rounded-2xl bg-slate-900 p-1 border border-slate-700/80">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveFinderSection((v) => (v === 'free_slots' ? 'none' : 'free_slots'))
+                }
+                className={`px-3.5 py-2.5 rounded-xl font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                  activeFinderSection === 'free_slots'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                <span>Filtrar Horários Livres</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveFinderSection((v) => (v === 'classes' ? 'none' : 'classes'))
+                }
+                className={`px-3.5 py-2.5 rounded-xl font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                  activeFinderSection === 'classes'
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4" />
+                <span>Buscar Aulas</span>
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-60">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar arena ou cidade..."
-                className="w-full pl-10 pr-4 py-3 text-xs font-medium bg-slate-900 border border-slate-700 text-white placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="w-full pl-10 pr-4 py-2.5 text-xs font-medium bg-slate-900 border border-slate-700 text-white placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
             </div>
           </div>
@@ -125,28 +213,7 @@ export const ArenasDirectory: React.FC = () => {
 
         {/* High-Visibility Radius Selector + Sport Filter */}
         <div className="pt-4 border-t border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Radius Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-extrabold text-amber-400 mr-1 flex items-center gap-1 uppercase tracking-wider">
-              <MapPin className="w-3.5 h-3.5" />
-              Raio de Alcance:
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-              {radiusOptions.map((opt) => (
-                <button
-                  key={opt.km}
-                  onClick={() => setRadiusKm(opt.km)}
-                  className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                    radiusKm === opt.km
-                      ? 'bg-amber-400 text-slate-950 shadow-xs'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <LocationScopeFilter />
 
           {/* Sport Filter */}
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800 w-fit">
@@ -154,7 +221,7 @@ export const ArenasDirectory: React.FC = () => {
               onClick={() => setSelectedSport('all')}
               className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
                 selectedSport === 'all'
-                  ? 'bg-white text-slate-950 shadow-xs'
+                  ? 'bg-white text-slate-950 shadow-xs font-black'
                   : 'text-slate-300 hover:text-white'
               }`}
             >
@@ -164,7 +231,7 @@ export const ArenasDirectory: React.FC = () => {
               onClick={() => setSelectedSport('futevolei')}
               className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
                 selectedSport === 'futevolei'
-                  ? 'bg-white text-slate-950 shadow-xs'
+                  ? 'bg-white text-slate-950 shadow-xs font-black'
                   : 'text-slate-300 hover:text-white'
               }`}
             >
@@ -174,7 +241,7 @@ export const ArenasDirectory: React.FC = () => {
               onClick={() => setSelectedSport('beach_tennis')}
               className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
                 selectedSport === 'beach_tennis'
-                  ? 'bg-white text-slate-950 shadow-xs'
+                  ? 'bg-white text-slate-950 shadow-xs font-black'
                   : 'text-slate-300 hover:text-white'
               }`}
             >
@@ -184,7 +251,7 @@ export const ArenasDirectory: React.FC = () => {
               onClick={() => setSelectedSport('volei_praia')}
               className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
                 selectedSport === 'volei_praia'
-                  ? 'bg-white text-slate-950 shadow-xs'
+                  ? 'bg-white text-slate-950 shadow-xs font-black'
                   : 'text-slate-300 hover:text-white'
               }`}
             >
@@ -194,17 +261,38 @@ export const ArenasDirectory: React.FC = () => {
         </div>
       </div>
 
-      {/* Regional Class & Court Availability Finder ("Quero Terça e Quinta 7 às 8") */}
-      {showRegionalClassFinder && <RegionalAvailabilityFinder />}
+      {/* COMPONENT: Filtro de Data e Hora na Seção de Horários Livres */}
+      {activeFinderSection === 'free_slots' && (
+        <FreeSlotsDateTimeFilter
+          userCoords={userCoords}
+        />
+      )}
 
-      {/* Results Count */}
-      <div className="flex items-center justify-between text-xs font-semibold text-slate-600 px-1">
-        <span>
-          Exibindo <strong className="text-slate-950 font-black tabular-nums">{filteredArenas.length}</strong>{' '}
-          {filteredArenas.length === 1 ? 'arena disponível' : 'arenas disponíveis'} dentro de{' '}
-          {radiusKm >= 500 ? 'todo o estado' : `${radiusKm} km`}
+      {/* Regional Class & Court Availability Finder */}
+      {activeFinderSection === 'classes' && <RegionalAvailabilityFinder />}
+
+      {/* Results Count & Ordering */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-semibold text-slate-600 px-1 gap-2">
+        <span className="flex items-center gap-1.5">
+          <span>
+            Exibindo <strong className="text-slate-950 font-black tabular-nums">{filteredArenas.length}</strong>{' '}
+            {filteredArenas.length === 1 ? 'arena mais próxima' : 'arenas mais próximas'} dentro de{' '}
+            {locationFilter.mode === 'nearby'
+              ? `${locationFilter.radiusKm ?? 50} km`
+              : locationFilter.mode === 'city'
+              ? locationFilter.city
+              : 'todo o site'}
+          </span>
+          {geoStatus === 'granted' && (
+            <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              ● GPS Conectado
+            </span>
+          )}
         </span>
-        <span>Ordenado por menor distância</span>
+        <span className="text-slate-700 font-bold flex items-center gap-1">
+          <Navigation className="w-3.5 h-3.5 text-cyan-600" />
+          Ordenado por menor distância calculada
+        </span>
       </div>
 
       {/* Arenas Grid — High-Contrast Cards with Arena Photo & 1-Click Direct Booking */}
@@ -222,7 +310,7 @@ export const ArenasDirectory: React.FC = () => {
           return (
             <div
               key={arena.id}
-              onClick={() => handleSelectArena(arena, 'agenda')}
+              onClick={() => handleSelectArena(arena, 'agendamentos')}
               className={`bg-white border-2 rounded-2xl overflow-hidden transition-all cursor-pointer hover:shadow-xl flex flex-col justify-between group ${
                 isCurrent ? 'border-slate-950 ring-2 ring-amber-400/60' : 'border-slate-200 hover:border-slate-900'
               }`}
@@ -240,8 +328,10 @@ export const ArenasDirectory: React.FC = () => {
 
                   {/* Top Distance & Active Status over Image */}
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-xs">
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 backdrop-blur-xs text-white font-mono font-black tabular-nums border border-white/15">
-                      📍 {arena.distanceKm.toFixed(1)} km · {arena.city}/{arena.state}
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 backdrop-blur-xs text-white font-mono font-black tabular-nums border border-white/15 flex items-center gap-1 shadow-sm">
+                      <MapPin className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{Number.isFinite(arena.calculatedDistanceKm) ? `${arena.calculatedDistanceKm.toFixed(1)} km` : 'Distância não informada'}</span>
+                      <span className="text-slate-400 text-[10px]">({arena.city}/{arena.state})</span>
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 backdrop-blur-xs text-amber-400 font-black tabular-nums">
@@ -307,11 +397,11 @@ export const ArenasDirectory: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => handleSelectArena(arena, 'aulas')}
+                    onClick={() => handleSelectArena(arena, 'agendamentos')}
                     className="px-3 py-2 text-xs font-extrabold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
                   >
-                    <GraduationCap className="w-3.5 h-3.5 text-slate-600" />
-                    Aulas ({totalClasses})
+                    <Clock className="w-3.5 h-3.5 text-slate-600" />
+                    Horários
                   </button>
                   <button
                     type="button"
@@ -333,23 +423,23 @@ export const ArenasDirectory: React.FC = () => {
                         brandPalette: arena.brandPalette || preset.palette,
                         whiteLabelEnabled: true,
                       });
-                      handleSelectArena(arena, 'agenda');
+                      handleSelectArena(arena, 'agendamentos');
                     }}
                     className="px-3 py-2 text-xs font-extrabold text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
                     title="Abrir página da Arena toda na paleta da logo da Arena com DESENVOLVIDO POR SHARKSET"
                   >
                     <Palette className="w-3.5 h-3.5 text-orange-600" />
-                    Site da Arena (Logo)
+                    Página Oficial
                   </button>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => handleSelectArena(arena, 'agenda')}
+                  onClick={() => handleSelectArena(arena, 'agendamentos')}
                   className="px-4 py-2.5 text-xs font-black text-white bg-[#FF6B00] hover:bg-[#EA580C] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   <Zap className="w-3.5 h-3.5 fill-white" />
-                  AGENDAR HORÁRIO & PAGAR
+                  ENTRAR NA ARENA
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -358,23 +448,84 @@ export const ArenasDirectory: React.FC = () => {
         })}
 
         {filteredArenas.length === 0 && (
-          <div className="col-span-full bg-white border-2 border-slate-200 rounded-2xl p-12 text-center space-y-3">
-            <MapPin className="w-10 h-10 text-slate-400 mx-auto" />
-            <h3 className="text-base font-black text-slate-900">
-              Nenhuma arena encontrada num raio de {radiusKm} km
+          <div className="aquarium-glass col-span-full bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-12 text-center space-y-4 text-white shadow-2xl">
+            <MapPin className="w-12 h-12 text-cyan-400 mx-auto" />
+            <h3 className="text-lg font-black text-white">
+              {availableTenants.length === 0
+                ? 'Nenhuma arena cadastrada ainda'
+                : 'Nenhuma arena encontrada para este local'}
             </h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Clique abaixo para ampliar o alcance e ver todas as unidades em Goiás.
+            <p className="text-xs text-slate-300 max-w-md mx-auto">
+              {availableTenants.length === 0
+                ? 'Você está em modo de produção 100% limpo! Cadastre a sua primeira arena oficial para liberar agendamentos, quadras e transmissões.'
+                : 'Altere a cidade no filtro acima ou veja todas as arenas cadastradas.'}
             </p>
-            <button
-              onClick={() => setRadiusKm(500)}
-              className="mt-2 px-5 py-2.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer"
-            >
-              MOSTRAR TODAS AS ARENAS DO ESTADO
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('saas_hub')}
+                className="px-6 py-3 text-xs font-black text-white bg-gradient-to-r from-[#FF6B00] to-[#FF8800] hover:brightness-110 rounded-xl transition-all cursor-pointer shadow-lg"
+              >
+                + Cadastrar Minha Arena Agora
+              </button>
+              {availableTenants.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setLocationFilter({ ...locationFilter, mode: 'all' })}
+                  className="px-5 py-2.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer"
+                >
+                  VER TODAS AS ARENAS NO SITE
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
+
+      {/* Seção Educativa: Como Funciona o Ecossistema de Arenas SHARKSET */}
+      <section className="rounded-3xl border border-cyan-800/40 bg-[#041529]/90 p-6 sm:p-8 text-white space-y-6 shadow-xl">
+        <div className="flex items-center gap-3 border-b border-cyan-800/50 pb-4">
+          <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
+            <Compass className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-white">Como Funciona a Gestão e Reservas nas Arenas</h3>
+            <p className="text-xs text-slate-400">Dicas essenciais para atletas e proprietários de quadras de areia.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-amber-400 font-black">
+              <Clock className="w-4 h-4" />
+              <span>Reserva e Horários Livres</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Consulte a disponibilidade em tempo real das quadras com iluminação e areia tratada. Quando um horário é desocupado por desistência, o sistema alerta automaticamente os atletas da região.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-[#12C7BB] font-black">
+              <Zap className="w-4 h-4" />
+              <span>Transmissão Oficial de Jogos</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              As arenas credenciadas possuem suporte a transmissão ao vivo via câmera fixa. Os jogos transmitidos contam com placar esportivo estilo TV e pontuação válida para a subida oficial no Ranking Sharkset.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
+            <div className="flex items-center gap-2 text-[#0987CE] font-black">
+              <GraduationCap className="w-4 h-4" />
+              <span>Aulas e Mensalidades</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Professores de Futevôlei e Beach Tennis gerenciam turmas por nível técnico (Iniciante, Série C, B e A). O vencimento mensal é automatizado com lembretes via WhatsApp para evitar atrasos.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

@@ -34,6 +34,8 @@ import {
   MapPin,
   Building2,
   Flag,
+  X,
+  Filter,
 } from 'lucide-react';
 
 export const DoublesRegistration: React.FC = () => {
@@ -59,6 +61,10 @@ export const DoublesRegistration: React.FC = () => {
   } = useApp();
 
   const [subView, setSubView] = useState<'ranking_atletas' | 'inscricao_duplas'>('ranking_atletas');
+
+  // Modals for operational actions (separated from visualization)
+  const [isAddAthleteModalOpen, setIsAddAthleteModalOpen] = useState<boolean>(false);
+  const [isRecordMatchModalOpen, setIsRecordMatchModalOpen] = useState<boolean>(false);
 
   // 5 Segmented Ranking Scopes: GERAL | PAÍS | ESTADO | CIDADE | ARENA
   const [rankingScope, setRankingScope] = useState<RankingScope>('geral');
@@ -240,10 +246,12 @@ export const DoublesRegistration: React.FC = () => {
       arenaName: chosenArena ? chosenArena.name : tenant.name,
     });
 
+    const addedName = newAthName;
     setNewAthName('');
     setNewAthPhone('');
+    setIsAddAthleteModalOpen(false);
     triggerToast(
-      `Jogador ${newAthName} homologado no Ranking (${newAthCountry} · ${newAthState} · ${newAthCity} · ${
+      `Jogador ${addedName} homologado no Ranking (${newAthCountry} · ${newAthState} · ${newAthCity} · ${
         chosenArena?.name || tenant.name
       })!`
     );
@@ -260,696 +268,779 @@ export const DoublesRegistration: React.FC = () => {
     awardAthletePoints(simWinnerAth.id, simCalc.winnerPoints, false);
     awardAthletePoints(simLoserAth.id, simCalc.loserPoints, false);
 
+    setIsRecordMatchModalOpen(false);
     triggerToast(
       `Ranking atualizado automaticamente! ${simWinnerAth.name} ganhou +${simCalc.winnerPoints} pts (venceu oponente ${ATHLETE_LEVEL_LABELS[simLoserAth.level]} por ${simWinScore}x${simLoseScore}).`
     );
   };
 
-  const activeScopeSubtitle = useMemo(() => {
-    switch (rankingScope) {
-      case 'pais':
-        return `Classificação Nacional — País: ${selectedCountry}`;
-      case 'estado':
-        return `Classificação Estadual — UF: ${selectedState}`;
-      case 'cidade':
-        return `Classificação Municipal — Cidade: ${selectedCity}`;
-      case 'arena': {
-        const ar = dimensions.arenas.find((a) => a.id === selectedArenaId);
-        return `Classificação Interna da Arena — ${ar?.name || tenant.name}`;
-      }
-      case 'geral':
-      default:
-        return 'Classificação Geral Unificada (Todos os Países, Estados, Cidades e Arenas)';
-    }
-  }, [rankingScope, selectedCountry, selectedState, selectedCity, selectedArenaId, dimensions.arenas, tenant.name]);
+  const scopeTabs: { id: RankingScope; label: string; emoji: string }[] = [
+    { id: 'geral', label: 'Geral', emoji: '🌍' },
+    { id: 'pais', label: 'País', emoji: '🏳️' },
+    { id: 'estado', label: 'Estado', emoji: '📍' },
+    { id: 'cidade', label: 'Cidade', emoji: '🏙️' },
+    { id: 'arena', label: 'Arena', emoji: '🏟️' },
+  ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Header & View Switcher — High-Contrast SHARK SET Visual Hierarchy */}
-      <div className="bg-slate-950 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-              <span className="px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-black uppercase text-[10px] shadow-xs">
-                SHARK SET RANKING OFICIAL
-              </span>
-              <span aria-hidden="true" className="text-[#145A9B]">·</span>
-              <span className="font-extrabold text-[#12C7BB]">
-                5 Escopos: Geral · País · Estado · Cidade · Arena
-              </span>
-              <span aria-hidden="true" className="text-[#145A9B]">·</span>
-              <span className="font-semibold text-white">{athletes.length} Jogadores Homologados</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Ranking SHARK SET Multi-Escopo & Inscrições
-            </h1>
-            <p className="text-xs text-slate-300 max-w-3xl">
-              Alterne em 1 clique entre <strong>RANKING GERAL</strong>, <strong>POR PAÍS</strong>, <strong>POR ESTADO</strong>, <strong>POR CIDADE</strong> e <strong>POR ARENA</strong>. Pontuação calculada automaticamente por performance e nível do oponente.
-            </p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+      {/* ===================================================================== */}
+      {/* LEVEL 1: UNIFIED COMPACT HEADER + PRIMARY ACTION CTAs                 */}
+      {/* ===================================================================== */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-1">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-[#12C7BB] font-black uppercase tracking-wider text-[11px]">
+              RANKING SHARK SET OFICIAL
+            </span>
+            <span aria-hidden="true" className="text-slate-500">·</span>
+            <span className="text-slate-300 font-semibold">
+              {athletes.length} Jogadores Homologados
+            </span>
           </div>
-
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              onClick={() => {
-                regenerateBracket(activeTournament.id);
-                setActiveTab('tournaments');
-              }}
-              className="px-4 py-2.5 text-xs font-black text-slate-950 bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-md"
-            >
-              <Trophy className="w-4 h-4 fill-slate-950" />
-              ABRIR TABELA & CLASSIFICAÇÃO
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            RANKING SHARK SET OFICIAL{' '}
+            <span className="text-base sm:text-lg font-bold text-[#5BC3FA]">
+              ({athletes.length} Jogadores Homologados)
+            </span>
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-300">
+            Alterne entre os escopos abaixo. Pontuação calculada por performance e nível do oponente.
+          </p>
         </div>
 
-        {/* High-Visibility Sub-Tabs */}
-        <div className="pt-3 border-t border-[#145A9B]/60 flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setActiveTab('ranking_athletes')}
-            className="px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer bg-[#071D3D] text-[#12C7BB] hover:bg-[#0B254E] border border-[#145A9B] flex items-center gap-1.5 shadow-xs"
-          >
-            <Trophy className="w-3.5 h-3.5 text-[#12C7BB]" />
-            LÍDERES & WIN RATES (RANKING BOARD FIRESTORE) →
-          </button>
-          <button
-            onClick={() => setSubView('ranking_atletas')}
-            className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer ${
-              subView === 'ranking_atletas'
-                ? 'bg-[#0987CE] text-white shadow-md'
-                : 'bg-[#071D3D] text-slate-300 hover:text-white border border-[#145A9B]'
-            }`}
-          >
-            🏆 RANKINGS: GERAL · PAÍS · ESTADO · CIDADE · ARENA ({athletes.length})
-          </button>
-          <button
-            onClick={() => setSubView('inscricao_duplas')}
-            className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer ${
-              subView === 'inscricao_duplas'
-                ? 'bg-[#0987CE] text-white shadow-md'
-                : 'bg-[#071D3D] text-slate-300 hover:text-white border border-[#145A9B]'
-            }`}
-          >
-            ✍️ INSCREVER NO TORNEIO & VALIDAR DUPLA ({currentPairs.length}/{activeTournament.maxPairs})
-          </button>
+        {/* Action Buttons on Top Right */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {subView === 'ranking_atletas' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsAddAthleteModalOpen(true)}
+                className="px-3.5 py-2.5 rounded-lg bg-[#071D3D]/90 hover:bg-[#0B254E] text-slate-100 border border-slate-600/70 font-bold text-xs transition-colors flex items-center gap-1.5"
+              >
+                <UserPlus className="w-4 h-4 text-[#12C7BB]" />
+                + Cadastrar Jogador
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsRecordMatchModalOpen(true)}
+                className="px-4 py-2.5 rounded-lg bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-md"
+              >
+                <Zap className="w-4 h-4 fill-white" />
+                ⚡ Registrar Partida
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubView('inscricao_duplas')}
+                className="px-3.5 py-2.5 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-extrabold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                ✍️ Inscrever no Torneio ({currentPairs.length}/{activeTournament.maxPairs})
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setSubView('ranking_atletas')}
+                className="px-3.5 py-2.5 rounded-lg bg-[#071D3D]/90 hover:bg-[#0B254E] text-slate-100 border border-slate-600/70 font-bold text-xs transition-colors flex items-center gap-1.5"
+              >
+                ← Voltar para Tabela de Classificação
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  regenerateBracket(activeTournament.id);
+                  setActiveTab('tournaments');
+                }}
+                className="px-4 py-2.5 rounded-lg bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-md"
+              >
+                <Trophy className="w-4 h-4" />
+                Abrir Chave do Torneio
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {successToast && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 flex items-center justify-between animate-in fade-in">
+        <div className="p-3.5 bg-emerald-500/20 border border-emerald-400/40 rounded-xl text-xs text-emerald-100 flex items-center justify-between animate-in fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{successToast}</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="font-semibold">{successToast}</span>
           </div>
-          <button onClick={() => setSuccessToast(null)} className="text-emerald-700 font-bold p-1 cursor-pointer">
+          <button
+            type="button"
+            onClick={() => setSuccessToast(null)}
+            className="text-emerald-300 hover:text-white font-bold p-1"
+          >
             ✕
           </button>
         </div>
       )}
 
       {/* ===================================================================== */}
-      {/* SUB-VIEW 1: SISTEMA DE RANKING SEGMENTADO (5 ESCOPOS)                 */}
+      {/* SUB-VIEW 1: TABELA DE CLASSIFICAÇÃO PROTAGONISTA (100% LARGURA)       */}
       {/* ===================================================================== */}
       {subView === 'ranking_atletas' && (
-        <div className="space-y-6">
-          {/* 5-SCOPE SEGMENTATION BAR: GERAL | PAÍS | ESTADO | CIDADE | ARENA */}
-          <div className="bg-[#071D3D] text-[#F7FAFD] border border-[#145A9B] rounded-2xl p-5 shadow-sm space-y-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#0987CE] block">
-                  SEPARAÇÃO OFICIAL DE RANKING (1 CLIQUE)
-                </span>
-                <h2 className="text-base font-black text-white">
-                  Escolha a Visão do Ranking: {RANKING_SCOPE_LABELS[rankingScope]}
-                </h2>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                {(
-                  [
-                    { id: 'geral', label: '1. RANKING GERAL', icon: Globe },
-                    { id: 'pais', label: '2. RANKING POR PAÍS', icon: Flag },
-                    { id: 'estado', label: '3. RANKING POR ESTADO', icon: MapPin },
-                    { id: 'cidade', label: '4. RANKING POR CIDADE', icon: MapPin },
-                    { id: 'arena', label: '5. RANKING POR ARENA', icon: Building2 },
-                  ] as { id: RankingScope; label: string; icon: React.FC<{ className?: string }> }[]
-                ).map((tab) => {
-                  const Icon = tab.icon;
-                  const active = rankingScope === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setRankingScope(tab.id)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                        active
-                          ? 'bg-[#0987CE] text-white shadow-xs'
-                          : 'bg-[#030B17] hover:bg-[#0B254E] text-slate-300 border border-[#145A9B]'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Dynamic Scope Selector Pills (Country / State / City / Arena) */}
-            {rankingScope !== 'geral' && (
-              <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center gap-2 text-xs">
-                {rankingScope === 'pais' && (
-                  <>
-                    <span className="font-bold text-slate-400 mr-1">Selecione o País:</span>
-                    {dimensions.countries.map((country) => (
-                      <button
-                        key={country}
-                        onClick={() => setSelectedCountry(country)}
-                        className={`px-3 py-1.5 rounded-lg font-extrabold cursor-pointer transition-colors ${
-                          selectedCountry === country
-                            ? 'bg-emerald-400 text-slate-950'
-                            : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-                        }`}
-                      >
-                        🌍 {country}
-                      </button>
-                    ))}
-                  </>
-                )}
-
-                {rankingScope === 'estado' && (
-                  <>
-                    <span className="font-bold text-slate-400 mr-1">Selecione o Estado (UF):</span>
-                    {dimensions.states.map((st) => (
-                      <button
-                        key={st}
-                        onClick={() => setSelectedState(st)}
-                        className={`px-3 py-1.5 rounded-lg font-extrabold cursor-pointer transition-colors ${
-                          selectedState === st
-                            ? 'bg-emerald-400 text-slate-950'
-                            : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-                        }`}
-                      >
-                        📍 Estado: {st}
-                      </button>
-                    ))}
-                  </>
-                )}
-
-                {rankingScope === 'cidade' && (
-                  <>
-                    <span className="font-bold text-slate-400 mr-1">Selecione a Cidade:</span>
-                    {dimensions.cities.map((city) => (
-                      <button
-                        key={city}
-                        onClick={() => setSelectedCity(city)}
-                        className={`px-3 py-1.5 rounded-lg font-extrabold cursor-pointer transition-colors ${
-                          selectedCity === city
-                            ? 'bg-emerald-400 text-slate-950'
-                            : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-                        }`}
-                      >
-                        🏙️ {city}
-                      </button>
-                    ))}
-                  </>
-                )}
-
-                {rankingScope === 'arena' && (
-                  <>
-                    <span className="font-bold text-slate-400 mr-1">Selecione a Arena:</span>
-                    {dimensions.arenas.map((arena) => (
-                      <button
-                        key={arena.id}
-                        onClick={() => setSelectedArenaId(arena.id)}
-                        className={`px-3 py-1.5 rounded-lg font-extrabold cursor-pointer transition-colors ${
-                          selectedArenaId === arena.id
-                            ? 'bg-emerald-400 text-slate-950'
-                            : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-                        }`}
-                      >
-                        🏟️ {arena.name}
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
+        <div>
+          {/* LEVEL 2: FOLDER/SPREADSHEET TABS ATTACHED DIRECTLY TO THE TABLE TOP */}
+          <div className="flex flex-wrap items-end gap-1 border-b border-[#145A9B]/60 px-2">
+            {scopeTabs.map((tab) => {
+              const active = rankingScope === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setRankingScope(tab.id)}
+                  className={`px-5 py-3 text-xs sm:text-sm font-extrabold rounded-t-xl transition-all flex items-center gap-2 border-t border-x -mb-px ${
+                    active
+                      ? 'bg-[#05182C] text-white border-[#145A9B]/80 border-t-2 border-t-[#FF6B00] shadow-sm z-10'
+                      : 'bg-[#030F1E]/60 text-slate-400 hover:text-slate-200 hover:bg-[#05182C]/50 border-transparent'
+                  }`}
+                >
+                  <span>{tab.emoji}</span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Interactive Match Points Simulator (Performance + Opponent Level) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-amber-500" />
-                  Cálculo Dinâmico de Pontos (Performance + Nível do Oponente)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Vencer um oponente de nível superior concede bônus extra de dificuldade, somado ao saldo de pontos do placar.
-                </p>
-              </div>
-              <span className="text-[11px] font-mono text-emerald-700 font-bold">
-                Atualiza todos os 5 Rankings Simultaneamente
-              </span>
-            </div>
-
-            <form
-              onSubmit={handleApplySimulatedMatch}
-              className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end text-xs"
-            >
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Jogador Vencedor:</label>
-                <select
-                  value={simWinnerId}
-                  onChange={(e) => setSimWinnerId(e.target.value)}
-                  className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-bold"
-                >
-                  {athletes.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({ATHLETE_LEVEL_LABELS[a.level]})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Oponente Enfrentado:</label>
-                <select
-                  value={simLoserId}
-                  onChange={(e) => setSimLoserId(e.target.value)}
-                  className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-bold"
-                >
-                  {athletes.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({ATHLETE_LEVEL_LABELS[a.level]})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Placar do Jogo:</label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={simWinScore}
-                    onChange={(e) => setSimWinScore(parseInt(e.target.value, 10) || 18)}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-center"
-                  />
-                  <span className="font-bold text-slate-400">x</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={99}
-                    value={simLoseScore}
-                    onChange={(e) => setSimLoseScore(parseInt(e.target.value, 10) || 12)}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-center"
-                  />
-                </div>
-              </div>
-
-              {simCalc && (
-                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px]">
-                  <span className="font-extrabold text-emerald-900 block">
-                    Vencedor recebe: +{simCalc.winnerPoints} pts
-                  </span>
-                  <span className="text-emerald-700 block truncate" title={simCalc.explanation}>
-                    Perf: +{simCalc.performanceBonus} | Oponente: +{simCalc.opponentDifficultyBonus}
-                  </span>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl cursor-pointer transition-colors"
-              >
-                Registrar Resultado no Ranking
-              </button>
-            </form>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Add New Athlete to Ranking with Country, State, City, Arena */}
-            <div className="space-y-6">
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs h-fit space-y-4">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 pb-2 border-b border-slate-100">
-                  <UserPlus className="w-4 h-4 text-slate-700" />
-                  Cadastrar Jogador no Ranking
-                </h3>
-
-                <form onSubmit={handleAddAthlete} className="space-y-3 text-xs">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Nome do Jogador:</label>
-                    <input
-                      type="text"
-                      required
-                      value={newAthName}
-                      onChange={(e) => setNewAthName(e.target.value)}
-                      placeholder="Ex: Rodrigo Mineiros"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Data de Nascimento:</label>
-                      <input
-                        type="date"
-                        value={newAthBirthDate}
-                        onChange={(e) => setNewAthBirthDate(e.target.value)}
-                        className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Experiência:</label>
-                      <select
-                        value={newAthExp}
-                        onChange={(e) => setNewAthExp(e.target.value as ExperienceCategory)}
-                        className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
-                      >
-                        <option value="amador">Amador</option>
-                        <option value="profissional">Profissional</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Série / Nível Técnico:</label>
-                    <select
-                      value={newAthLevel}
-                      onChange={(e) => setNewAthLevel(e.target.value as AthleteLevel)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-bold"
-                    >
-                      {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
-                        <option key={k} value={k}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">País:</label>
-                      <input
-                        type="text"
-                        value={newAthCountry}
-                        onChange={(e) => setNewAthCountry(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Estado (UF):</label>
-                      <input
-                        type="text"
-                        maxLength={4}
-                        value={newAthState}
-                        onChange={(e) => setNewAthState(e.target.value.toUpperCase())}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg uppercase font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Cidade:</label>
-                      <input
-                        type="text"
-                        value={newAthCity}
-                        onChange={(e) => setNewAthCity(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Arena Base:</label>
-                      <select
-                        value={newAthArenaId}
-                        onChange={(e) => setNewAthArenaId(e.target.value)}
-                        className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
-                      >
-                        {availableTenants.map((ar) => (
-                          <option key={ar.id} value={ar.id}>
-                            {ar.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">WhatsApp:</label>
-                    <input
-                      type="tel"
-                      value={newAthPhone}
-                      onChange={(e) => setNewAthPhone(e.target.value)}
-                      placeholder="(64) 99999-0000"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 px-4 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl cursor-pointer"
-                  >
-                    Homologar Jogador no Ranking
-                  </button>
-                </form>
-              </div>
-
-              {/* Log de Atualizações Automáticas do Ranking */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 pb-2 border-b border-slate-100">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
-                  Últimos Jogos Contabilizados ({rankingLogs.length})
-                </h3>
-                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 text-xs">
-                  {rankingLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1"
-                    >
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                        <span>
-                          Jogo #{log.matchNumber} · {log.timestamp}
-                        </span>
-                        <span className="font-bold text-emerald-700">+{log.pointsAwardedWinner} pts</span>
-                      </div>
-                      <p className="font-bold text-slate-900">
-                        {log.winnerNames} <span className="font-mono text-amber-700">({log.score})</span>{' '}
-                        {log.loserNames}
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-mono">{log.explanation}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Official Ranking Table with Scope Position, Global Position, Location & Auto-Promotion */}
-            <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-slate-950 text-amber-400 font-black text-[10px] uppercase">
-                      {RANKING_SCOPE_LABELS[rankingScope]}
-                    </span>
-                    <span className="text-xs font-bold text-emerald-700">
-                      {rankedAthletes.length} atleta(s) listado(s)
-                    </span>
-                  </div>
-                  <h3 className="text-base font-bold text-slate-900 mt-1">{activeScopeSubtitle}</h3>
-                </div>
-
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+          {/* LEVEL 3: 100% WIDTH CLASSIFICATION TABLE CONTAINER */}
+          <div className="aquarium-glass bg-[#05182C] border border-t-0 border-[#145A9B]/60 rounded-b-2xl rounded-tr-2xl shadow-2xl overflow-hidden">
+            {/* Search & Filters Toolbar */}
+            <div className="p-4 bg-[#041426]/90 border-b border-[#145A9B]/40 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3 flex-1">
+                {/* Search Input */}
+                <div className="relative flex-1 min-w-[240px] max-w-md">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={athleteSearch}
                     onChange={(e) => setAthleteSearch(e.target.value)}
                     placeholder="Buscar atleta, cidade ou arena..."
-                    className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full pl-10 pr-8 py-2 text-xs font-medium bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0987CE]"
                   />
-                </div>
-              </div>
-
-              {/* Technical Level Filter Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs">
-                  <button
-                    onClick={() => setRankingFilterLevel('all')}
-                    className={`px-2.5 py-1 rounded-lg font-semibold cursor-pointer ${
-                      rankingFilterLevel === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-                    }`}
-                  >
-                    Todas as Séries
-                  </button>
-                  {(['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'] as AthleteLevel[]).map(
-                    (lvl) => (
-                      <button
-                        key={lvl}
-                        onClick={() => setRankingFilterLevel(lvl)}
-                        className={`px-2.5 py-1 rounded-lg font-semibold cursor-pointer ${
-                          rankingFilterLevel === lvl ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-                        }`}
-                      >
-                        {ATHLETE_LEVEL_LABELS[lvl]}
-                      </button>
-                    )
+                  {athleteSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAthleteSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold"
+                    >
+                      ✕
+                    </button>
                   )}
                 </div>
+
+                {/* Contextual Scope Selector (Country / State / City / Arena) */}
+                {rankingScope === 'pais' && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-300 font-bold">País:</span>
+                    <select
+                      value={selectedCountry}
+                      onChange={(e) => setSelectedCountry(e.target.value)}
+                      className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
+                    >
+                      {dimensions.countries.map((country) => (
+                        <option key={country} value={country}>
+                          🌍 {country}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {rankingScope === 'estado' && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-300 font-bold">Estado (UF):</span>
+                    <select
+                      value={selectedState}
+                      onChange={(e) => setSelectedState(e.target.value)}
+                      className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
+                    >
+                      {dimensions.states.map((st) => (
+                        <option key={st} value={st}>
+                          📍 {st}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {rankingScope === 'cidade' && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-300 font-bold">Cidade:</span>
+                    <select
+                      value={selectedCity}
+                      onChange={(e) => setSelectedCity(e.target.value)}
+                      className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
+                    >
+                      {dimensions.cities.map((city) => (
+                        <option key={city} value={city}>
+                          🏙️ {city}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {rankingScope === 'arena' && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-300 font-bold">Arena:</span>
+                    <select
+                      value={selectedArenaId}
+                      onChange={(e) => setSelectedArenaId(e.target.value)}
+                      className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
+                    >
+                      {dimensions.arenas.map((arena) => (
+                        <option key={arena.id} value={arena.id}>
+                          🏟️ {arena.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider">
-                      <th className="py-2.5 px-3">Posição ({rankingScope.toUpperCase()})</th>
-                      <th className="py-2.5 px-3">Jogador · País / Estado / Cidade / Arena</th>
-                      <th className="py-2.5 px-3">Série / Badge</th>
-                      <th className="py-2.5 px-3">Pontos & Evolução</th>
-                      <th className="py-2.5 px-3 text-center">V / J (Aprov.)</th>
-                      <th className="py-2.5 px-3 text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {rankedAthletes.map((ath) => {
-                      const promo = getRankingPromotionSuggestion(ath.points, ath.titlesCount, ath.level);
-                      const winRate =
-                        ath.matchesPlayed > 0 ? Math.round((ath.wins / ath.matchesPlayed) * 100) : 0;
+              {/* Right Side: Category Dropdown Filter */}
+              <div className="flex items-center gap-2 text-xs shrink-0">
+                <Filter className="w-3.5 h-3.5 text-[#12C7BB]" />
+                <span className="text-slate-300 font-bold">Filtros:</span>
+                <select
+                  value={rankingFilterLevel}
+                  onChange={(e) => setRankingFilterLevel(e.target.value as 'all' | AthleteLevel)}
+                  className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#0987CE]"
+                >
+                  <option value="all">Todas as Categorias ({athletes.length})</option>
+                  {(['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'] as AthleteLevel[]).map(
+                    (lvl) => (
+                      <option key={lvl} value={lvl}>
+                        {ATHLETE_LEVEL_LABELS[lvl]}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+            </div>
 
-                      return (
-                        <tr key={ath.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-3 px-3">
-                            <div className="flex items-center gap-1.5">
+            {/* 100% Full-Width Classification Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#030E1C] border-b border-[#145A9B]/50 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 w-20">#</th>
+                    <th className="py-3.5 px-4">Atleta</th>
+                    <th className="py-3.5 px-4">Categoria</th>
+                    <th className="py-3.5 px-4">Cidade / Arena</th>
+                    <th className="py-3.5 px-4 text-center">Jogos</th>
+                    <th className="py-3.5 px-4">Win Rate</th>
+                    <th className="py-3.5 px-4 text-right">Pts</th>
+                    <th className="py-3.5 px-4 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#145A9B]/30">
+                  {rankedAthletes.map((ath) => {
+                    const promo = getRankingPromotionSuggestion(
+                      ath.points,
+                      ath.titlesCount,
+                      ath.level,
+                      ath.levelWins,
+                      ath.levelMatches
+                    );
+                    const matchesPlayed = ath.matchesPlayed || 0;
+                    const wins = ath.wins || 0;
+                    const losses = Math.max(0, matchesPlayed - wins);
+                    const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
+
+                    return (
+                      <tr
+                        key={ath.id}
+                        className={`hover:bg-[#0B254E]/50 transition-colors ${
+                          ath.scopePosition === 1 ? 'bg-[#0B254E]/25' : ''
+                        }`}
+                      >
+                        {/* # Position */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-7 h-7 rounded-md font-black text-xs flex items-center justify-center ${
+                                ath.scopePosition === 1
+                                  ? 'bg-amber-400 text-slate-950'
+                                  : ath.scopePosition === 2
+                                  ? 'bg-slate-200 text-slate-900'
+                                  : ath.scopePosition === 3
+                                  ? 'bg-amber-700/80 text-amber-100'
+                                  : 'text-slate-300 font-bold'
+                              }`}
+                            >
+                              {ath.scopePosition}º
+                            </span>
+                            {rankingScope !== 'geral' && (
                               <span
-                                className={`w-7 h-7 rounded-lg font-mono font-extrabold text-xs flex items-center justify-center ${
-                                  ath.scopePosition === 1
-                                    ? 'bg-amber-400 text-amber-950'
-                                    : ath.scopePosition === 2
-                                    ? 'bg-slate-200 text-slate-900'
-                                    : ath.scopePosition === 3
-                                    ? 'bg-amber-100 text-amber-900'
-                                    : 'bg-slate-100 text-slate-600'
-                                }`}
+                                className="text-[11px] font-semibold text-slate-400"
+                                title="Posição no Ranking Geral"
                               >
-                                {ath.scopePosition}º
+                                (#{ath.globalPosition})
                               </span>
-                              {rankingScope !== 'geral' && (
-                                <span
-                                  className="text-[10px] font-mono text-slate-400"
-                                  title="Posição no Ranking Geral"
-                                >
-                                  (#{ath.globalPosition} Geral)
-                                </span>
-                              )}
-                            </div>
-                          </td>
+                            )}
+                          </div>
+                        </td>
 
-                          <td className="py-3 px-3">
-                            <span className="font-bold text-slate-900 block">{ath.name}</span>
-                            <div className="flex flex-wrap items-center gap-1 text-[10px] text-slate-500 mt-0.5">
-                              <span className="font-semibold text-slate-700">
-                                {ath.country || 'Brasil'}
+                        {/* Athlete */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-white text-sm">{ath.name}</span>
+                            {ath.titlesCount > 0 && (
+                              <span className="text-[11px] font-bold text-amber-400" title="Títulos conquistados">
+                                🏆 {ath.titlesCount}
                               </span>
-                              <span>·</span>
-                              <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-mono font-bold">
-                                {ath.state || 'GO'}
-                              </span>
-                              <span>·</span>
-                              <span>{(ath.city || 'Mineiros').split(' - ')[0]}</span>
-                              <span>·</span>
-                              <span className="text-amber-700 font-semibold">
-                                {ath.arenaName || 'SHARK SET Arena Matriz'}
-                              </span>
-                            </div>
-                          </td>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-slate-400 block mt-0.5">
+                            {promo.explanation}
+                          </span>
+                        </td>
 
-                          <td className="py-3 px-3">
-                            <div className="flex flex-col items-start gap-1">
-                              <AthleteLevelBadge level={ath.level} size="sm" />
-                              <select
-                                value={ath.level}
-                                onChange={(e) => {
-                                  const nextLvl = e.target.value as AthleteLevel;
-                                  changeAthleteLevel(ath.id, nextLvl);
+                        {/* Category */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2">
+                            <AthleteLevelBadge level={ath.level} size="sm" />
+                          </div>
+                        </td>
+
+                        {/* City / Arena */}
+                        <td className="py-3.5 px-4">
+                          <span className="font-bold text-slate-100 block">
+                            {ath.arenaName || tenant.name}
+                          </span>
+                          <span className="text-[11px] text-slate-400 block">
+                            {(ath.city || 'Mineiros').split(' - ')[0]} · {ath.state || 'GO'} ({ath.country || 'Brasil'})
+                          </span>
+                        </td>
+
+                        {/* Matches */}
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="font-extrabold text-white text-sm block">
+                            {matchesPlayed}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            <strong className="text-emerald-400">{wins}V</strong> -{' '}
+                            <strong className="text-rose-400">{losses}D</strong>
+                          </span>
+                        </td>
+
+                        {/* Win Rate */}
+                        <td className="py-3.5 px-4 min-w-[140px]">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="font-extrabold text-white text-sm">{winRate}%</span>
+                            <span className="text-[10px] font-bold text-[#12C7BB]">
+                              {winRate >= 70 ? 'Alto' : winRate >= 50 ? 'Positivo' : 'Regular'}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-[#030B17] overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                winRate >= 70
+                                  ? 'bg-emerald-400'
+                                  : winRate >= 50
+                                  ? 'bg-[#0987CE]'
+                                  : 'bg-slate-600'
+                              }`}
+                              style={{ width: `${Math.min(100, Math.max(5, winRate))}%` }}
+                            />
+                          </div>
+                        </td>
+
+                        {/* Points */}
+                        <td className="py-3.5 px-4 text-right">
+                          <span className="text-base font-black text-amber-400">
+                            {ath.points}
+                          </span>
+                          {ath.lastPointsDelta ? (
+                            <span className="block text-[10px] font-bold text-emerald-400">
+                              +{ath.lastPointsDelta} últ.
+                            </span>
+                          ) : (
+                            <span className="block text-[10px] text-slate-400 font-semibold">pts</span>
+                          )}
+                        </td>
+
+                        {/* Action */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {promo.shouldPromote ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  changeAthleteLevel(ath.id, promo.recommendedLevel);
                                   triggerToast(
-                                    `Nível de ${ath.name} alterado para ${ATHLETE_LEVEL_LABELS[nextLvl]}.`
+                                    `🎉 ${ath.name} promovido para ${ATHLETE_LEVEL_LABELS[promo.recommendedLevel]}!`
                                   );
                                 }}
-                                className="text-[10px] text-slate-400 bg-transparent underline cursor-pointer focus:outline-none"
+                                className="px-2.5 py-1.5 bg-[#FF6B00] hover:bg-[#e66000] text-white font-bold rounded-md text-[11px]"
                               >
-                                {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
-                                  <option key={k} value={k}>
-                                    Mudar p/ {label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </td>
-
-                          <td className="py-3 px-3">
-                            <div className="space-y-1 max-w-[180px]">
-                              <div className="flex items-center justify-between font-mono text-xs">
-                                <strong className="text-slate-900 text-sm">{ath.points} pts</strong>
-                                {ath.lastPointsDelta && (
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                    +{ath.lastPointsDelta} últ.
-                                  </span>
-                                )}
-                              </div>
-                              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${
-                                    promo.shouldPromote ? 'bg-amber-500' : 'bg-emerald-600'
-                                  }`}
-                                  style={{ width: `${promo.progressPercent}%` }}
-                                />
-                              </div>
-                              <span
-                                className="text-[10px] text-slate-400 block truncate"
-                                title={promo.explanation}
+                                Promover →
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPlayer1(ath.name);
+                                  setLevel1(ath.level);
+                                  setSubView('inscricao_duplas');
+                                }}
+                                className="px-2.5 py-1.5 bg-[#071D3D] hover:bg-[#0B254E] text-slate-200 border border-slate-700 font-semibold rounded-md text-[11px]"
                               >
-                                {promo.explanation}
-                              </span>
-                            </div>
-                          </td>
+                                Inscrever
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
 
-                          <td className="py-3 px-3 text-center font-mono">
-                            <span className="font-bold text-slate-900 block">
-                              {ath.wins}V / {ath.matchesPlayed}J
-                            </span>
-                            <span className="text-[10px] text-emerald-700 font-bold">{winRate}% aprov.</span>
-                          </td>
-
-                          <td className="py-3 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {promo.shouldPromote && (
-                                <button
-                                  onClick={() => {
-                                    changeAthleteLevel(ath.id, promo.recommendedLevel);
-                                    triggerToast(
-                                      `🎉 ${ath.name} promovido para ${ATHLETE_LEVEL_LABELS[promo.recommendedLevel]}!`
-                                    );
-                                  }}
-                                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px] cursor-pointer shadow-xs"
-                                >
-                                  Promover p/ {ATHLETE_LEVEL_LABELS[promo.recommendedLevel]}
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                  {rankedAthletes.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="py-10 text-center text-slate-400">
+                        Nenhum atleta encontrado para os filtros selecionados.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 1: CADASTRAR JOGADOR NO RANKING                                 */}
+      {/* ===================================================================== */}
+      {isAddAthleteModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-add-athlete-title"
+        >
+          <div className="aquarium-glass w-full max-w-lg bg-[#05182C] border border-[#145A9B] rounded-2xl p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-[#0987CE]/20 text-[#12C7BB] flex items-center justify-center">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 id="modal-add-athlete-title" className="text-base font-black text-white">
+                    Cadastrar Jogador no Ranking
+                  </h2>
+                  <p className="text-xs text-slate-300">
+                    Homologue um novo atleta com Passaporte Único em todos os 5 escopos.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddAthleteModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60"
+                title="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddAthlete} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Nome do Jogador:</label>
+                <input
+                  type="text"
+                  required
+                  value={newAthName}
+                  onChange={(e) => setNewAthName(e.target.value)}
+                  placeholder="Ex: Rodrigo Mineiros"
+                  className="w-full px-3 py-2.5 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-sm text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Data de Nascimento:</label>
+                  <input
+                    type="date"
+                    value={newAthBirthDate}
+                    onChange={(e) => setNewAthBirthDate(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-semibold text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Experiência:</label>
+                  <select
+                    value={newAthExp}
+                    onChange={(e) => setNewAthExp(e.target.value as ExperienceCategory)}
+                    className="w-full px-2.5 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-semibold text-white"
+                  >
+                    <option value="amador">Amador</option>
+                    <option value="profissional">Profissional</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Série / Nível Técnico:</label>
+                <select
+                  value={newAthLevel}
+                  onChange={(e) => setNewAthLevel(e.target.value as AthleteLevel)}
+                  className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-bold text-white"
+                >
+                  {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">País:</label>
+                  <input
+                    type="text"
+                    value={newAthCountry}
+                    onChange={(e) => setNewAthCountry(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Estado (UF):</label>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={newAthState}
+                    onChange={(e) => setNewAthState(e.target.value.toUpperCase())}
+                    className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg uppercase font-bold text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Cidade:</label>
+                  <input
+                    type="text"
+                    value={newAthCity}
+                    onChange={(e) => setNewAthCity(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Arena Base:</label>
+                  <select
+                    value={newAthArenaId}
+                    onChange={(e) => setNewAthArenaId(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-semibold text-white"
+                  >
+                    {availableTenants.map((ar) => (
+                      <option key={ar.id} value={ar.id}>
+                        {ar.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">WhatsApp:</label>
+                <input
+                  type="tel"
+                  value={newAthPhone}
+                  onChange={(e) => setNewAthPhone(e.target.value)}
+                  placeholder="(64) 99999-0000"
+                  className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-semibold text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#145A9B]/40">
+                <button
+                  type="button"
+                  onClick={() => setIsAddAthleteModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-lg bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold shadow-md"
+                >
+                  Homologar Jogador
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 2: REGISTRAR PARTIDA (CÁLCULO DINÂMICO DE PONTOS)               */}
+      {/* ===================================================================== */}
+      {isRecordMatchModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-record-match-title"
+        >
+          <div className="aquarium-glass w-full max-w-2xl bg-[#05182C] border border-[#145A9B] rounded-2xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-4 pb-3 border-b border-[#145A9B]/50">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 id="modal-record-match-title" className="text-base font-black text-white flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-[#FF6B00] fill-[#FF6B00]" />
+                    Registrar Partida · Cálculo Dinâmico de Pontos
+                  </h2>
+                  <span className="text-[11px] font-bold text-[#12C7BB]">
+                    · Atualiza todos os 5 Rankings Simultaneamente
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Vencer um oponente de nível superior concede bônus extra de dificuldade, somado ao saldo de pontos do placar.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRecordMatchModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60"
+                title="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleApplySimulatedMatch} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Jogador Vencedor:</label>
+                  <select
+                    value={simWinnerId}
+                    onChange={(e) => setSimWinnerId(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-bold text-white"
+                  >
+                    {athletes.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({ATHLETE_LEVEL_LABELS[a.level]})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Oponente Enfrentado:</label>
+                  <select
+                    value={simLoserId}
+                    onChange={(e) => setSimLoserId(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-bold text-white"
+                  >
+                    {athletes.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({ATHLETE_LEVEL_LABELS[a.level]})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Placar do Jogo:</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={simWinScore}
+                      onChange={(e) => setSimWinScore(parseInt(e.target.value, 10) || 18)}
+                      className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-extrabold text-sm text-center text-white"
+                    />
+                    <span className="font-bold text-slate-400">x</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      value={simLoseScore}
+                      onChange={(e) => setSimLoseScore(parseInt(e.target.value, 10) || 12)}
+                      className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-extrabold text-sm text-center text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Informational Preview (Simple non-clickable rectangular tag) */}
+                {simCalc && (
+                  <div className="p-3 rounded-lg bg-[#030D1A]/90 border-l-4 border-l-[#12C7BB] text-xs space-y-0.5">
+                    <span className="font-extrabold text-[#12C7BB] block text-sm">
+                      Vencedor recebe: +{simCalc.winnerPoints} pts
+                    </span>
+                    <span className="text-slate-300 block text-[11px]" title={simCalc.explanation}>
+                      Performance: <strong>+{simCalc.performanceBonus}</strong> · Dificuldade do Oponente:{' '}
+                      <strong>+{simCalc.opponentDifficultyBonus}</strong>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#145A9B]/40">
+                <button
+                  type="button"
+                  onClick={() => setIsRecordMatchModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-lg bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold shadow-md"
+                >
+                  Registrar Resultado no Ranking
+                </button>
+              </div>
+            </form>
+
+            {/* Recent Matches Log inside the Modal */}
+            {rankingLogs.length > 0 && (
+              <div className="pt-4 border-t border-[#145A9B]/40 space-y-2.5">
+                <h3 className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-[#12C7BB]" />
+                  Últimos Jogos Contabilizados ({rankingLogs.length})
+                </h3>
+                <div className="space-y-2 max-h-44 overflow-y-auto pr-1 text-xs">
+                  {rankingLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="p-2.5 rounded-lg bg-[#030D1A]/80 border border-slate-800 flex items-center justify-between gap-2"
+                    >
+                      <div>
+                        <span className="font-bold text-white">
+                          {log.winnerNames}{' '}
+                          <span className="text-amber-400 font-extrabold">({log.score})</span>{' '}
+                          {log.loserNames}
+                        </span>
+                        <span className="block text-[11px] text-slate-400">
+                          Jogo #{log.matchNumber} · {log.timestamp}
+                        </span>
+                      </div>
+                      <span className="font-extrabold text-[#12C7BB] shrink-0">
+                        +{log.pointsAwardedWinner} pts
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
 
       {/* ===================================================================== */}
       {/* SUB-VIEW 2: INSCRIÇÃO DE PARTICIPANTES / DUPLAS NO TORNEIO            */}
@@ -957,7 +1048,7 @@ export const DoublesRegistration: React.FC = () => {
       {subView === 'inscricao_duplas' && (
         <div className="space-y-6">
           {/* Ultra-Clean Shareable Tournament Registration Link Banner */}
-          <div className="bg-[#071D3D] text-[#F7FAFD] border-2 border-[#0987CE] rounded-2xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="aquarium-glass bg-[#071D3D] text-[#F7FAFD] border-2 border-[#0987CE] rounded-2xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="px-2.5 py-0.5 rounded bg-[#0987CE] text-white font-black uppercase text-[10px]">
@@ -1010,7 +1101,7 @@ export const DoublesRegistration: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-xs h-fit space-y-4">
+          <div className="aquarium-glass bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-xs h-fit space-y-4">
             <div className="pb-3 border-b border-slate-100 space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-black text-slate-950 flex items-center gap-2">
@@ -1191,7 +1282,7 @@ export const DoublesRegistration: React.FC = () => {
           </div>
 
           {/* Registered Pairs List + Individual 2-Player Payment + Admin Rejection & Refund */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="aquarium-glass lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div className="space-y-1">
                 <h2 className="text-base font-bold text-slate-900">
