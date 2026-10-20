@@ -125,8 +125,8 @@ export const TopBarSearchBox: React.FC<TopBarSearchBoxProps> = ({ compact = fals
     <div className="relative w-full" data-testid={compact ? 'topbar-search-mobile' : 'topbar-search-desktop'}>
       <div
         className={`flex items-center gap-2 w-full ${
-          compact ? 'px-3.5 py-1.5 rounded-xl' : 'px-4 py-2 rounded-2xl'
-        } border border-cyan-500/35 bg-[#071526]/95 hover:bg-[#071526] text-cyan-200 shadow-inner transition-colors focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-400/25`}
+          compact ? 'px-3.5 py-1.5 rounded-full' : 'px-4 py-2 rounded-2xl'
+        } border ${compact ? 'border-cyan-500/30 bg-[#052445]/80 hover:bg-[#083566] shadow-xs' : 'border-cyan-500/35 bg-[#071526]/95 hover:bg-[#071526] shadow-inner'} text-cyan-200 transition-colors focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-400/25`}
       >
         <Search className={`${compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} shrink-0 text-cyan-400`} />
         <input
