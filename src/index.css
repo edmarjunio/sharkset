@@ -1068,3 +1068,46 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* 3D Floating Action Button */
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3.5px);
+  }
+}
+
+.animate-float-gentle {
+  animation: floatGentle 2.6s ease-in-out infinite;
+}
+
+.btn-3d-zap {
+  position: relative;
+  background: linear-gradient(180deg, #FFE066 0%, #FF922B 45%, #E8590C 100%);
+  box-shadow: 
+    0 1.5px 0 rgba(255, 255, 255, 0.75) inset,
+    0 -2px 0 rgba(0, 0, 0, 0.25) inset,
+    0 4px 0 #9c3200,
+    0 8px 18px rgba(255, 107, 0, 0.55);
+  transition: all 0.15s ease-out;
+}
+
+.btn-3d-zap:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 1.5px 0 rgba(255, 255, 255, 0.9) inset,
+    0 -2px 0 rgba(0, 0, 0, 0.2) inset,
+    0 6px 0 #9c3200,
+    0 12px 24px rgba(255, 107, 0, 0.7);
+}
+
+.btn-3d-zap:active {
+  transform: translateY(3px) !important;
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 1px 0 #9c3200,
+    0 3px 8px rgba(255, 107, 0, 0.3);
+}
+

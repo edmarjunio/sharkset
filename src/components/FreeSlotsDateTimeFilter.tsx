@@ -10,6 +10,7 @@ import { newlyFreedSlots, slotsInWindow } from '../services/nearbySlots';
 import { BookingDatePicker } from './BookingDatePicker';
 import { TopBarSlotDetailsModal } from './TopBarSlotDetailsModal';
 import { ChevronLeft, ChevronRight, Clock, MapPin, Pause, Play, X, Zap } from 'lucide-react';
+import { formatShortHour } from './FreeSlotsNewsTicker';
 
 interface Props {
   userCoords?: GeoCoordinates | null;
@@ -114,44 +115,50 @@ export function FreeSlotsDateTimeFilter({
     [availableTenants, coords, radiusKm]
   );
 
-  const groups = arenas.map((item) => {
-    const state = data[item.arena.id + ':' + date];
-    const cells = state?.cells || [];
-    const free =
-      date === today
-        ? slotsInWindow(cells, now, from, to)
-        : cells.filter(
-            (c) =>
-              c.state === 'free' &&
-              (!from || c.startTime >= from) &&
-              (!to || c.endTime <= to)
-          );
-    return {
-      ...item,
-      state,
-      free: free.filter(
-        (cell) =>
-          defaultSport === 'all' ||
-          item.arena.courts.find((c) => c.id === cell.courtId)?.sports.includes(defaultSport)
-      ),
-    };
-  });
+  const groups = useMemo(() => {
+    return arenas.map((item) => {
+      const state = data[item.arena.id + ':' + date];
+      const cells = state?.cells || [];
+      const free =
+        date === today
+          ? slotsInWindow(cells, now, from, to)
+          : cells.filter(
+              (c) =>
+                c.state === 'free' &&
+                (!from || c.startTime >= from) &&
+                (!to || c.endTime <= to)
+            );
+      return {
+        ...item,
+        state,
+        free: free.filter(
+          (cell) =>
+            defaultSport === 'all' ||
+            item.arena.courts.find((c) => c.id === cell.courtId)?.sports.includes(defaultSport)
+        ),
+      };
+    });
+  }, [arenas, data, date, today, now, from, to, defaultSport]);
 
-  const shown = groups.filter(
-    (group) =>
-      (arenaFilter === 'all' || arenaFilter === group.arena.id) &&
-      (!group.state || group.state.loading || group.state.error || group.free.length)
-  );
+  const shown = useMemo(() => {
+    return groups.filter(
+      (group) =>
+        (arenaFilter === 'all' || arenaFilter === group.arena.id) &&
+        (!group.state || group.state.loading || group.state.error || group.free.length)
+    );
+  }, [groups, arenaFilter]);
 
-  const alerts = groups
-    .map((group) => {
-      const rawFree = slotsInWindow(group.state?.cells || [], now);
-      const relevantFree = rawFree.filter(
-        (cell) => fresh[cell.id] > Date.now() - 300000 || cell.isPeakHour || true
-      );
-      return { ...group, free: relevantFree };
-    })
-    .filter((group) => group.free.length && !group.state?.loading && !group.state?.error);
+  const alerts = useMemo(() => {
+    return groups
+      .map((group) => {
+        const rawFree = slotsInWindow(group.state?.cells || [], now);
+        const relevantFree = rawFree.filter(
+          (cell) => fresh[cell.id] > Date.now() - 300000 || cell.isPeakHour || true
+        );
+        return { ...group, free: relevantFree };
+      })
+      .filter((group) => group.free.length && !group.state?.loading && !group.state?.error);
+  }, [groups, now, fresh]);
 
   const alertKey = alerts.map((group) => group.arena.id).join('|');
 
@@ -460,35 +467,65 @@ function VirtualizedArenaCarousel({
   const [containerWidth, setContainerWidth] = useState(800);
   const [isHovered, setIsHovered] = useState(false);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const [isCarouselVisible, setIsCarouselVisible] = useState(true);
+  const isScrollingRef = useRef(false);
 
   // Stride (card width 280px on desktop / 260px on mobile + 10px gap)
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   const itemStride = isMobile ? 270 : 290;
 
-  // Track container width
+  /**
+   * 1. INTERSECTION OBSERVER DO CARROSSEL:
+   * Monitora se a seção do carrossel está visível no viewport da página.
+   * Se o usuário rolar a página para baixo, suspende o auto-scroll e poupa CPU.
+   */
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width);
-      }
-    });
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsCarouselVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
     observer.observe(el);
-    setContainerWidth(el.clientWidth);
     return () => observer.disconnect();
   }, []);
 
-  // Passive high-performance scroll tracking for virtualization
+  // Track container width via ResizeObserver
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(Math.floor(entry.contentRect.width));
+      }
+    });
+
+    observer.observe(el);
+    setContainerWidth(el.clientWidth || 800);
+    return () => observer.disconnect();
+  }, []);
+
+  // Passive high-performance scroll tracking via rAF guard
   const onScroll = useCallback(() => {
-    if (!containerRef.current) return;
-    const sl = containerRef.current.scrollLeft;
-    requestAnimationFrame(() => setScrollLeft(sl));
+    if (isScrollingRef.current) return;
+    isScrollingRef.current = true;
+    requestAnimationFrame(() => {
+      if (containerRef.current) {
+        setScrollLeft(containerRef.current.scrollLeft);
+      }
+      isScrollingRef.current = false;
+    });
   }, []);
 
   // Auto-scrolling mechanism: rotates smoothly across arena cards every 3.0 seconds
   useEffect(() => {
-    if (isHovered || isUserInteracting || items.length <= 1) return;
+    if (!isCarouselVisible || isHovered || isUserInteracting || items.length <= 1) return;
+
     const interval = window.setInterval(() => {
       const el = containerRef.current;
       if (!el || document.hidden) return;
@@ -499,19 +536,31 @@ function VirtualizedArenaCarousel({
         el.scrollBy({ left: itemStride, behavior: 'smooth' });
       }
     }, 3000);
+
     return () => window.clearInterval(interval);
-  }, [isHovered, isUserInteracting, items.length, itemStride]);
+  }, [isCarouselVisible, isHovered, isUserInteracting, items.length, itemStride]);
 
-  // Windowing / Virtualization calculation
+  /**
+   * 2. VIRTUALIZAÇÃO / WINDOWING VIA useMemo:
+   * Processa estritamente os cartões visíveis na tela + 1 buffer para rolagem fluida.
+   */
   const total = items.length;
-  const overscan = 2;
-  const startIndex = Math.max(0, Math.floor(scrollLeft / itemStride) - overscan);
-  const endIndex = Math.min(total - 1, Math.ceil((scrollLeft + containerWidth) / itemStride) + overscan);
+  const overscan = 1;
 
-  const leftSpacerWidth = startIndex * itemStride;
-  const rightSpacerWidth = Math.max(0, (total - 1 - endIndex) * itemStride);
+  const { visibleItems, leftSpacerWidth, rightSpacerWidth } = useMemo(() => {
+    const startIdx = Math.max(0, Math.floor(scrollLeft / itemStride) - overscan);
+    const endIdx = Math.min(total - 1, Math.ceil((scrollLeft + containerWidth) / itemStride) + overscan);
 
-  const visibleItems = items.slice(startIndex, endIndex + 1);
+    const leftSpacer = startIdx * itemStride;
+    const rightSpacer = Math.max(0, (total - 1 - endIdx) * itemStride);
+    const slice = items.slice(startIdx, endIdx + 1);
+
+    return {
+      visibleItems: slice,
+      leftSpacerWidth: leftSpacer,
+      rightSpacerWidth: rightSpacer,
+    };
+  }, [items, scrollLeft, itemStride, total, containerWidth, overscan]);
 
   const handleScrollPrev = () => {
     containerRef.current?.scrollBy({ left: -itemStride, behavior: 'smooth' });
@@ -537,11 +586,11 @@ function VirtualizedArenaCarousel({
       onTouchStart={() => setIsUserInteracting(true)}
       onTouchEnd={() => setTimeout(() => setIsUserInteracting(false), 2000)}
     >
-      {/* Scrollable Container with Virtualization & No Scrollbar */}
+      {/* Scrollable Container with Virtualization & No Scrollbar (Centralizado no meio da tela) */}
       <div
         ref={containerRef}
         onScroll={onScroll}
-        className="flex gap-2.5 overflow-x-auto no-scrollbar scrollbar-none pb-1 pt-2.5 snap-x snap-mandatory"
+        className="flex justify-start lg:justify-center items-center gap-3 sm:gap-4 overflow-x-auto no-scrollbar scrollbar-none pb-1 pt-2.5 snap-x snap-mandatory w-full"
       >
         {/* Left Spacer for virtual windowing */}
         {leftSpacerWidth > 0 && (
@@ -613,7 +662,8 @@ function ArenaSubscription({
  * 1. Nome da arena
  * 2. Horário disponível
  * 3. Nome da quadra
- * Com transição suave e clique direto para detalhes e agendamento.
+ * Otimizado com Intersection Observer individual e useMemo para evitar repaints desnecessários
+ * e transição suave sem piscar a tela ou desmontar elementos bruscamente.
  */
 function ElegantArenaSlotItem({
   arena,
@@ -630,17 +680,64 @@ function ElegantArenaSlotItem({
 }) {
   const [slotIndex, setSlotIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [isCardVisible, setIsCardVisible] = useState(true);
+  const cardRef = useRef<HTMLElement>(null);
 
-  const totalSlots = free.length;
-
-  // Carrossel roda suavemente a cada 3.0 segundos mostrando cada horário livre
+  /**
+   * 1. INTERSECTION OBSERVER DO CARTÃO:
+   * Monitora se este cartão individual está no campo de visão do usuário.
+   * Se for rolado para fora da visão horizontal, seu temporizador de rotação é pausado imediatamente.
+   */
   useEffect(() => {
-    if (isHovered || totalSlots <= 1) return;
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsCardVisible(entry.isIntersecting);
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  /**
+   * 2. MEMOIZAÇÃO DE QUADRAS E HORÁRIOS (useMemo):
+   * Mapeamento direto de quadras em O(1) e pré-formatação de strings de horários.
+   */
+  const courtMap = useMemo(() => {
+    const map = new Map<string, Court>();
+    for (const c of arena.courts) {
+      map.set(c.id, c);
+    }
+    return map;
+  }, [arena.courts]);
+
+  const formattedSlots = useMemo(() => {
+    return free.map((slot) => ({
+      slot,
+      courtName: courtMap.get(slot.courtId)?.name || 'Quadra Livre',
+      shortHour: formatShortHour(slot.startTime),
+    }));
+  }, [free, courtMap]);
+
+  const totalSlots = formattedSlots.length;
+
+  /**
+   * 3. ROTAÇÃO SUAVE CONDICIONAL:
+   * Só roda se o cartão estiver no viewport do usuário, não hovereado e tiver mais de 1 horário.
+   */
+  useEffect(() => {
+    if (!isCardVisible || isHovered || totalSlots <= 1) return;
+
     const interval = window.setInterval(() => {
       setSlotIndex((prev) => (prev + 1) % totalSlots);
     }, 3000);
+
     return () => window.clearInterval(interval);
-  }, [isHovered, totalSlots]);
+  }, [isCardVisible, isHovered, totalSlots]);
 
   useEffect(() => {
     if (slotIndex >= totalSlots && totalSlots > 0) {
@@ -648,16 +745,17 @@ function ElegantArenaSlotItem({
     }
   }, [totalSlots, slotIndex]);
 
-  const currentSlot = totalSlots > 0 ? free[slotIndex % totalSlots] : null;
-  const currentCourt = currentSlot ? arena.courts.find((c) => c.id === currentSlot.courtId) : null;
+  const currentFormatted = totalSlots > 0 ? formattedSlots[slotIndex % totalSlots] : null;
+  const currentSlot = currentFormatted?.slot || null;
 
   return (
     <article
+      ref={cardRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => currentSlot && onOpenModal(currentSlot)}
       className="w-[260px] sm:w-[280px] shrink-0 snap-start rounded-2xl border border-cyan-500/30 bg-gradient-to-b from-[#041529]/95 to-slate-900/95 p-3 flex flex-col justify-between shadow-lg hover:border-cyan-400/70 hover:shadow-cyan-500/20 transition-all cursor-pointer group active:scale-[0.99] select-none"
-      title={currentSlot ? `Clique para agendar ${currentSlot.startTime}–${currentSlot.endTime} na ${currentCourt?.name} (${arena.name})` : undefined}
+      title={currentSlot ? `Clique para agendar ${currentSlot.startTime}–${currentSlot.endTime} na ${currentFormatted?.courtName} (${arena.name})` : undefined}
     >
       {/* 1. Nome da Arena (Topo limpo) */}
       <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-1.5">
@@ -672,7 +770,7 @@ function ElegantArenaSlotItem({
         )}
       </div>
 
-      {/* 2 e 3. Horário Disponível e Nome da Quadra (Corpo elegante com transição suave) */}
+      {/* 2 e 3. Horário Disponível e Nome da Quadra (Corpo elegante com transição suave sem piscar) */}
       <div className="py-2.5">
         {!state || state.loading ? (
           <div className="h-14 flex items-center justify-center text-xs text-slate-400 gap-1.5 animate-pulse">
@@ -683,29 +781,39 @@ function ElegantArenaSlotItem({
           <div className="h-14 flex items-center justify-center text-xs text-amber-300 text-center">
             <span>{state.error}</span>
           </div>
-        ) : totalSlots === 0 || !currentSlot ? (
+        ) : totalSlots === 0 || !currentSlot || !currentFormatted ? (
           <div className="h-14 flex items-center justify-center text-xs text-slate-400 text-center">
             <span>Sem horários livres no período</span>
           </div>
         ) : (
-          <div
-            key={currentSlot.id}
-            className="animate-carousel-slide flex flex-col justify-center space-y-1"
-          >
-            {/* Horário Disponível em destaque esmeralda */}
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-sm sm:text-base font-black font-mono text-emerald-300 tracking-tight flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                {currentSlot.startTime} – {currentSlot.endTime}
+          <div className="flex flex-col justify-center space-y-1">
+            {/* Horário Disponível e Botão de Agendar Grande, Evidenciado e Chamativo */}
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <span className="text-base sm:text-lg font-black font-mono text-emerald-300 tracking-tight flex items-center gap-1.5 transition-colors duration-200">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="inline-block transition-transform duration-300 ease-out">
+                  {currentFormatted.shortHour}
+                </span>
               </span>
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-400/30 group-hover:bg-amber-400 group-hover:text-slate-950 transition-colors">
-                Agendar
-              </span>
+
+              {/* Botão de Agendar 3D Flutuante: Somente o botão com um RAIO no meio, sem escrita */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenModal(currentSlot);
+                }}
+                className="btn-3d-zap animate-float-gentle w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-950 border border-amber-300/80 cursor-pointer shrink-0 select-none"
+                title="Agendar este horário agora"
+                aria-label="Agendar horário"
+              >
+                <Zap size={18} className="fill-slate-950 text-slate-950 stroke-[2.5] drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]" />
+              </button>
             </div>
 
             {/* Nome da Quadra */}
-            <span className="text-xs font-bold text-cyan-200 truncate block">
-              {currentCourt?.name || 'Quadra Livre'}
+            <span className="text-xs font-bold text-cyan-200 truncate block transition-colors duration-200">
+              {currentFormatted.courtName}
             </span>
           </div>
         )}
@@ -717,7 +825,7 @@ function ElegantArenaSlotItem({
           {Array.from({ length: Math.min(6, totalSlots) }).map((_, i) => (
             <span
               key={i}
-              className={`h-1 rounded-full transition-all ${
+              className={`h-1 rounded-full transition-all duration-300 ${
                 slotIndex === i ? 'w-3.5 bg-emerald-400' : 'w-1 bg-slate-600'
               }`}
             />
