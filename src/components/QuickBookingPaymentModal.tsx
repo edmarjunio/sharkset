@@ -102,9 +102,9 @@ function BookingReview({ data, onClose }: { data: QuickBookingSlotData; onClose:
     <dialog
       ref={ref}
       aria-labelledby="booking-review-title"
-      className="m-auto w-[95vw] max-w-lg rounded-3xl border border-cyan-700 bg-slate-950 p-6 text-white backdrop:bg-black/75 shadow-2xl"
+      className="m-auto w-[95vw] max-w-lg rounded-3xl border border-cyan-700 bg-slate-950 p-5 sm:p-6 text-white backdrop:bg-black/75 shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
     >
-      <header className="flex justify-between items-center pb-3 border-b border-cyan-900/60">
+      <header className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-md flex justify-between items-center pb-3 border-b border-cyan-900/60">
         <div>
           <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400">
             Reserva de Horário

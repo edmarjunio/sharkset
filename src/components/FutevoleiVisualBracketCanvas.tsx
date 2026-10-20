@@ -1440,14 +1440,14 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
       {/* QUICK SCORE ENTRY MODAL (WORKS SEAMLESSLY IN NORMAL & FULLSCREEN MODES) */}
       {quickModalMatch && onQuickOfficialize && (
         <div
-          className="fixed inset-0 z-[10020] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-[10020] flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
           onClick={() => setQuickModalMatchId(null)}
         >
           <div
-            className="aquarium-glass bg-[#061A30] border-2 border-cyan-400/50 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 text-white"
+            className="aquarium-glass bg-[#061A30] border-2 border-cyan-400/50 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 text-white my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-white/15 pb-3">
+            <div className="sticky top-0 z-10 bg-[#061A30]/95 backdrop-blur-md flex items-center justify-between border-b border-white/15 pb-3 -mt-1 pt-1">
               <div>
                 <span className="text-[11px] font-black uppercase text-cyan-300">
                   Jogo #{quickModalMatch.matchNumber} · {matchPhaseLabel(quickModalMatch)}

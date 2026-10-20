@@ -34,7 +34,7 @@ export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-title"

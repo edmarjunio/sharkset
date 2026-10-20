@@ -121,10 +121,10 @@ export const ShareBracketModal: React.FC<ShareBracketModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-      <div className="aquarium-glass relative w-full max-w-lg bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl shadow-2xl overflow-hidden text-[#F7FAFD]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
+      <div className="aquarium-glass relative w-full max-w-lg bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl shadow-2xl overflow-hidden text-[#F7FAFD] my-auto max-h-[calc(100dvh-2rem)] flex flex-col">
         {/* Top Gradient Banner */}
-        <div className="bg-gradient-to-r from-[#030B17] via-[#071D3D] to-[#0A2E63] p-5 border-b border-[#145A9B] flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#030B17] via-[#071D3D] to-[#0A2E63] p-4 sm:p-5 border-b border-[#145A9B] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <SharksetLogo size="sm" />
             <div>
@@ -146,7 +146,7 @@ export const ShareBracketModal: React.FC<ShareBracketModalProps> = ({
           </button>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto min-h-0 flex-1">
           {/* Visual Share Card Preview (Matching Brand Slide 10 & 11) */}
           <div className="relative p-4 rounded-2xl bg-gradient-to-br from-[#0B254E] via-[#071D3D] to-[#030B17] border border-[#0987CE]/40 shadow-inner overflow-hidden">
             <div className="flex items-center justify-between border-b border-[#145A9B]/60 pb-3">

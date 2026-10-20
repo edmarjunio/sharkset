@@ -913,13 +913,13 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
       {/* ===================================================================== */}
       {isAddAthleteModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in overflow-y-auto"
           role="dialog"
           aria-modal="true"
           aria-labelledby="rb-modal-add-athlete-title"
         >
-          <div className="aquarium-glass w-full max-w-lg bg-[#05182C] border border-[#145A9B] rounded-2xl p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/50">
+          <div className="aquarium-glass w-full max-w-lg bg-[#05182C] border border-[#145A9B] rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
+            <div className="sticky top-0 z-10 bg-[#05182C]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-[#145A9B]/50 -mt-1 pt-1">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-lg bg-[#0987CE]/20 text-[#12C7BB] flex items-center justify-center">
                   <UserPlus className="w-5 h-5" />

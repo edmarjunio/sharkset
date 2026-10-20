@@ -992,9 +992,9 @@ export const SharkAcademyCommunity: React.FC = () => {
       {/* MODAL DE PUBLICAÇÃO DE CONTEÚDO NA COMUNIDADE                       */}
       {/* =================================================================== */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-          <div className="aquarium-glass w-full max-w-lg bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-6 shadow-2xl space-y-4 text-[#F7FAFD]">
-            <div className="flex items-center justify-between border-b border-[#145A9B] pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+          <div className="aquarium-glass w-full max-w-lg bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-[#F7FAFD] my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
+            <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-center justify-between border-b border-[#145A9B] pb-3 -mt-1 pt-1">
               <div className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-[#12C7BB]" />
                 <h3 className="text-base font-black text-white">
@@ -1149,9 +1149,9 @@ export const SharkAcademyCommunity: React.FC = () => {
       {/* MODAL DE VISUALIZAÇÃO DO MATERIAL                                   */}
       {/* =================================================================== */}
       {selectedPostPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-          <div className="aquarium-glass w-full max-w-2xl bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-6 shadow-2xl space-y-4 text-[#F7FAFD]">
-            <div className="flex items-center justify-between border-b border-[#145A9B] pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+          <div className="aquarium-glass w-full max-w-2xl bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-[#F7FAFD] my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
+            <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-center justify-between border-b border-[#145A9B] pb-3 -mt-1 pt-1">
               <div>
                 <span className="text-[10px] font-black uppercase text-[#12C7BB] block">
                   {CATEGORY_LABELS[selectedPostPreview.category]}

@@ -107,11 +107,11 @@ export const IntegrityReportModal: React.FC<Props> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm overflow-y-auto"
       role="dialog"
       aria-modal="true"
     >
-      <div className="relative w-full max-w-lg bg-[#041529] border border-red-500/50 rounded-3xl p-6 text-white shadow-2xl">
+      <div className="relative w-full max-w-lg bg-[#041529] border border-red-500/50 rounded-3xl p-5 sm:p-6 text-white shadow-2xl my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <button
           type="button"
           onClick={onClose}
@@ -130,7 +130,7 @@ export const IntegrityReportModal: React.FC<Props> = ({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex items-center gap-3 border-b border-red-500/20 pb-3">
+            <div className="sticky top-0 z-10 bg-[#041529]/95 backdrop-blur-md flex items-center gap-3 border-b border-red-500/20 pb-3 -mt-1 pt-1">
               <div className="w-10 h-10 rounded-xl bg-red-950/80 border border-red-600/60 flex items-center justify-center text-red-400 shrink-0">
                 <ShieldAlert size={22} />
               </div>

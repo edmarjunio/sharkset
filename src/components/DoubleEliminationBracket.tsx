@@ -2073,10 +2073,10 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       {/* MODAL A: CREATE OR EDIT TOURNAMENT                                    */}
       {/* ===================================================================== */}
       {showTournamentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleSaveTournamentModal} className="space-y-4 text-xs">
-              <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
+              <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-[#145A9B]/60 -mt-1 pt-1">
                 <div>
                   <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
                     Gestão de Torneios de Futevôlei
@@ -2392,10 +2392,10 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       {/* MODAL B: SISTEMA DE INSCRIÇÃO RÁPIDA NO TORNEIO (SIMPLES OU DUPLAS)   */}
       {/* ===================================================================== */}
       {showQuickEnrollModal && activeTournament && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowQuickEnrollModal(false); }}>
-          <div role="dialog" aria-modal="true" aria-labelledby="quick-enroll-title" className="aquarium-glass max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[#145A9B] bg-[#071D3D] p-5 text-white shadow-2xl sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm overflow-y-auto" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowQuickEnrollModal(false); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="quick-enroll-title" className="aquarium-glass my-auto max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[#145A9B] bg-[#071D3D] p-5 text-white shadow-2xl sm:p-6">
             <form onSubmit={handleQuickEnrollSubmit} className="space-y-4 text-xs">
-              <div className="flex items-start justify-between gap-3 border-b border-[#145A9B]/60 pb-3">
+              <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-start justify-between gap-3 border-b border-[#145A9B]/60 pb-3 -mt-1 pt-1">
                 <div>
                   <span className="text-[10px] font-bold uppercase text-[#12C7BB]">Inscrição · {activePairsInTourn.length}/{activeTournament.maxPairs} vagas</span>
                   <h3 id="quick-enroll-title" className="mt-1 text-base font-bold">Inscrever {isSingles ? 'atleta' : 'dupla'} em {activeTournament.name}</h3>
@@ -2429,9 +2429,9 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       )}
       {/* Full Unfrozen Match Editor Modal */}
       {editingMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-[#145A9B]/60 -mt-1 pt-1">
               <div>
                 <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
                   Edição Livre de Partida (Nada Congelado)
@@ -2562,8 +2562,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       {/* Start Tournament & Dynamic Draw Builder Modal */}
       {showStartDrawModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="aquarium-glass bg-[#071D3D] text-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-[#145A9B] space-y-5 my-6">
-            <div className="flex items-start justify-between border-b border-[#145A9B]/60 pb-4">
+          <div className="aquarium-glass bg-[#071D3D] text-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-[#145A9B] space-y-5 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
+            <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-start justify-between border-b border-[#145A9B]/60 pb-4 -mt-1 pt-1">
               <div>
                 <span className="px-2.5 py-0.5 rounded-md bg-[#0987CE] text-white font-black uppercase text-[10px]">
                   INICIAR TORNEIO & GERAR TABELA OFICIAL

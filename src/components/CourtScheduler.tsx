@@ -2765,8 +2765,8 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
       {/* MODAL 1B: WAITLIST FOR SOLD-OUT COURT SLOT (LISTA DE ESPERA)          */}
       {/* ===================================================================== */}
       {waitlistSlot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 space-y-4 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             {(() => {
               const currentBooking = bookings.find(
                 (b) =>
@@ -2790,7 +2790,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
 
               return (
                 <>
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-slate-100 -mt-1 pt-1">
                     <div>
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 block">
                         Horário Esgotado · Lista de Espera Automática
@@ -2982,10 +2982,10 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
       {/* MODAL 2: ENROLL CLIENT IN CLASS (ALUNO, PROFESSOR OU DONO + VENCIMENTO)*/}
       {/* ===================================================================== */}
       {selectedClassForEnroll && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <form onSubmit={handleEnrollStudent} className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-slate-100 -mt-1 pt-1">
                 <div>
                   <span className="text-[10px] font-black uppercase text-emerald-700">
                     Vínculo de Turma & Início Imediato da Mensalidade
@@ -3152,10 +3152,10 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
       {/* MODAL 3: CREATE TOURNAMENT INSIDE ARENA                               */}
       {/* ===================================================================== */}
       {showCreateTournModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <form onSubmit={handleCreateTournamentSubmit} className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-slate-100 -mt-1 pt-1">
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Criar Novo Campeonato na {tenant.name}</h3>
                   <p className="text-xs text-slate-500">Configure formato da semifinal, categoria e responsável técnico</p>
@@ -3325,10 +3325,10 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
       {/* MODAL 4: ONLINE REGISTRATION & PAYMENT WITH LEVEL VALIDATION          */}
       {/* ===================================================================== */}
       {activeRegisteringTourn && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <form onSubmit={handleCompleteTournRegistration} className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-slate-100 -mt-1 pt-1">
                 <div>
                   <span className="text-[10px] font-bold uppercase text-emerald-700">
                     Inscrição Online & Pagamento

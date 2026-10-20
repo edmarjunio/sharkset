@@ -117,8 +117,8 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
       aria-modal="true"
       aria-labelledby="create-arena-title"
     >
-      <div className="aquarium-glass bg-[#05182C] border border-cyan-500/40 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in-95 my-auto">
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+      <div className="aquarium-glass bg-[#05182C] border border-cyan-500/40 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in-95 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
+        <div className="sticky top-0 z-10 bg-[#05182C]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-white/10 -mt-1 pt-1">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
               <Building2 size={20} />
