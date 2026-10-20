@@ -9,8 +9,8 @@ export default defineConfig(() => {
     build: {
       rollupOptions: {
         input: {
-          app: path.resolve(__dirname, 'index.html'),
-          aquarium: path.resolve(__dirname, 'aquarium-preview.html'),
+          app: path.resolve(import.meta.dirname, 'index.html'),
+          aquarium: path.resolve(import.meta.dirname, 'aquarium-preview.html'),
         },
       },
     },

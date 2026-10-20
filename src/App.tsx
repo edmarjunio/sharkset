@@ -22,7 +22,6 @@ import { TenantSelectorModal } from './components/TenantSelectorModal';
 import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
-import { AquariumBackground } from './components/AquariumBackground';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
 import {
   Maximize2,
@@ -88,7 +87,6 @@ const MainContent: React.FC = () => {
 
   return (
     <div
-      className="relative isolate min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 pb-16 md:pb-8 transition-colors"
       className={`shark-site-background min-h-screen flex flex-col text-slate-900 transition-colors ${
         isArenaWhiteLabel ? 'arena-whitelabel-mode' : ''
       } ${focusMode ? 'shark-focus-mode' : ''}`}
@@ -107,8 +105,6 @@ const MainContent: React.FC = () => {
       }
     >
       {!isArenaWhiteLabel && <AquariumBackground />}
-      <Navbar />
-      <AquariumBackground />
 
       {/* Floating Focus Mode Bar when active */}
       {focusMode && (
@@ -142,7 +138,6 @@ const MainContent: React.FC = () => {
       {/* Uninterrupted Live Broadcast Hub (Full on Home, Picture-in-Picture Floating Dock on other tabs) */}
       {!focusMode && activeTab !== 'home' && <PersistentLiveStreamDock />}
 
-      <main className={isArenaWhiteLabel ? 'flex-1' : 'flex-1 aquarium-content'}>
       <main className={`site-content flex-1 min-w-0 ${focusMode ? 'pt-4 px-2 sm:px-4' : ''}`}>
         {activeTab === 'arena_admin' && <ArenaAdmin />}
         {activeTab === 'home' && <HomeHighlights />}
