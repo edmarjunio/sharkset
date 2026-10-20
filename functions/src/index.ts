@@ -72,3 +72,5 @@ export const livekitWebhook = onRequest({ ...common, serviceAccount: `livekit-we
   try { await applyWebhook(database(), event); res.sendStatus(204); }
   catch { res.sendStatus(503); } // Provider can retry. Never log body, Authorization, SDK errors or secrets.
 });
+
+export { projectPublicArena, notifyBookingCancelled, projectPublicBookingBlocks, notifyTournamentOpened, queueArenaNotifications, sendArenaPush, sendArenaWhatsApp } from './arenaEvents';

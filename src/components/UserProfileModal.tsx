@@ -24,6 +24,7 @@ import {
 } from '../lib/firebase';
 import { AthleteLevel } from '../types';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
+import { NotificationSettings } from './NotificationSettings';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -150,7 +151,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           <X className="w-5 h-5" />
         </button>
 
-        {!isLoggedIn ? (
+        {!currentUser ? (
           /* NOT LOGGED IN STATE */
           <div className="flex flex-col items-center text-center py-4 space-y-4">
             <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-lg">
@@ -219,6 +220,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
         ) : (
           /* LOGGED IN USER PROFILE STATE */
           <div className="space-y-5">
+            <NotificationSettings />
             {/* User Header */}
             <div className="flex items-center gap-4 pt-1">
               <div className="relative shrink-0">

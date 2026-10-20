@@ -1,4 +1,5 @@
 import { BOOKING_DEMO } from '../services/bookingMode';
+import { getArenas, getTournaments, publishTournament } from '../services/db';
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import {
   ArenaBrandPalette,
@@ -204,7 +205,7 @@ interface AppContextType {
     registrationFee: number;
     responsibleName: string;
     responsiblePhone: string;
-  }) => Tournament;
+  }) => Promise<Tournament>;
   updateTournamentConfig: (
     tournamentId: string,
     updates: Partial<
@@ -347,6 +348,7 @@ const STORAGE_KEYS = {
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const tournamentPublicationPending = React.useRef(false);
   // Arenas state
   const [arenasMap, setArenasMap] = useState<Record<string, TenantConfig>>(() => {
     try {
@@ -364,6 +366,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [tenantId, setTenantIdState] = useState<string>(() => {
     return localStorage.getItem(STORAGE_KEYS.TENANT) || 'conflora';
   });
+
+  useEffect(() => {
+    if (BOOKING_DEMO) return;
+    let active = true;
+    const refresh = () => { void getArenas().then(arenas => {
+      if (active && arenas.length) setArenasMap(Object.fromEntries(arenas.map(arena => [arena.id, arena])));
+    }).catch(() => { /* Keep the local catalog; availability still requires authoritative validation. */ }); };
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.removeEventListener('focus', refresh); };
+  }, []);
 
   const tenant = useMemo(() => {
     const list = Object.values(arenasMap);
@@ -615,6 +628,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [tournaments]);
 
   const [activeTournamentId, setActiveTournamentId] = useState<string>('tourn-conflora-1');
+
+  useEffect(() => {
+    if (BOOKING_DEMO) return;
+    let active = true;
+    const refresh = () => { void getTournaments(Boolean(new URLSearchParams(location.search).get('tournament'))).then(records => {
+      if (active && records.length) setTournaments(previous => {
+        const merged = new Map(previous.map(record => [record.id, record]));
+        records.forEach(record => merged.set(record.id, record));
+        return [...merged.values()];
+      });
+    }).catch(() => {}); };
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.removeEventListener('focus', refresh); };
+  }, []);
 
   // Registered Pairs state
   const [registeredPairs, setRegisteredPairs] = useState<TeamPair[]>(() => {
@@ -1280,7 +1308,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Create Tournament (Supports Location, Modality Format Simples/Duplas, Specific Rules, Max Participants)
-  const createTournament = (data: {
+  const createTournament = async (data: {
     name: string;
     sport: SportType;
     category: TournamentCategory;
@@ -1293,9 +1321,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     registrationFee: number;
     responsibleName: string;
     responsiblePhone: string;
-  }): Tournament => {
+  }): Promise<Tournament> => {
     const newTourn: Tournament = {
-      id: `tourn-${Date.now()}`,
+      id: `tourn-${crypto.randomUUID()}`,
       tenantId: tenant.id,
       name: data.name,
       sport: data.sport,
@@ -1317,6 +1345,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       isFinished: false,
     };
 
+    if (tournamentPublicationPending.current) throw new Error('Aguarde a publicação do torneio em andamento.');
+    tournamentPublicationPending.current = true;
+    try { if (!BOOKING_DEMO) await publishTournament(newTourn); }
+    finally { tournamentPublicationPending.current = false; }
     setTournaments((prev) => [newTourn, ...prev]);
     setActiveTournamentId(newTourn.id);
 

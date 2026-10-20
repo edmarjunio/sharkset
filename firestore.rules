@@ -10,6 +10,40 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Only redacted server projections are public. Authoritative arena/booking records stay private.
+    match /arenas_public/{arenaId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /arena_schedules/{scheduleId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /tournaments_public/{tournamentId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /notification_preferences/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isVerifiedUser() && request.auth.uid == uid &&
+        incoming().keys().hasAll(['favoriteArenaIds', 'pushEnabled', 'whatsappEnabled', 'phone', 'bookingCancelled', 'tournamentOpened']) &&
+        incoming().keys().hasOnly(['favoriteArenaIds', 'pushEnabled', 'whatsappEnabled', 'phone', 'bookingCancelled', 'tournamentOpened']) &&
+        incoming().favoriteArenaIds is list && incoming().favoriteArenaIds.size() <= 50 &&
+        incoming().favoriteArenaIds.join(',').matches('^([a-zA-Z0-9_-]{1,64}(,[a-zA-Z0-9_-]{1,64}){0,49})?$') &&
+        incoming().pushEnabled is bool && incoming().whatsappEnabled is bool &&
+        incoming().bookingCancelled is bool && incoming().tournamentOpened is bool &&
+        incoming().phone is string && incoming().phone.matches('^([0-9]{10,15})?$') &&
+        (!incoming().whatsappEnabled || incoming().phone.size() >= 10);
+      allow delete: if isSignedIn() && request.auth.uid == uid;
+      match /devices/{deviceId} {
+        allow read, delete: if isSignedIn() && request.auth.uid == uid;
+        allow create, update: if isVerifiedUser() && request.auth.uid == uid &&
+          deviceId.matches('^[a-f0-9]{64}$') && incoming().keys().hasOnly(['token', 'updatedAt']) &&
+          incoming().token is string && incoming().token.size() > 20 && incoming().token.size() <= 4096 &&
+          incoming().updatedAt is string && incoming().updatedAt.size() <= 40;
+      }
+    }
+
     match /broadcasts/{broadcastId} {
       allow read: if true;
       allow write: if false;

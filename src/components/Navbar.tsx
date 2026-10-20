@@ -22,6 +22,7 @@ import {
   Award,
   Info,
   Sparkles,
+  Shield,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -94,22 +95,36 @@ export const Navbar: React.FC = () => {
         className="navbar-live-action relative inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-red-700/30 border border-red-400/50 active:translate-y-0.5 transition-all cursor-pointer"
         title="Assistir partidas ao vivo agora"
       >
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-        </span>
+        <Radio size={18} className="navbar-live-icon" aria-hidden="true" />
         <span>LIVE</span>
       </button>
       <button
         type="button"
         onClick={openBroadcastStudio}
-        className="navbar-live-action inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300 font-bold text-xs uppercase tracking-wider shadow-md active:translate-y-0.5 transition-all cursor-pointer"
+        className="navbar-live-action navbar-live-studio inline-flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs uppercase tracking-wider active:translate-y-0.5 transition-all cursor-pointer"
         title="Abrir estúdio de transmissão ao vivo"
       >
-        <Radio size={14} className="text-[#12C7BB]" />
+        <Radio size={16} className="text-white" aria-hidden="true" />
         <span>INICIAR TRANSMISSÃO</span>
       </button>
     </div>
+  );
+
+  const adminAction = (
+    <button
+      type="button"
+      onClick={() => { setActiveTab('arena_admin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+      aria-label="Área do administrador da arena"
+      aria-current={activeTab === 'arena_admin' ? 'page' : undefined}
+      title="Área do administrador da arena"
+      className={`navbar-admin-action inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border shadow-md transition-all active:scale-95 cursor-pointer ${
+        activeTab === 'arena_admin'
+          ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 border-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.45)]'
+          : 'bg-[#150f04]/90 hover:bg-[#241a06] text-amber-300 hover:text-white border-amber-500/40 hover:border-amber-300'
+      }`}
+    >
+      <Shield size={18} className={activeTab === 'arena_admin' ? 'text-slate-950 stroke-[2.5]' : 'text-amber-400'} aria-hidden="true" />
+    </button>
   );
 
   // General Platform Navigation Items with unified pill standard
@@ -285,10 +300,7 @@ export const Navbar: React.FC = () => {
                           }`}
                         >
                           {item.isLive ? (
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-                            </span>
+                            <Radio size={18} className="navbar-live-icon" aria-hidden="true" />
                           ) : (
                             <Icon size={14} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
                           )}
@@ -378,6 +390,7 @@ export const Navbar: React.FC = () => {
                     </span>
                   </button>
                 )}
+                {adminAction}
               </div>
             </div>
 
@@ -515,6 +528,7 @@ export const Navbar: React.FC = () => {
                 />
               </div>
             )}
+            {adminAction}
           </div>
 
         </div>
@@ -555,7 +569,7 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     {item.isLive ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse shrink-0" />
+                      <Radio size={18} className="navbar-live-icon" aria-hidden="true" />
                     ) : (
                       <Icon size={13} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
                     )}

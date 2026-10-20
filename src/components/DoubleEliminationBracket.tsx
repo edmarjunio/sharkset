@@ -390,26 +390,28 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     setShowTournamentModal('edit');
   };
 
-  const handleSaveTournamentModal = (e: React.FormEvent) => {
+  const handleSaveTournamentModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) return;
 
     if (showTournamentModal === 'create') {
-      const created = createTournament({
-        name: formName.trim(),
-        sport: 'futevolei',
-        category: formCategory,
-        modalityFormat: formModality,
-        semiFormat: formSemiFormat,
-        date: formDate,
-        location: formLocation.trim(),
-        specificRules: formRules.trim(),
-        maxPairs: formMaxParticipants,
-        registrationFee: formFee,
-        responsibleName: formResponsible.trim() || userProfile.name,
-        responsiblePhone: userProfile.phone,
-      });
-      triggerToast(`Torneio "${created.name}" (${formModality.toUpperCase()}) criado com sucesso!`);
+      try {
+        const created = await createTournament({
+          name: formName.trim(),
+          sport: 'futevolei',
+          category: formCategory,
+          modalityFormat: formModality,
+          semiFormat: formSemiFormat,
+          date: formDate,
+          location: formLocation.trim(),
+          specificRules: formRules.trim(),
+          maxPairs: formMaxParticipants,
+          registrationFee: formFee,
+          responsibleName: formResponsible.trim() || userProfile.name,
+          responsiblePhone: userProfile.phone,
+        });
+        triggerToast(`Torneio "${created.name}" (${formModality.toUpperCase()}) criado com sucesso!`);
+      } catch (error) { triggerToast(error instanceof Error ? error.message : 'Não foi possível publicar o torneio.'); return; }
     } else if (showTournamentModal === 'edit') {
       updateTournamentConfig(activeTournament.id, {
         name: formName.trim(),

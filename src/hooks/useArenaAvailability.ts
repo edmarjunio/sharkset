@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { TenantConfig } from '../types';
 import { addDays, arenaDate, buildArenaAvailability, type AvailabilityCell } from '../services/bookingAvailability';
-
-// Demo data must be explicitly enabled; never fall back after a server error.
+import { getArenaSchedule } from '../services/db';
+import { subscribeAvailability } from '../services/availabilityLive';
 import { BOOKING_DEMO } from '../services/bookingMode';
 export { BOOKING_DEMO };
 const EMPTY_CELLS: AvailabilityCell[] = [];
@@ -11,103 +11,53 @@ const EMPTY_CELLS: AvailabilityCell[] = [];
 export function useArenaAvailability(arena: TenantConfig, date: string, refreshKey = 0) {
   const { bookings, slots, tenant } = useApp();
   const queryKey = `${arena.id}:${date}`;
-  const [state, setState] = useState<{ queryKey: string; cells: AvailabilityCell[]; loading: boolean; error: string; maxDate: string }>({
-    queryKey: '',
-    cells: [],
-    loading: true,
-    error: '',
-    maxDate: addDays(arenaDate(), 6),
-  });
-
+  const [state, setState] = useState({ queryKey: '', cells: EMPTY_CELLS, loading: true, error: '', maxDate: addDays(arenaDate(), 6) });
   useEffect(() => {
     if (BOOKING_DEMO) {
-      setState({
-        queryKey,
-        cells: buildArenaAvailability(arena, date, bookings, { slots: tenant.id === arena.id ? slots : undefined }),
-        loading: false,
-        error: '',
-        maxDate: addDays(arenaDate(), 6),
-      });
+      setState({ queryKey, cells: buildArenaAvailability(arena, date, bookings, { slots: tenant.id === arena.id ? slots : undefined }), loading: false, error: '', maxDate: addDays(arenaDate(), 6) });
       return;
     }
     const controller = new AbortController();
-    let sequence = 0;
-    let stream: EventSource | null = null;
-    const connectStream = () => {
-      if (stream || controller.signal.aborted) return;
-      try {
-        stream = new EventSource('/api/booking/stream?tenantId=' + encodeURIComponent(arena.id) + '&date=' + encodeURIComponent(date));
-        stream.addEventListener('availability', event => {
-          if (controller.signal.aborted) return;
-          try {
-            const result = JSON.parse((event as MessageEvent).data);
-            if (!Array.isArray(result.cells)) return;
-            sequence++;
-            setState({ queryKey, cells: result.cells, loading: false, error: '', maxDate: result.maxDate });
-          } catch {
-            // ignore stream parse failure on static host
-          }
-        });
-        stream.addEventListener('availability-error', () => {
-          if (stream) {
-            stream.close();
-            stream = null;
-          }
-        });
-        stream.onerror = () => {
-          if (stream) {
-            stream.close();
-            stream = null;
-          }
-        };
-      } catch {
-        // EventSource não suportado ou offline
-      }
+    let revision = 0;
+    let stream: ReturnType<typeof subscribeAvailability> | undefined;
+    let running = false;
+    const apply = (result: { cells: AvailabilityCell[]; maxDate: string; stale?: boolean }) => {
+      if (!controller.signal.aborted) setState({ queryKey, cells: result.cells, maxDate: result.maxDate, loading: false,
+        error: result.stale ? 'Agenda salva offline. Reconecte para confirmar a disponibilidade.' : '' });
     };
-
-    const load = async () => {
-      const requestSequence = ++sequence;
-      setState(prev => ({ ...prev, queryKey, cells: [], loading: true, error: '' }));
+    const load = async (force = false) => {
+      if (running || controller.signal.aborted) return;
+      running = true;
+      const requestRevision = revision;
       try {
-        const response = await fetch(
-          `/api/booking/availability?tenantId=${encodeURIComponent(arena.id)}&date=${encodeURIComponent(date)}`,
-          { signal: controller.signal, cache: 'no-store' }
-        );
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-          // Quando estiver em ambiente de hosting estático (sem API backend), usa cálculo de agenda local sem quebrar
-          const localCells = buildArenaAvailability(arena, date, bookings, { slots: tenant.id === arena.id ? slots : undefined });
-          if (!controller.signal.aborted && requestSequence === sequence) {
-            setState({ queryKey, cells: localCells, loading: false, error: '', maxDate: addDays(arenaDate(), 6) });
-          }
-          return;
+        let result;
+        try { result = await getArenaSchedule(arena, date, force); }
+        catch {
+          const response = await fetch(`/api/booking/availability?tenantId=${encodeURIComponent(arena.id)}&date=${encodeURIComponent(date)}`, { signal: controller.signal, cache: 'no-store' });
+          if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Agenda online indisponível. Tente novamente mais tarde.');
+          result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Não foi possível consultar a agenda.');
         }
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Não foi possível consultar a agenda.');
-        if (!controller.signal.aborted && requestSequence === sequence) {
-          setState({ queryKey, cells: result.cells, loading: false, error: '', maxDate: result.maxDate });
-          connectStream();
-        }
-      } catch {
-        // Fallback local seguro para nunca quebrar a interface do usuário
-        const localCells = buildArenaAvailability(arena, date, bookings, { slots: tenant.id === arena.id ? slots : undefined });
-        if (!controller.signal.aborted && requestSequence === sequence) {
-          setState({ queryKey, cells: localCells, loading: false, error: '', maxDate: addDays(arenaDate(), 6) });
-        }
-      }
+        if (!Array.isArray(result.cells)) throw new Error('Resposta inválida da agenda.');
+        if (requestRevision === revision) apply(result);
+      } catch (error) {
+        if (!controller.signal.aborted && requestRevision === revision) setState(prev => ({ ...prev, queryKey, cells: [], loading: false,
+          error: error instanceof Error ? error.message : 'Não foi possível consultar a agenda.' }));
+      } finally { running = false; }
     };
-    void load();
-
-    const timer = window.setInterval(load, 60000);
-    const onFocus = () => { void load(); };
+    setState(prev => ({ ...prev, queryKey, cells: [], loading: true, error: '' }));
+    void load(refreshKey > 0);
+    // Live server projection revalidates cache data; polling is only a disconnected fallback.
+    try {
+      stream = subscribeAvailability(arena.id, date, result => { revision++; apply(result); }, () => {
+        revision++;
+        setState(prev => ({ ...prev, cells: [], loading: false, error: 'A conexão com a agenda foi interrompida. Reconectando.' }));
+      });
+    } catch { /* polling remains available */ }
+    const timer = window.setInterval(() => { if (!stream?.isConnected()) void load(true); }, 60_000);
+    const onFocus = () => { if (!stream?.isConnected()) void load(true); };
     window.addEventListener('focus', onFocus);
-    return () => {
-      controller.abort();
-      if (stream) stream.close();
-      window.clearInterval(timer);
-      window.removeEventListener('focus', onFocus);
-    };
+    return () => { controller.abort(); stream?.unsubscribe(); window.clearInterval(timer); window.removeEventListener('focus', onFocus); };
   }, [arena, date, bookings, slots, tenant.id, refreshKey]);
-
   return state.queryKey === queryKey ? state : { ...state, cells: EMPTY_CELLS, loading: true, error: '' };
 }
