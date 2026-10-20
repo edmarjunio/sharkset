@@ -33,6 +33,8 @@ import {
   Zap,
   Target,
 } from 'lucide-react';
+import { auth, persistAthleteToFirestore } from '../lib/firebase';
+import { UserProfileModal } from './UserProfileModal';
 
 export const MyBookings: React.FC = () => {
   const {
@@ -64,6 +66,8 @@ export const MyBookings: React.FC = () => {
 
   const [cancelToast, setCancelToast] = useState<string | null>(null);
   const [editingBio, setEditingBio] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const currentUser = auth.currentUser;
 
   // Media Upload state
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -84,16 +88,21 @@ export const MyBookings: React.FC = () => {
     volei_praia: '🏐 Vôlei de Praia',
   };
 
-  // Client's athlete ranking record
-  const myAthleteProfile: AthleteProfile = useMemo(() => {
-    const found = athletes.find((a) => a.name.toLowerCase() === userProfile.name.toLowerCase()) || athletes[0];
+  // Client's athlete ranking record (Only accessible for authenticated users with defined level)
+  const myAthleteProfile: AthleteProfile | null = useMemo(() => {
+    if (!currentUser) return null;
+
+    const uName = (currentUser.displayName || userProfile.name || '').trim().toLowerCase();
+    const found = athletes.find((a) => a.name.toLowerCase() === uName);
     if (found) return found;
 
+    if (!userProfile.level) return null;
+
     return {
-      id: 'current-user-profile',
-      name: userProfile.name || 'Atleta',
-      phone: userProfile.phone || '',
-      level: userProfile.level || 'iniciante',
+      id: `ath-${currentUser.uid.slice(0, 12)}`,
+      name: currentUser.displayName || userProfile.name || 'Atleta SHARK SET',
+      phone: userProfile.phone || currentUser.phoneNumber || '',
+      level: userProfile.level,
       points: 0,
       wins: 0,
       matchesPlayed: 0,
@@ -115,7 +124,7 @@ export const MyBookings: React.FC = () => {
         defenses: 0,
       },
     };
-  }, [athletes, userProfile, tenant]);
+  }, [athletes, userProfile, tenant, currentUser]);
 
   const [bioInput, setBioInput] = useState(myAthleteProfile?.bio || '');
 
@@ -130,11 +139,11 @@ export const MyBookings: React.FC = () => {
 
   // Game stats & Aproveitamento (%)
   const gameStats: AthleteGameStats = myAthleteProfile?.stats || {
-    aces: 28,
-    errors: 10,
-    sharkAttacks: 16,
-    pingoPoints: 42,
-    defenses: 65,
+    aces: 0,
+    errors: 0,
+    sharkAttacks: 0,
+    pingoPoints: 0,
+    defenses: 0,
   };
 
   const winRatePercent = useMemo(() => {
@@ -151,6 +160,7 @@ export const MyBookings: React.FC = () => {
   }, [gameStats]);
 
   const promoStatus = useMemo(() => {
+    if (!myAthleteProfile) return null;
     return getRankingPromotionSuggestion(
       myAthleteProfile.points,
       myAthleteProfile.titlesCount,
@@ -219,11 +229,34 @@ export const MyBookings: React.FC = () => {
 
   const handleLevelSwitch = (newLevel: AthleteLevel) => {
     setUserProfile({ ...userProfile, level: newLevel });
-    changeAthleteLevel(myAthleteProfile.id, newLevel);
-    triggerToast(`Badge de nível do perfil atualizado para ${ATHLETE_LEVEL_LABELS[newLevel]}!`);
+    if (myAthleteProfile) {
+      changeAthleteLevel(myAthleteProfile.id, newLevel);
+      persistAthleteToFirestore({ ...myAthleteProfile, level: newLevel }).catch(() => {});
+    } else if (currentUser) {
+      const newAth: AthleteProfile = {
+        id: `ath-${currentUser.uid.slice(0, 12)}`,
+        name: currentUser.displayName || userProfile.name || 'Atleta SHARK SET',
+        phone: userProfile.phone || '',
+        level: newLevel,
+        points: 0,
+        wins: 0,
+        matchesPlayed: 0,
+        titlesCount: 0,
+        experienceCategory: 'amador',
+        country: 'Brasil',
+        state: 'GO',
+        city: 'Mineiros',
+        arenaId: tenant?.id || '',
+        arenaName: tenant?.name || '',
+        stats: { aces: 0, errors: 0, sharkAttacks: 0, pingoPoints: 0, defenses: 0 },
+      };
+      persistAthleteToFirestore(newAth).catch(() => {});
+    }
+    triggerToast(`Categoria oficial definida para ${ATHLETE_LEVEL_LABELS[newLevel]}!`);
   };
 
   const handleAdjustStat = (field: keyof AthleteGameStats, delta: number) => {
+    if (!myAthleteProfile) return;
     const updated: AthleteGameStats = {
       ...gameStats,
       [field]: Math.max(0, gameStats[field] + delta),
@@ -233,6 +266,7 @@ export const MyBookings: React.FC = () => {
 
   // Handle local file upload (Photos & Videos)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!myAthleteProfile) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -253,7 +287,7 @@ export const MyBookings: React.FC = () => {
 
   const handleAddMediaByUrl = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mediaUrlInput.trim()) return;
+    if (!myAthleteProfile || !mediaUrlInput.trim()) return;
 
     addAthleteMedia(myAthleteProfile.id, {
       type: mediaType,
@@ -269,7 +303,7 @@ export const MyBookings: React.FC = () => {
 
   const handleAddAchievementSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!achTitle.trim() || !achTourn.trim()) return;
+    if (!myAthleteProfile || !achTitle.trim() || !achTourn.trim()) return;
 
     addAthleteAchievement(myAthleteProfile.id, {
       title: achTitle.trim(),
@@ -363,7 +397,77 @@ export const MyBookings: React.FC = () => {
       {/* ===================================================================== */}
       {/* MODELO COMPLETO DE PERFIL DE JOGADOR DE FUTEVÔLEI                     */}
       {/* ===================================================================== */}
-      <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-6 shadow-xl space-y-6 text-[#F7FAFD]">
+      {!currentUser ? (
+        <div className="aquarium-glass bg-[#071D3D] border border-cyan-500/30 rounded-3xl p-8 sm:p-12 text-center text-white space-y-6 max-w-2xl mx-auto shadow-2xl">
+          <div className="w-20 h-20 rounded-full bg-cyan-500/10 border-2 border-cyan-400/50 flex items-center justify-center mx-auto text-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.25)]">
+            <ShieldCheck className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-xs font-black uppercase tracking-wider border border-cyan-500/30">
+              Identificação do Atleta
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">
+              Faça login para definir sua Categoria Oficial
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+              No SHARK SET, a categoria oficial de jogo só pode ser definida após você fazer login ou criar sua conta. Conecte-se com o Google para acessar seu perfil e definir seu nível técnico.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLoginModalOpen(true)}
+            className="inline-flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-950 font-black text-sm shadow-xl transition-all cursor-pointer active:scale-[0.98]"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            <span>Entrar com Google</span>
+          </button>
+        </div>
+      ) : !userProfile.level ? (
+        <div className="aquarium-glass bg-[#071D3D] border-2 border-[#12C7BB]/60 rounded-3xl p-6 sm:p-8 text-white space-y-6 max-w-3xl mx-auto shadow-2xl">
+          <div className="text-center space-y-2 border-b border-white/10 pb-5">
+            <span className="px-3 py-1 rounded-full bg-[#12C7BB]/20 text-[#12C7BB] text-xs font-black uppercase tracking-wider border border-[#12C7BB]/30">
+              Conta Conectada · Defina sua Categoria
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">
+              Olá, {currentUser.displayName || 'Atleta'}! Selecione sua Categoria Inicial
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
+              Agora que sua conta está conectada, selecione seu nível técnico oficial de jogo para ingressar no Ranking Oficial SHARK SET:
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {ATHLETE_TIERS.map((tier) => (
+              <button
+                key={tier.level}
+                type="button"
+                onClick={() => handleLevelSwitch(tier.level)}
+                className="p-4 rounded-2xl bg-slate-900/80 hover:bg-[#07244a] border border-slate-700 hover:border-[#12C7BB] text-left transition-all cursor-pointer space-y-2 group shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-extrabold text-white group-hover:text-cyan-300">
+                    {tier.label}
+                  </span>
+                  <span className="text-[10px] font-mono text-cyan-300 font-bold px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800">
+                    {tier.minPoints} pts
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-snug">{tier.description}</p>
+                <div className="pt-2 flex items-center gap-1 text-[11px] text-[#12C7BB] font-black uppercase">
+                  <span>Confirmar {tier.label}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : myAthleteProfile ? (
+        <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-6 shadow-xl space-y-6 text-[#F7FAFD]">
         <div className="aquarium-glass bg-[#030B17] border border-[#145A9B] text-white rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -910,6 +1014,7 @@ export const MyBookings: React.FC = () => {
           </div>
         </div>
       </div>
+      ) : null}
 
       {/* Analytics Row: Quadras que mais joga + Lista de Espera */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1144,6 +1249,11 @@ export const MyBookings: React.FC = () => {
           })}
         </div>
       </div>
+
+      <UserProfileModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+      />
     </div>
   );
 };

@@ -134,8 +134,8 @@ interface AppContextType {
   athletes: AthleteProfile[];
   rankingLogs: RankingMatchLog[];
   classStudents: ClassStudent[];
-  userProfile: { name: string; phone: string; level: AthleteLevel };
-  setUserProfile: (profile: { name: string; phone: string; level: AthleteLevel }) => void;
+  userProfile: { name: string; phone: string; level: AthleteLevel | null };
+  setUserProfile: (profile: { name: string; phone: string; level: AthleteLevel | null }) => void;
   focusMode: boolean;
   setFocusMode: (mode: boolean | ((prev: boolean) => boolean)) => void;
   toggleFocusMode: () => void;
@@ -395,19 +395,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeLiveBroadcastBookingId, setActiveLiveBroadcastBookingId] = useState<string | null>(null);
 
   // User quick profile
-  const [userProfile, setUserProfileState] = useState<{ name: string; phone: string; level: AthleteLevel }>(() => {
+  const [userProfile, setUserProfileState] = useState<{ name: string; phone: string; level: AthleteLevel | null }>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-      return stored ? JSON.parse(stored) : { name: '', phone: '', level: 'iniciante' };
+      return stored ? JSON.parse(stored) : { name: '', phone: '', level: null };
     } catch {
-      return { name: '', phone: '', level: 'iniciante' };
+      return { name: '', phone: '', level: null };
     }
   });
 
-  const setUserProfile = (profile: { name: string; phone: string; level: AthleteLevel }) => {
+  const setUserProfile = (profile: { name: string; phone: string; level: AthleteLevel | null }) => {
     setUserProfileState(profile);
     try {
       localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+      if (auth.currentUser && profile.level) {
+        localStorage.setItem(`sharkset_user_level_${auth.currentUser.uid}`, profile.level);
+      }
     } catch {
       // ignore
     }
@@ -417,11 +420,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       useSharkStore.getState().setFirebaseUserEmail(user?.email || null);
       if (user) {
+        const userLevelKey = `sharkset_user_level_${user.uid}`;
+        const savedLevel = localStorage.getItem(userLevelKey) as AthleteLevel | null;
+
         setUserProfileState((prev) => {
           const updated = {
             name: user.displayName || prev.name || user.email?.split('@')[0] || 'Atleta',
             phone: user.phoneNumber || prev.phone || '',
-            level: prev.level || 'iniciante',
+            level: savedLevel || prev.level || null,
           };
           try {
             localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(updated));
@@ -432,7 +438,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
         void checkPlayerInactivity().catch((error) => console.warn(error.message));
       } else {
-        setUserProfileState({ name: '', phone: '', level: 'iniciante' });
+        setUserProfileState({ name: '', phone: '', level: null });
         try {
           localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
         } catch {

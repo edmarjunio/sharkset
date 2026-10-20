@@ -68,7 +68,7 @@ const MainContent: React.FC = () => {
 
   return (
     <div
-      className={`shark-site-background min-h-screen flex flex-col text-slate-900 pb-16 md:pb-8 transition-colors ${
+      className={`shark-site-background min-h-screen flex flex-col text-slate-900 transition-colors ${
         isArenaWhiteLabel ? 'arena-whitelabel-mode' : ''
       } ${focusMode ? 'shark-focus-mode' : ''}`}
       style={
@@ -134,58 +134,116 @@ const MainContent: React.FC = () => {
 
       {!focusMode && (
         <footer
-          className="aquarium-glass border-t border-slate-200 bg-white py-6 mt-12 text-slate-700"
+          className="w-full mt-auto border-t border-cyan-500/20 bg-[#020B17]/95 backdrop-blur-xl text-slate-300 transition-colors"
           style={
             isArenaWhiteLabel && arenaPalette
               ? {
                   backgroundColor: arenaPalette.headerBg,
                   borderColor: `${arenaPalette.primary}40`,
-                  color: '#FFFFFF',
                 }
               : undefined
           }
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-            {isArenaWhiteLabel && tenant.logoUrl ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <img
-                  src={tenant.logoUrl}
-                  alt={tenant.name}
-                  className="w-10 h-10 rounded-xl object-contain bg-white/10 p-1 border border-white/20"
-                />
-                <div>
-                  <span className="font-black text-sm tracking-tight block">{tenant.name}</span>
-                  <span className="text-[11px] opacity-80">
-                    {tenant.address} · {tenant.city}/{tenant.state}
-                  </span>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+            {/* Top Row: Brand & Sports & Badges */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-white/10">
+              {/* Brand Info */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3.5">
+                <div className="p-1.5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 shadow-md">
+                  <SharksetLogo size="sm" />
                 </div>
-                <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[10px] font-black uppercase tracking-widest">
-                  DESENVOLVIDO POR SHARKSET
-                </span>
+                <div>
+                  <div className="flex items-center justify-center sm:justify-start gap-2">
+                    <span className="font-black text-white text-base tracking-wider">
+                      SHARK<span className="text-[#FF6B00]">SET</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-[10px] font-black uppercase tracking-widest">
+                      PLATAFORMA OFICIAL
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                    Gestão esportiva inteligente, rankings automatizados, chaveamento de torneios e transmissões ao vivo.
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="flex flex-wrap justify-center items-center gap-3">
-                <SharksetLogo size="sm" />
-                <span className="font-black text-slate-900 tracking-tight text-sm">
-                  SHARK<span className="text-[#FF6B00]">SET</span>
-                </span>
-                <span aria-hidden="true" className="text-slate-300">
-                  ·
-                </span>
-                <span className="font-semibold text-slate-700">{tenant.name}</span>
-                <span aria-hidden="true" className="text-slate-300">
-                  ·
-                </span>
-                <span className="text-slate-500">
-                  {tenant.city}, {tenant.state}
-                </span>
-              </div>
-            )}
 
-            <div className="flex flex-wrap items-center justify-between gap-4 w-full pt-3 border-t border-white/10">
-              <span className={isArenaWhiteLabel ? 'text-white/90' : 'text-slate-400 font-semibold text-xs'}>
-                ⚽ Futevôlei · 🎾 Beach Tennis · 🏐 Vôlei de Praia
-              </span>
+              {/* Sports Modalities Pills */}
+              <div className="flex flex-wrap justify-center items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
+                  ⚽ Futevôlei
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
+                  🎾 Beach Tennis
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
+                  🏐 Vôlei de Praia
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Links Nav */}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-6 gap-y-2 py-4 text-xs font-bold text-slate-300">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('home');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="hover:text-cyan-400 transition-colors cursor-pointer"
+              >
+                Início
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('tournaments')}
+                className="hover:text-cyan-400 transition-colors cursor-pointer"
+              >
+                Campeonatos
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('arenas_directory')}
+                className="hover:text-cyan-400 transition-colors cursor-pointer"
+              >
+                Arenas
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('ranking_athletes')}
+                className="hover:text-cyan-400 transition-colors cursor-pointer"
+              >
+                Rankings
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('live')}
+                className="hover:text-red-400 transition-colors cursor-pointer flex items-center gap-1"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                Ao Vivo
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('my_bookings')}
+                className="hover:text-cyan-400 transition-colors cursor-pointer"
+              >
+                Minhas Reservas
+              </button>
+            </div>
+
+            {/* Bottom Row: Legal Copyright & Badges */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-white/5 text-[11px] text-slate-400 text-center sm:text-left">
+              <p>
+                &copy; {new Date().getFullYear()} SHARK SET — Todos os direitos reservados. Orgulhosamente desenvolvido para o esporte de areia.
+              </p>
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center gap-1 text-slate-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Conexão Segura SSL
+                </span>
+                <span>·</span>
+                <span className="text-slate-400">Powered by Google Cloud Firestore</span>
+              </div>
             </div>
           </div>
         </footer>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   LogOut,
@@ -10,9 +10,18 @@ import {
   Trophy,
   CalendarCheck,
   Check,
+  AlertTriangle,
+  RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { auth, signInWithGooglePopup, signOutFirebase } from '../lib/firebase';
+import {
+  auth,
+  signInWithGooglePopup,
+  signInWithGoogleRedirect,
+  getGoogleRedirectResult,
+  signOutFirebase,
+} from '../lib/firebase';
 import { AthleteLevel } from '../types';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
 
@@ -25,22 +34,74 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const { userProfile, setUserProfile, setActiveTab, bookings } = useApp();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const [authError, setAuthError] = useState<{ code: string; message: string; tip?: string } | null>(null);
+
+  useEffect(() => {
+    // Check if returning from redirect login
+    getGoogleRedirectResult()
+      .then((result) => {
+        if (result?.user) {
+          onClose();
+        }
+      })
+      .catch((err) => {
+        handleAuthCatch(err);
+      });
+  }, []);
 
   if (!isOpen) return null;
 
   const currentUser = auth.currentUser;
   const isLoggedIn = Boolean(currentUser);
 
+  const handleAuthCatch = (error: unknown) => {
+    const errObj = error as { code?: string; message?: string };
+    const code = errObj?.code || 'auth/unknown';
+    let tip = 'Ocorreu um erro ao autenticar com o Google. Tente novamente.';
+
+    if (code === 'auth/unauthorized-domain') {
+      const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'sharkset.web.app';
+      tip = `O domínio "${currentHost}" não está na lista de "Domínios autorizados" do Firebase.\n\nPara liberar o login com Google no Console do Firebase:\n1. Acesse o Console Firebase (projeto sharkset-70de4)\n2. Menu Authentication > Configurações > Domínios autorizados\n3. Adicione "${currentHost}"`;
+    } else if (code === 'auth/operation-not-allowed') {
+      tip = 'O provedor Google ainda não está ativado no Firebase Console (Authentication > Sign-in method > Google).';
+    } else if (code === 'auth/popup-blocked') {
+      tip = 'O navegador bloqueou a janela pop-up do Google. Clique no botão de Redirecionamento abaixo.';
+    } else if (code === 'auth/popup-closed-by-user') {
+      tip = 'A janela do Google foi fechada antes de autenticar.';
+    } else if (errObj?.message) {
+      tip = errObj.message;
+    }
+
+    setAuthError({
+      code,
+      message: errObj?.message || 'Falha na autenticação',
+      tip,
+    });
+  };
+
   const handleGoogleLogin = async () => {
+    setAuthError(null);
     try {
       setIsLoggingIn(true);
       await signInWithGooglePopup();
       onClose();
     } catch (error) {
-      console.error('Erro ao fazer login com Google:', error);
+      handleAuthCatch(error);
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleGoogleRedirectLogin = async () => {
+    setAuthError(null);
+    try {
+      setIsRedirecting(true);
+      await signInWithGoogleRedirect();
+    } catch (error) {
+      handleAuthCatch(error);
+      setIsRedirecting(false);
     }
   };
 
@@ -101,7 +162,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                 Entrar no SHARK SET
               </h2>
               <p className="text-xs text-slate-400 mt-1 max-w-xs">
-                Faça login seguro com sua conta Google para gerenciar suas reservas, salvar seu ranking e participar de torneios.
+                A categoria oficial do atleta só é atribuída após o login. Conecte sua conta Google para definir sua categoria de jogo, salvar seu ranking e gerenciar suas reservas.
               </p>
             </div>
 
@@ -131,6 +192,29 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               </svg>
               <span>{isLoggingIn ? 'Autenticando...' : 'Entrar com Google'}</span>
             </button>
+
+            {authError && (
+              <div className="w-full text-left p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-2 animate-in fade-in">
+                <div className="flex items-center gap-2 font-bold text-amber-300">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>Aviso de Conexão ({authError.code})</span>
+                </div>
+                <p className="text-[11px] text-slate-200 whitespace-pre-line leading-relaxed font-sans bg-black/40 p-2.5 rounded-xl border border-white/5">
+                  {authError.tip}
+                </p>
+                <div className="pt-1 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGoogleRedirectLogin}
+                    disabled={isRedirecting}
+                    className="w-full py-2 px-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRedirecting ? 'animate-spin' : ''}`} />
+                    <span>{isRedirecting ? 'Redirecionando...' : 'Tentar via Redirecionamento (Sem Pop-up)'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* LOGGED IN USER PROFILE STATE */
@@ -174,14 +258,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
                   <Trophy className="w-3.5 h-3.5 text-amber-400" />
-                  Categoria de Jogo
+                  Categoria Oficial de Jogo
                 </span>
-                {savedFeedback && (
-                  <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Salvo!
+                {!userProfile.level ? (
+                  <span className="text-[10px] text-amber-300 font-bold bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-400/20 animate-pulse">
+                    Defina sua categoria
                   </span>
-                )}
+                ) : savedFeedback ? (
+                  <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Categoria salva!
+                  </span>
+                ) : null}
               </div>
+              <p className="text-[11px] text-slate-400">
+                {!userProfile.level
+                  ? 'Você ainda não definiu sua categoria oficial. Selecione uma série abaixo para ativar seu perfil no ranking:'
+                  : 'Série técnica registrada no SHARK SET:'}
+              </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {(['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'] as AthleteLevel[]).map(
                   (lvl) => {

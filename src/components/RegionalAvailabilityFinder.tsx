@@ -212,8 +212,14 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
             </span>
             <span aria-hidden="true">·</span>
             <span>
-              Seu Nível Atual:{' '}
-              <strong className="text-white">{ATHLETE_LEVEL_LABELS[userProfile.level]}</strong>
+              {userProfile.level ? (
+                <>
+                  Sua Categoria Oficial:{' '}
+                  <strong className="text-white">{ATHLETE_LEVEL_LABELS[userProfile.level]}</strong>
+                </>
+              ) : (
+                <span className="text-slate-400">Faça login para definir sua categoria</span>
+              )}
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">

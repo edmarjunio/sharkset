@@ -480,21 +480,12 @@ body {
 }
 .aquarium-depth {
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgb(0 20 44 / 16%), rgb(0 28 52 / 12%) 40%, rgb(0 16 38 / 38%));
-  box-shadow: inset 0 0 100px rgb(0 23 48 / 28%);
+  background: linear-gradient(180deg, rgba(0, 20, 44, 0.12) 0%, rgba(0, 24, 48, 0.22) 100%);
+  pointer-events: none;
 }
-.aquarium-rays { opacity: .45; mix-blend-mode: screen; }
-.aquarium-caustics {
-  position: absolute; inset: -15%; opacity: .18; mix-blend-mode: screen;
-  background: repeating-radial-gradient(ellipse at 30% 20%, transparent 0 70px, #b5faff70 75px 77px, transparent 83px 140px);
-  transform: perspective(600px) rotateX(25deg);
-  animation: aquarium-refraction 18s ease-in-out infinite alternate;
-}
-.aquarium-surface {
-  position: absolute; top: -12%; left: -10%; width: 120%; height: 28%;
-  background: radial-gradient(ellipse at 60% 20%, #f4ffffa0, #78eaff30 35%, transparent 70%);
-  animation: aquarium-light 14s ease-in-out infinite alternate;
-}
+.aquarium-rays { opacity: .3; mix-blend-mode: screen; pointer-events: none; }
+.aquarium-caustics { display: none; }
+.aquarium-surface { display: none; }
 .aquarium-swimmer { top: 30%; opacity: .92; animation-duration: 42s; animation-delay: -8s; }
 .aquarium-bubbles i {
   background: radial-gradient(circle at 28% 24%, #efffffaa 0 6%, transparent 18% 65%, #62dfff33 80%);
