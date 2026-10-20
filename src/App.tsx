@@ -23,6 +23,8 @@ import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
+import { auth } from './lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import {
   Maximize2,
   Minimize2,
@@ -57,17 +59,35 @@ const MainContent: React.FC = () => {
   const [floatingSlotModal, setFloatingSlotModal] = React.useState<UpcomingSlotItem | null>(null);
 
   // Onboarding state: triggers if user has not yet completed initial technical category setup
-  const [showOnboarding, setShowOnboarding] = React.useState<boolean>(() => {
-    try {
-      return !localStorage.getItem('sharkset_onboarding_completed');
-    } catch {
-      return false;
-    }
-  });
+  const [currentUser, setCurrentUser] = React.useState<FirebaseUser | null>(() => auth.currentUser);
+  const [showOnboarding, setShowOnboarding] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user) {
+        try {
+          const userKey = 'sharkset_onboarding_completed_' + user.uid;
+          const userLevelKey = 'sharkset_user_level_' + user.uid;
+          const done = localStorage.getItem(userKey) === 'true' || Boolean(localStorage.getItem(userLevelKey));
+          setShowOnboarding(!done);
+        } catch {
+          setShowOnboarding(!userProfile.level);
+        }
+      } else {
+        setShowOnboarding(false);
+      }
+    });
+    return () => unsub();
+  }, [userProfile.level]);
 
   const handleCompleteOnboarding = (level: typeof userProfile.level) => {
     setUserProfile({ ...userProfile, level });
     try {
+      if (currentUser) {
+        localStorage.setItem('sharkset_onboarding_completed_' + currentUser.uid, 'true');
+        if (level) localStorage.setItem('sharkset_user_level_' + currentUser.uid, level);
+      }
       localStorage.setItem('sharkset_onboarding_completed', 'true');
     } catch {
       // ignore

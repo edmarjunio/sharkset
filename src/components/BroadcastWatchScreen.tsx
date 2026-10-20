@@ -8,13 +8,15 @@ import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { watchSessionReducer } from '../services/watchSession';
 import { ImmersiveSurface } from './ImmersiveSurface';
 import { FutevoleiVisualBracketCanvas } from './FutevoleiVisualBracketCanvas';
-import { BroadcastOverlay, isSemiOrFinalStage } from './BroadcastOverlay';
+import { BroadcastOverlay } from './BroadcastOverlay';
 import { isYouTubeUrl, getYouTubeEmbedUrl } from '../utils/videoUtils';
+import { matchRules } from '../services/tournamentRules';
 import type { TeamPair } from '../types';
+import { TOURNAMENT_CATEGORY_LABELS } from '../services/rankingValidator';
 
 const LivekitViewer = lazy(() => import('./LivekitViewer').then(module => ({ default: module.LivekitViewer })));
 
-interface PublishedVideo { provider?: 'livekit'; arenaId?: string; liveExpiresAt?: number; title?: string; videoUrl?: string; isLive?: boolean; team1?: string; team2?: string; score1?: number; score2?: number }
+interface PublishedVideo extends Partial<import('./BroadcastOverlay').ScoreboardState> { provider?: 'livekit'; arenaId?: string; liveExpiresAt?: number; title?: string; videoUrl?: string; isLive?: boolean; team1?: string; team2?: string }
 const noop = () => {};
 const pairName = (pair?: TeamPair) => pair ? [pair.player1, pair.player2 === 'Individual (1x1)' ? '' : pair.player2].filter(Boolean).join(' / ') : 'A definir';
 
@@ -45,6 +47,7 @@ function WatchScreen({ source }: { source: WatchSource }) {
   const focused = useRef(false);
   const tournament = tournaments.find(item => item.id === session.tournamentId);
   const broadcast = published || booking?.liveBroadcast;
+  const completedFinalSet = match?.status === 'completed' ? match.sets?.at(-1) : undefined;
   const title = published?.title || booking?.liveBroadcast?.streamTitle || (match ? `Jogo ${match.matchNumber}` : 'Transmissão');
   const url = broadcast?.videoUrl || '';
   const isYouTube = isYouTubeUrl(url);
@@ -151,8 +154,8 @@ function WatchScreen({ source }: { source: WatchSource }) {
           <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl z-30 pointer-events-none">
             <BroadcastOverlay
               state={{
-                score1: (match ? match.score1 : published ? published.score1 : booking?.liveBroadcast?.score1) ?? 0,
-                score2: (match ? match.score2 : published ? published.score2 : booking?.liveBroadcast?.score2) ?? 0,
+                score1: (completedFinalSet?.score1 ?? (match ? match.score1 : published ? published.score1 : booking?.liveBroadcast?.score1)) ?? 0,
+                score2: (completedFinalSet?.score2 ?? (match ? match.score2 : published ? published.score2 : booking?.liveBroadcast?.score2)) ?? 0,
                 sets1:
                   (match?.sets ? match.sets.filter(s => s.score1 > s.score2).length : undefined) ??
                   booking?.liveBroadcast?.sets1 ??
@@ -161,11 +164,19 @@ function WatchScreen({ source }: { source: WatchSource }) {
                   (match?.sets ? match.sets.filter(s => s.score2 > s.score1).length : undefined) ??
                   booking?.liveBroadcast?.sets2 ??
                   0,
-                bestOf: (match?.stageName && isSemiOrFinalStage(match.stageName)) ? 3 : (booking?.liveBroadcast?.bestOf || 1),
-                stageName: match?.stageName || 'Ao Vivo',
+                bestOf: match ? matchRules(match).bestOf : (published?.bestOf || booking?.liveBroadcast?.bestOf || 1),
+                targetPoints: match ? matchRules(match).targetPoints : (published?.targetPoints || 18),
+                decidingPoints: match ? matchRules(match).decidingPoints : (published?.decidingPoints || booking?.liveBroadcast?.decidingPoints || 15),
+                winBy: match ? matchRules(match).winBy : (published?.winBy || booking?.liveBroadcast?.winBy || 2),
+                setHistory: match?.sets?.map(set => [set.score1, set.score2] as [number, number]) || published?.setHistory || booking?.liveBroadcast?.setHistory || [],
+                elapsedSeconds: published?.elapsedSeconds || booking?.liveBroadcast?.elapsedSeconds || 0,
+                clockStartedAt: published?.clockStartedAt ?? booking?.liveBroadcast?.clockStartedAt ?? null,
+                stageName: match?.stageName || published?.stageName || booking?.liveBroadcast?.stageName || 'Ao Vivo',
               }}
               team1={match ? pairName(match.team1) : published?.team1 || booking?.customerName || 'Dupla 1'}
               team2={match ? pairName(match.team2) : published?.team2 || 'Dupla 2'}
+              team1Category={match?.team1?.category ? TOURNAMENT_CATEGORY_LABELS[match.team1.category] : undefined}
+              team2Category={match?.team2?.category ? TOURNAMENT_CATEGORY_LABELS[match.team2.category] : undefined}
               compact
             />
           </div>

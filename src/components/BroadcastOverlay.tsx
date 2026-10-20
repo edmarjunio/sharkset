@@ -11,8 +11,8 @@ import {
   Trophy,
   Clock,
   Layers,
-  ChevronDown,
 } from 'lucide-react';
+import { validateSet } from '../services/tournamentRules';
 
 export interface ScoreboardState {
   score1: number;
@@ -24,6 +24,9 @@ export interface ScoreboardState {
   clockStartedAt?: number | null;
   stageName?: string;
   setHistory?: Array<[number, number]>;
+  targetPoints?: number;
+  decidingPoints?: number;
+  winBy?: number;
 }
 
 export function elapsedTime(state: ScoreboardState, now = Date.now()): number {
@@ -75,16 +78,14 @@ export function BroadcastOverlay({
   onPoint,
 }: BroadcastOverlayProps) {
   const [now, setNow] = useState(Date.now());
-  const [pointHistory, setPointHistory] = useState<Array<{ score1: number; score2: number; timestamp: number }>>([]);
+  const [pointHistory, setPointHistory] = useState<ScoreboardState[]>([]);
 
   // Auto-detect Semifinal / Final to set bestOf = 3 (MD3) if not explicitly set
   const detectedStage = stageName || state.stageName;
   const isDecisiveStage = useMemo(() => isSemiOrFinalStage(detectedStage), [detectedStage]);
 
   useEffect(() => {
-    if (isDecisiveStage && onChange && (!state.bestOf || state.bestOf === 1)) {
-      onChange({ bestOf: 3 });
-    }
+    if (isDecisiveStage && onChange && state.bestOf !== 3) onChange({ bestOf: 3 });
   }, [isDecisiveStage, state.bestOf, onChange]);
 
   useEffect(() => {
@@ -98,25 +99,48 @@ export function BroadcastOverlay({
     .toString()
     .padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 
-  const bestOf = state.bestOf || (isDecisiveStage ? 3 : 1);
+  const bestOf = isDecisiveStage ? 3 : (state.bestOf || 1);
   const setsToWin = Math.ceil(bestOf / 2);
   const sets1 = state.sets1 || 0;
   const sets2 = state.sets2 || 0;
   const history = state.setHistory || [];
+  const hasStartedMatch = state.score1 > 0 || state.score2 > 0 || sets1 > 0 || sets2 > 0;
 
   // Match winner detection
   const matchWinner = sets1 >= setsToWin ? 1 : sets2 >= setsToWin ? 2 : null;
+  const isFinalSet = bestOf > 1 && sets1 + sets2 === bestOf - 1;
+  const targetPoints = isFinalSet
+    ? (state.decidingPoints || 15)
+    : (state.targetPoints || 18);
+  const winBy = state.winBy || 2;
+  let validSetWinner: 1 | 2 | null = null;
+  let closeSetError = '';
+  try {
+    validSetWinner = validateSet({ score1: state.score1, score2: state.score2 }, targetPoints, winBy);
+  } catch (error) {
+    closeSetError = error instanceof Error ? error.message : 'Placar ainda não encerra o set.';
+  }
+
+  const currentSnapshot = useCallback((): ScoreboardState => ({
+    score1: state.score1,
+    score2: state.score2,
+    sets1,
+    sets2,
+    bestOf,
+    elapsedSeconds: state.elapsedSeconds,
+    clockStartedAt: state.clockStartedAt,
+    stageName: detectedStage,
+    setHistory: [...history],
+    targetPoints: state.targetPoints,
+    decidingPoints: state.decidingPoints,
+    winBy: state.winBy,
+  }), [state, sets1, sets2, bestOf, detectedStage, history]);
 
   // Add Point with history tracking for Undo
   const handlePointChange = useCallback(
     (team: 1 | 2, delta: 1 | -1) => {
-      // Record previous state for undo if adding
-      if (delta > 0) {
-        setPointHistory((prev) => [
-          ...prev.slice(-20),
-          { score1: state.score1, score2: state.score2, timestamp: Date.now() },
-        ]);
-      }
+      if (matchWinner) return;
+      setPointHistory((prev) => [...prev.slice(-19), currentSnapshot()]);
 
       if (onPoint) {
         onPoint(team, delta);
@@ -126,7 +150,7 @@ export function BroadcastOverlay({
         onChange({ [scoreKey]: Math.max(0, current + delta) });
       }
     },
-    [onPoint, onChange, state]
+    [onPoint, onChange, state, matchWinner, currentSnapshot]
   );
 
   // Undo last point
@@ -134,30 +158,30 @@ export function BroadcastOverlay({
     if (!pointHistory.length || !onChange) return;
     const last = pointHistory[pointHistory.length - 1];
     setPointHistory((prev) => prev.slice(0, -1));
-    onChange({ score1: last.score1, score2: last.score2 });
+    onChange(last);
   }, [pointHistory, onChange]);
 
   // Finish current set: increment winner's set count, archive partial score, reset current set to 0 : 0
   const handleCloseSet = useCallback(() => {
-    if (!onChange) return;
+    if (!onChange || matchWinner || !validSetWinner) return;
     const current1 = state.score1 || 0;
     const current2 = state.score2 || 0;
 
-    // Determine set winner based on current score
-    const winner: 1 | 2 = current1 >= current2 ? 1 : 2;
+    setPointHistory((prev) => [...prev.slice(-19), currentSnapshot()]);
+    const winner = validSetWinner;
     const nextSets1 = winner === 1 ? sets1 + 1 : sets1;
     const nextSets2 = winner === 2 ? sets2 + 1 : sets2;
+    const isMatchComplete = nextSets1 >= setsToWin || nextSets2 >= setsToWin;
     const nextHistory: Array<[number, number]> = [...history, [current1, current2]];
 
     onChange({
       sets1: nextSets1,
       sets2: nextSets2,
-      score1: 0,
-      score2: 0,
+      score1: isMatchComplete ? current1 : 0,
+      score2: isMatchComplete ? current2 : 0,
       setHistory: nextHistory,
     });
-    setPointHistory([]);
-  }, [onChange, state.score1, state.score2, sets1, sets2, history]);
+  }, [onChange, matchWinner, validSetWinner, state.score1, state.score2, sets1, sets2, setsToWin, history, currentSnapshot]);
 
   // Toggle timer
   const handleToggleTimer = useCallback(() => {
@@ -190,10 +214,13 @@ export function BroadcastOverlay({
         target &&
         (target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
+          target.tagName === 'BUTTON' ||
+          target.tagName === 'SELECT' ||
           target.isContentEditable)
       ) {
         return;
       }
+      if (e.repeat) return;
 
       const key = e.key.toLowerCase();
       if (key === 'a' || e.key === 'ArrowLeft') {
@@ -304,7 +331,7 @@ export function BroadcastOverlay({
             <div className="col-span-2 flex flex-col items-center justify-center px-1 py-1.5 bg-gradient-to-b from-[#0F2D59] to-[#041226] border-x-2 border-[#12C7BB]/60 relative shadow-inner">
               {/* Indicador de Set Atual */}
               <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-cyan-200/80 -mt-0.5 mb-0.5">
-                {bestOf > 1 ? `SET ${sets1 + sets2 + 1}` : 'PONTOS'}
+                {matchWinner ? 'FINAL' : bestOf > 1 ? `SET ${sets1 + sets2 + 1}` : 'PONTOS'}
               </div>
 
               {/* Dígitos da Pontuação em Destaque */}
@@ -440,7 +467,8 @@ export function BroadcastOverlay({
                   type="button"
                   aria-label={`Tirar ponto de ${team1}`}
                   onClick={() => handlePointChange(1, -1)}
-                  className="w-12 h-14 sm:h-16 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-200 border border-white/15 flex items-center justify-center font-black text-xl transition-all shadow-md"
+                  disabled={matchWinner !== null || state.score1 <= 0}
+                  className="w-12 h-14 sm:h-16 rounded-xl bg-slate-800/80 hover:bg-slate-700 disabled:opacity-35 disabled:cursor-not-allowed active:scale-95 text-slate-200 border border-white/15 flex items-center justify-center font-black text-xl transition-all shadow-md"
                 >
                   <Minus className="w-5 h-5" />
                 </button>
@@ -448,7 +476,8 @@ export function BroadcastOverlay({
                   type="button"
                   aria-label={`Ponto para ${team1}`}
                   onClick={() => handlePointChange(1, 1)}
-                  className="flex-1 h-14 sm:h-16 rounded-xl bg-gradient-to-b from-[#FF8C00] to-[#E65100] hover:from-[#FFA726] hover:to-[#EF6C00] active:scale-98 text-white font-black text-lg sm:text-xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_16px_rgba(230,81,0,0.5)] border-t border-amber-300/60"
+                  disabled={matchWinner !== null}
+                  className="flex-1 h-14 sm:h-16 bg-gradient-to-b from-[#FF8C00] to-[#E65100] hover:from-[#FFA726] hover:to-[#EF6C00] disabled:opacity-35 disabled:cursor-not-allowed active:scale-98 rounded-xl text-white font-black text-lg sm:text-xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_16px_rgba(230,81,0,0.5)] border-t border-amber-300/60"
                 >
                   <Plus className="w-6 h-6" />
                   <span>+1 PONTO</span>
@@ -469,7 +498,8 @@ export function BroadcastOverlay({
                   type="button"
                   aria-label={`Ponto para ${team2}`}
                   onClick={() => handlePointChange(2, 1)}
-                  className="flex-1 h-14 sm:h-16 rounded-xl bg-gradient-to-b from-[#0987CE] to-[#044E7A] hover:from-[#29B6F6] hover:to-[#0277BD] active:scale-98 text-white font-black text-lg sm:text-xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_16px_rgba(9,135,206,0.5)] border-t border-cyan-300/60"
+                  disabled={matchWinner !== null}
+                  className="flex-1 h-14 sm:h-16 rounded-xl bg-gradient-to-b from-[#0987CE] to-[#044E7A] hover:from-[#29B6F6] hover:to-[#0277BD] disabled:opacity-35 disabled:cursor-not-allowed active:scale-98 text-white font-black text-lg sm:text-xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_16px_rgba(9,135,206,0.5)] border-t border-cyan-300/60"
                 >
                   <Plus className="w-6 h-6" />
                   <span>+1 PONTO</span>
@@ -478,7 +508,8 @@ export function BroadcastOverlay({
                   type="button"
                   aria-label={`Tirar ponto de ${team2}`}
                   onClick={() => handlePointChange(2, -1)}
-                  className="w-12 h-14 sm:h-16 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-200 border border-white/15 flex items-center justify-center font-black text-xl transition-all shadow-md"
+                  disabled={matchWinner !== null || state.score2 <= 0}
+                  className="w-12 h-14 sm:h-16 rounded-xl bg-slate-800/80 hover:bg-slate-700 disabled:opacity-35 disabled:cursor-not-allowed active:scale-95 text-slate-200 border border-white/15 flex items-center justify-center font-black text-xl transition-all shadow-md"
                 >
                   <Minus className="w-5 h-5" />
                 </button>
@@ -503,7 +534,9 @@ export function BroadcastOverlay({
             <button
               type="button"
               onClick={handleCloseSet}
-              className="min-h-11 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-black text-white flex items-center justify-center gap-1.5 transition-all shadow-md border-t border-emerald-300/40"
+              disabled={matchWinner !== null || !validSetWinner}
+              title={matchWinner ? 'A partida já foi decidida.' : closeSetError}
+              className="min-h-11 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-black text-white flex items-center justify-center gap-1.5 transition-all shadow-md border-t border-emerald-300/40"
             >
               <CheckCircle className="w-4 h-4" />
               <span>Fechar Set Atual</span>
@@ -542,6 +575,11 @@ export function BroadcastOverlay({
               <span>Zerar Tempo</span>
             </button>
           </div>
+          <p className="text-[11px] text-slate-400" role="status">
+            {matchWinner
+              ? `Partida encerrada: ${matchWinner === 1 ? team1 : team2} venceu.`
+              : `Para fechar o set: ${targetPoints} pontos com ${winBy} de vantagem. ${closeSetError}`}
+          </p>
 
           {/* CONTROLE DETALHADO DE FORMATO (1 SET VS MELHOR DE 3) E AJUSTE MANUAL DE SETS */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/10 text-xs">
@@ -551,8 +589,9 @@ export function BroadcastOverlay({
               <div className="inline-flex rounded-xl bg-black/40 p-1 border border-white/10">
                 <button
                   type="button"
-                  onClick={() => onChange({ bestOf: 1, sets1: 0, sets2: 0, setHistory: [] })}
-                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
+                  onClick={() => onChange({ bestOf: 1, sets1: 0, sets2: 0, setHistory: [], score1: 0, score2: 0 })}
+                  disabled={isDecisiveStage || matchWinner !== null || hasStartedMatch}
+                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                     bestOf === 1
                       ? 'bg-[#0987CE] text-white shadow-xs'
                       : 'text-slate-400 hover:text-white'
@@ -562,8 +601,9 @@ export function BroadcastOverlay({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onChange({ bestOf: 3, sets1: 0, sets2: 0, setHistory: [] })}
-                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
+                  onClick={() => onChange({ bestOf: 3, sets1: 0, sets2: 0, setHistory: [], score1: 0, score2: 0 })}
+                  disabled={matchWinner !== null || hasStartedMatch}
+                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                     bestOf === 3
                       ? 'bg-[#12C7BB] text-[#071D3D] shadow-xs'
                       : 'text-slate-400 hover:text-white'
@@ -583,6 +623,7 @@ export function BroadcastOverlay({
                   type="button"
                   aria-label="Diminuir sets dupla 1"
                   onClick={() => onChange({ sets1: Math.max(0, sets1 - 1) })}
+                  disabled={sets1 === 0}
                   className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-black"
                 >
                   -
@@ -592,6 +633,7 @@ export function BroadcastOverlay({
                   type="button"
                   aria-label="Aumentar sets dupla 1"
                   onClick={() => onChange({ sets1: Math.min(setsToWin, sets1 + 1) })}
+                  disabled={sets1 >= setsToWin || matchWinner !== null}
                   className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-black"
                 >
                   +
@@ -603,6 +645,7 @@ export function BroadcastOverlay({
                   type="button"
                   aria-label="Diminuir sets dupla 2"
                   onClick={() => onChange({ sets2: Math.max(0, sets2 - 1) })}
+                  disabled={sets2 === 0}
                   className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-black"
                 >
                   -
@@ -612,6 +655,7 @@ export function BroadcastOverlay({
                   type="button"
                   aria-label="Aumentar sets dupla 2"
                   onClick={() => onChange({ sets2: Math.min(setsToWin, sets2 + 1) })}
+                  disabled={sets2 >= setsToWin || matchWinner !== null}
                   className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-black"
                 >
                   +

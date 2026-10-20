@@ -241,6 +241,10 @@ export interface BookingLiveBroadcast {
   sets1?: number;
   sets2?: number;
   bestOf?: 1 | 3 | 5;
+  stageName?: string;
+  setHistory?: Array<[number, number]>;
+  decidingPoints?: number;
+  winBy?: number;
   elapsedSeconds?: number;
   clockStartedAt?: number | null;
   isLive: boolean;
