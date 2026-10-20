@@ -98,6 +98,8 @@ export interface AthleteProfile {
   highestHistoricalLevel?: AthleteLevel; // Passaporte Único: impede descer de categoria em outra cidade
   autoPromotedFrom?: AthleteLevel;       // Registro de subida automática por excesso de títulos/pontos
   tournamentsPlayed?: number;            // Total de torneios oficiais disputados
+  tournamentTokens?: number;             // Saldo de tokens do atleta para criação de campeonatos
+  role?: 'admin' | 'athlete' | 'manager'; // Papel administrativo global ou de atleta
   createdAt?: string;                    // Data de entrada no SHARK SET
 }
 
@@ -395,6 +397,8 @@ export interface BracketMatch {
   resultMode?: 'played' | 'walkover';
   officialAt?: string;
   revision?: number;
+  /** Revision confirmed by the server-side result validator. */
+  serverValidatedRevision?: number;
   semifinalDecision?: 'waiting' | 'fixed' | 'swap' | 'blocked' | 'exception';
   exceptionReason?: string;
   exceptionFingerprint?: string;
@@ -455,6 +459,9 @@ export interface Tournament {
   isFinished: boolean;
   tableLicenseStatus?: 'unlocked_single_20' | 'unlocked_arena_pro_99';
   tableLicenseFee?: number; // R$ 20 por tabela avulsa
+  createdScope?: 'arena' | 'user'; // 'arena' = criado na arena fixa; 'user' = criado pelo usuário com escolha livre de arena
+  creatorUid?: string;             // UID do usuário criador
+  creatorTokensSpent?: number;     // Quantidade de tokens debitados (1 token)
 }
 
 export interface TournamentStandingRow {
@@ -492,13 +499,45 @@ export interface TenantConfig {
   };
   subscriptionPlan?: 'arena_pro_99' | 'pay_per_table_20';
   monthlyPlanPrice?: number; // R$ 99/mês
+  ownerId?: string;
   ownerName?: string;
+  managers?: string[]; // E-mails ou UIDs de gestores autorizados pelo dono para configurar a arena
   imageUrl?: string;
   logoUrl?: string;
   whiteLabelEnabled?: boolean;
   brandPalette?: ArenaBrandPalette;
   lat?: number;
   lng?: number;
+}
+
+export type CouponScope = 'global' | 'arena';
+export type CouponDiscountType = 'fixed' | 'percent';
+
+export interface DiscountCoupon {
+  id: string;
+  code: string;                      // ex: 'SHARK10', 'BEMVINDO'
+  description?: string;
+  discountType: CouponDiscountType; // 'fixed' (desconto em R$) | 'percent' (% desconto)
+  discountValue: number;             // ex: 10 (R$ 10 ou 10%)
+  scope: CouponScope;                // 'global' (todas as arenas) | 'arena' (arena específica)
+  arenaId?: string;                  // ID da arena se scope === 'arena'
+  arenaName?: string;
+  minBookingValue?: number;          // Valor mínimo da locação para aplicar o cupom (R$)
+  maxUses?: number;                  // Limite máximo de utilizações
+  usedCount: number;                 // Total de vezes utilizado
+  active: boolean;                   // Ativo ou pausado
+  expiresAt?: string;                // YYYY-MM-DD
+  createdBy?: string;                // UID do criador
+  createdAt: string;
+}
+
+export interface TokenPackage {
+  id: string;
+  tokens: number;
+  price: number;
+  label: string;
+  discountLabel?: string;
+  isPopular?: boolean;
 }
 
 export interface LiveChatMessage {

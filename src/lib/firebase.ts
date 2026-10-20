@@ -9,17 +9,33 @@ import {
 } from 'firebase/auth';
 import {
   collection,
+  deleteDoc,
   doc,
+  getDoc,
   getDocFromServer,
   getDocs,
   getFirestore,
+  increment,
   limit,
   onSnapshot,
   query,
   setDoc,
+  updateDoc,
   where,
+  writeBatch,
+  orderBy,
 } from 'firebase/firestore';
-import { AcademyPost, AthleteProfile, MatchMvpVoteRecord } from '../types';
+import {
+  AcademyPost,
+  AthleteProfile,
+  DiscountCoupon,
+  MatchMvpVoteRecord,
+  TenantConfig,
+  Tournament,
+  BracketMatch,
+  BracketSource,
+  TeamPair,
+} from '../types';
 import {
   app,
   db,
@@ -50,20 +66,9 @@ export enum OperationType {
 }
 
 export interface FirestoreErrorInfo {
-  error: string;
   operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  };
+  collection: string | null;
+  errorCode: string;
 }
 
 export function handleFirestoreError(
@@ -71,25 +76,17 @@ export function handleFirestoreError(
   operationType: OperationType,
   path: string | null
 ): never {
+  const errorCode =
+    error && typeof error === 'object' && 'code' in error
+      ? String((error as { code?: unknown }).code || 'unknown')
+      : 'unknown';
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo:
-        auth.currentUser?.providerData.map((provider) => ({
-          providerId: provider.providerId,
-          email: provider.email,
-        })) || [],
-    },
     operationType,
-    path,
+    collection: path?.split('/')[0] || null,
+    errorCode,
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.error('Firestore operation failed:', JSON.stringify(errInfo));
+  throw new Error(`Firestore ${operationType} failed (${errorCode}).`);
 }
 
 /**
@@ -121,6 +118,110 @@ export async function getGoogleRedirectResult() {
 
 export async function signOutFirebase() {
   return signOut(auth);
+}
+
+export interface UserProfileDocument {
+  id: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  phone?: string;
+  level?: AthleteProfile['level'];
+  experienceCategory?: 'amador' | 'profissional';
+  role: 'athlete';
+  ownerId: string;
+}
+
+/**
+ * Loads the authenticated user's profile from the Firestore source of truth.
+ */
+export async function getUserProfileFromFirestore(uid: string): Promise<UserProfileDocument | null> {
+  const currentUser = auth.currentUser;
+  if (!currentUser || currentUser.uid !== uid) return null;
+
+  const profileRef = doc(db, 'user_profiles', uid);
+  try {
+    const profileSnapshot = await getDoc(profileRef);
+    if (!profileSnapshot.exists()) return null;
+
+    const data = profileSnapshot.data();
+    if (data.ownerId !== uid || data.id !== uid || data.role !== 'athlete') return null;
+    const allowedLevels: AthleteProfile['level'][] = [
+      'iniciante',
+      'serie_c',
+      'serie_b',
+      'serie_a',
+      'profissional',
+    ];
+    if (data.level !== undefined && !allowedLevels.includes(data.level as AthleteProfile['level'])) return null;
+
+    return {
+      id: uid,
+      displayName: String(data.displayName || currentUser.displayName || 'Atleta').slice(0, 120),
+      email: String(data.email || currentUser.email || '').slice(0, 160),
+      ...(typeof data.photoURL === 'string' ? { photoURL: data.photoURL.slice(0, 500) } : {}),
+      ...(typeof data.phone === 'string' ? { phone: data.phone.slice(0, 30) } : {}),
+      ...(data.level && allowedLevels.includes(data.level as AthleteProfile['level'])
+        ? { level: data.level as AthleteProfile['level'] }
+        : {}),
+      ...(data.experienceCategory === 'amador' || data.experienceCategory === 'profissional'
+        ? { experienceCategory: data.experienceCategory }
+        : {}),
+      role: 'athlete',
+      ownerId: uid,
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `user_profiles/${uid}`);
+  }
+}
+
+/**
+ * Creates or updates the authenticated user's own profile. Privileged roles are never client-writable.
+ */
+export async function persistUserProfileToFirestore(profile: {
+  displayName: string;
+  phone: string;
+  level: AthleteProfile['level'] | null;
+}): Promise<void> {
+  const currentUser = auth.currentUser;
+  if (!currentUser || !currentUser.emailVerified || !currentUser.email) return;
+
+  const cleanName = profile.displayName.trim().slice(0, 120);
+  if (!cleanName) throw new Error('O nome do perfil não pode ficar vazio.');
+  const allowedLevels: AthleteProfile['level'][] = [
+    'iniciante',
+    'serie_c',
+    'serie_b',
+    'serie_a',
+    'profissional',
+  ];
+  if (profile.level && !allowedLevels.includes(profile.level)) throw new Error('Nível de atleta inválido.');
+
+  const path = `user_profiles/${currentUser.uid}`;
+  try {
+    const profileRef = doc(db, 'user_profiles', currentUser.uid);
+    const existing = await getDoc(profileRef);
+    if (existing.exists() && existing.data().ownerId !== currentUser.uid) {
+      throw new Error('O perfil encontrado não pertence à conta autenticada.');
+    }
+
+    await setDoc(
+      profileRef,
+      {
+        id: currentUser.uid,
+        displayName: cleanName,
+        email: String(existing.exists() ? existing.data().email : currentUser.email).slice(0, 160),
+        ...(currentUser.photoURL ? { photoURL: currentUser.photoURL.slice(0, 500) } : {}),
+        ...(profile.phone.trim() ? { phone: profile.phone.trim().slice(0, 30) } : {}),
+        ...(profile.level ? { level: profile.level } : {}),
+        role: existing.exists() && existing.data().role === 'admin' ? 'admin' : 'athlete',
+        ownerId: currentUser.uid,
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
 }
 
 /**
@@ -584,5 +685,552 @@ export async function persistAcademyPostToFirestore(post: AcademyPost): Promise<
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
+
+/**
+ * Persists the entire athlete model to both `user_profiles/{uid}` (private) and `athletes_public/{uid}` (ranking).
+ */
+export async function persistFullAthleteProfileToFirestore(
+  athlete: Partial<AthleteProfile> & { id: string; name: string }
+): Promise<void> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+
+  const uid = currentUser.uid;
+  const path = `user_profiles/${uid}`;
+
+  try {
+    const userDocRef = doc(db, 'user_profiles', uid);
+    const existing = await getDoc(userDocRef);
+    const existingData = existing.exists() ? existing.data() : {};
+
+    const profileData = {
+      id: uid,
+      displayName: athlete.name.slice(0, 120),
+      email: currentUser.email || athlete.email || '',
+      photoURL: athlete.photoURL || athlete.photoUrl || currentUser.photoURL || '',
+      phone: athlete.phone || '',
+      level: athlete.level || 'iniciante',
+      experienceCategory: athlete.experienceCategory || 'amador',
+      courtSide: athlete.courtSide || 'Ambos',
+      dominantFoot: athlete.dominantFoot || 'Destro',
+      bio: athlete.bio || '',
+      points: Number(athlete.points) || 0,
+      wins: Number(athlete.wins) || 0,
+      matchesPlayed: Number(athlete.matchesPlayed) || 0,
+      titlesCount: Number(athlete.titlesCount) || 0,
+      tournamentsPlayed: Number(athlete.tournamentsPlayed) || 0,
+      tournamentTokens:
+        athlete.tournamentTokens !== undefined
+          ? athlete.tournamentTokens
+          : (existingData.tournamentTokens ?? 1),
+      preferredSport: athlete.preferredSport || 'futevolei',
+      country: athlete.country || 'Brasil',
+      state: athlete.state || 'GO',
+      city: athlete.city || 'Mineiros',
+      arenaId: athlete.arenaId || '',
+      arenaName: athlete.arenaName || '',
+      stats: athlete.stats || { aces: 0, errors: 0, sharkAttacks: 0, pingoPoints: 0, defenses: 0 },
+      achievements: athlete.achievements || [],
+      role: existingData.role === 'admin' ? 'admin' : 'athlete',
+      ownerId: uid,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await setDoc(userDocRef, profileData, { merge: true });
+
+    // Also sync to public athlete ranking collection
+    const publicRef = doc(db, 'athletes_public', uid);
+    await setDoc(
+      publicRef,
+      {
+        id: uid,
+        name: athlete.name.slice(0, 120),
+        level: athlete.level || 'iniciante',
+        experienceCategory: athlete.experienceCategory || 'amador',
+        points: Number(athlete.points) || 0,
+        wins: Number(athlete.wins) || 0,
+        matchesPlayed: Number(athlete.matchesPlayed) || 0,
+        titlesCount: Number(athlete.titlesCount) || 0,
+        country: athlete.country || 'Brasil',
+        state: athlete.state || 'GO',
+        city: athlete.city || 'Mineiros',
+        arenaId: athlete.arenaId || 'conflora',
+        arenaName: athlete.arenaName || 'Arena',
+        ownerId: uid,
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Adds tournament tokens to a user's account in Firestore.
+ */
+export async function addTournamentTokensInFirestore(uid: string, quantity: number): Promise<number> {
+  const userDocRef = doc(db, 'user_profiles', uid);
+  await updateDoc(userDocRef, {
+    tournamentTokens: increment(quantity),
+  });
+  const updated = await getDoc(userDocRef);
+  return updated.data()?.tournamentTokens ?? quantity;
+}
+
+/**
+ * Spends 1 tournament token when creating a tournament.
+ */
+export async function spendTournamentTokenInFirestore(uid: string): Promise<boolean> {
+  const userDocRef = doc(db, 'user_profiles', uid);
+  const snap = await getDoc(userDocRef);
+  const currentTokens = snap.data()?.tournamentTokens ?? 0;
+  if (currentTokens <= 0) {
+    return false;
+  }
+  await updateDoc(userDocRef, {
+    tournamentTokens: increment(-1),
+  });
+  return true;
+}
+
+/**
+ * Persists an arena to Firestore.
+ */
+export async function persistArenaToFirestore(arena: TenantConfig): Promise<void> {
+  const currentUser = auth.currentUser;
+  const path = `arenas/${arena.id}`;
+  try {
+    await setDoc(
+      doc(db, 'arenas', arena.id),
+      {
+        ...arena,
+        ownerId: arena.ownerId || currentUser?.uid || 'admin',
+        managers: arena.managers || [],
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Fetches all arenas from Firestore.
+ */
+export async function fetchArenasFromFirestore(): Promise<TenantConfig[]> {
+  const path = 'arenas';
+  try {
+    const snap = await getDocs(collection(db, path));
+    if (snap.empty) return [];
+    const list: TenantConfig[] = [];
+    snap.forEach((docSnap) => {
+      list.push(docSnap.data() as TenantConfig);
+    });
+    return list;
+  } catch (error) {
+    console.warn('Fallback to local arenas cache:', error);
+    return [];
+  }
+}
+
+/**
+ * Adds a manager to an arena in Firestore.
+ */
+export async function addManagerToArenaInFirestore(
+  arenaId: string,
+  managerEmailOrUid: string
+): Promise<string[]> {
+  const arenaRef = doc(db, 'arenas', arenaId);
+  const snap = await getDoc(arenaRef);
+  const existingManagers: string[] = snap.data()?.managers || [];
+  const clean = managerEmailOrUid.trim().toLowerCase();
+  if (!clean || existingManagers.includes(clean)) return existingManagers;
+
+  const nextManagers = [...existingManagers, clean];
+  await updateDoc(arenaRef, {
+    managers: nextManagers,
+  });
+  return nextManagers;
+}
+
+/**
+ * Removes a manager from an arena in Firestore.
+ */
+export async function removeManagerFromArenaInFirestore(
+  arenaId: string,
+  managerEmailOrUid: string
+): Promise<string[]> {
+  const arenaRef = doc(db, 'arenas', arenaId);
+  const snap = await getDoc(arenaRef);
+  const existingManagers: string[] = snap.data()?.managers || [];
+  const clean = managerEmailOrUid.trim().toLowerCase();
+  const nextManagers = existingManagers.filter((m) => m.toLowerCase() !== clean);
+
+  await updateDoc(arenaRef, {
+    managers: nextManagers,
+  });
+  return nextManagers;
+}
+
+/**
+ * Persists a tournament to Firestore.
+ */
+export async function persistTournamentToFirestore(tourn: Tournament): Promise<void> {
+  const currentUser = auth.currentUser;
+  const path = `tournaments/${tourn.id}`;
+  try {
+    await setDoc(
+      doc(db, 'tournaments', tourn.id),
+      {
+        ...tourn,
+        ownerId: tourn.creatorUid || currentUser?.uid || 'admin',
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+function publicTeamPair(team?: TeamPair): Record<string, unknown> | undefined {
+  if (!team) return undefined;
+  return {
+    id: team.id,
+    tournamentId: team.tournamentId,
+    player1: team.player1,
+    player1Level: team.player1Level,
+    player2: team.player2,
+    player2Level: team.player2Level,
+    category: team.category,
+    seed: team.seed,
+    enrollmentStatus: team.enrollmentStatus || 'confirmed',
+    isPresent: team.isPresent !== false,
+  };
+}
+
+function publicBracketSource(source?: BracketSource): Record<string, unknown> | undefined {
+  if (!source) return undefined;
+  if (source.kind === 'team') {
+    return { kind: 'team', team: publicTeamPair(source.team), slot: source.slot };
+  }
+  return { kind: source.kind, matchId: source.matchId };
+}
+
+function publicBracketMatch(match: BracketMatch): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    id: match.id,
+    tournamentId: match.tournamentId,
+    matchNumber: match.matchNumber,
+    stage: match.stage,
+    round: match.round,
+    stageName: match.stageName,
+    status: match.status,
+    revision: match.revision || 0,
+  };
+
+  const optional: Record<string, unknown> = {
+    source1: publicBracketSource(match.source1),
+    source2: publicBracketSource(match.source2),
+    initialLowerSource: publicBracketSource(match.initialLowerSource),
+    region: match.region,
+    rules: match.rules,
+    sets: match.sets,
+    resultMode: match.resultMode,
+    officialAt: match.officialAt,
+    team1: publicTeamPair(match.team1),
+    team2: publicTeamPair(match.team2),
+    score1: match.score1,
+    score2: match.score2,
+    winnerId: match.winnerId,
+    loserId: match.loserId,
+    courtId: match.courtId,
+    courtName: match.courtName,
+    scheduledTime: match.scheduledTime,
+    nextMatchWinnerId: match.nextMatchWinnerId,
+    winnerDestinationSlot: match.winnerDestinationSlot,
+    nextMatchLoserId: match.nextMatchLoserId,
+    loserDestinationSlot: match.loserDestinationSlot,
+    linkedBroadcastId: match.linkedBroadcastId,
+    semifinalDecision: match.semifinalDecision,
+    serverValidatedRevision: match.serverValidatedRevision,
+  };
+  for (const [key, value] of Object.entries(optional)) {
+    if (value !== undefined) payload[key] = value;
+  }
+  return payload;
+}
+
+/** Persists changed public bracket records without publishing athlete contact data. */
+export async function persistTournamentMatchChanges(
+  tournamentId: string,
+  nextMatches: BracketMatch[],
+  previousMatches: BracketMatch[]
+): Promise<void> {
+  const currentUser = auth.currentUser;
+  if (!currentUser || !currentUser.emailVerified) throw new Error('Entre com uma conta verificada para sincronizar a tabela.');
+  if (!/^[\w-]{1,64}$/.test(tournamentId)) throw new Error('Identificador de campeonato inválido.');
+
+  const previousById = new Map(previousMatches.map((match) => [match.id, match]));
+  const nextById = new Map(nextMatches.map((match) => [match.id, match]));
+  const changed = nextMatches.filter((match) =>
+    JSON.stringify(publicBracketMatch(match)) !== JSON.stringify(publicBracketMatch(previousById.get(match.id) || ({} as BracketMatch)))
+  );
+  const removed = previousMatches.filter((match) => !nextById.has(match.id));
+  const operations: Array<{ id: string; data?: Record<string, unknown> }> = [
+    ...changed.map((match) => ({ id: match.id, data: publicBracketMatch(match) })),
+    ...removed.map((match) => ({ id: match.id })),
+  ];
+
+  for (let offset = 0; offset < operations.length; offset += 450) {
+    const batch = writeBatch(db);
+    for (const operation of operations.slice(offset, offset + 450)) {
+      if (!/^[\w-]{1,64}$/.test(operation.id)) throw new Error('Identificador de partida inválido.');
+      const matchRef = doc(db, 'tournaments', tournamentId, 'matches', operation.id);
+      if (operation.data) batch.set(matchRef, operation.data);
+      else batch.delete(matchRef);
+    }
+    await batch.commit();
+  }
+}
+
+export function listenToTournamentMatches(
+  tournamentId: string,
+  onUpdate: (matches: BracketMatch[]) => void,
+  onError?: (error: unknown) => void
+): () => void {
+  const matchesRef = collection(db, 'tournaments', tournamentId, 'matches');
+  return onSnapshot(
+    matchesRef,
+    (snapshot) => {
+      const matches = snapshot.docs
+        .map((matchDoc) => {
+          const match = matchDoc.data() as BracketMatch;
+          if (match.status === 'completed' && match.serverValidatedRevision !== match.revision) {
+            return { ...match, status: 'scheduled' as const };
+          }
+          return match;
+        })
+        .sort((left, right) => left.matchNumber - right.matchNumber);
+      onUpdate(matches);
+    },
+    (error) => onError?.(error)
+  );
+}
+
+export type TournamentResultEvent = {
+  eventId: string;
+  kind: 'result_confirmed' | 'result_corrected';
+  tournamentId: string;
+  matchId: string;
+  revision: number;
+  matchNumber: number;
+  stage: string;
+  stageName: string;
+  courtName: string;
+  tournamentName: string;
+  team1: { id: string; name: string };
+  team2: { id: string; name: string };
+  winnerId: string;
+  sets: Array<{ score1: number; score2: number }>;
+  resultMode: 'played' | 'walkover';
+  officialAt: string;
+};
+
+export function listenToTournamentResultEvents(
+  tournamentId: string,
+  onUpdate: (events: TournamentResultEvent[], changes: Array<{ type: string; id: string }>) => void,
+  onError?: (error: unknown) => void
+): () => void {
+  const eventsRef = collection(db, 'tournaments', tournamentId, 'result_events');
+  return onSnapshot(
+    query(eventsRef, orderBy('createdAt', 'desc'), limit(20)),
+    (snapshot) => {
+      const events = snapshot.docs.map((eventDoc) => ({ ...eventDoc.data(), eventId: eventDoc.id } as TournamentResultEvent));
+      const changes = snapshot.docChanges().map((change) => ({ type: change.type, id: change.doc.id }));
+      onUpdate(events, changes);
+    },
+    (error) => onError?.(error)
+  );
+}
+
+export function listenToBroadcastTournamentId(
+  broadcastId: string,
+  onUpdate: (tournamentId: string | null) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!/^[\w-]{1,64}$/.test(broadcastId)) {
+    onUpdate(null);
+    return () => {};
+  }
+  return onSnapshot(doc(db, 'broadcast_tournament_links', broadcastId), (snapshot) => {
+    const tournamentId = snapshot.data()?.tournamentId;
+    onUpdate(typeof tournamentId === 'string' ? tournamentId : null);
+  }, (error) => onError?.(error));
+}
+
+/**
+ * Fetches tournaments from Firestore.
+ */
+export async function fetchTournamentsFromFirestore(): Promise<Tournament[]> {
+  const path = 'tournaments';
+  try {
+    const snap = await getDocs(collection(db, path));
+    if (snap.empty) return [];
+    const list: Tournament[] = [];
+    snap.forEach((docSnap) => {
+      list.push(docSnap.data() as Tournament);
+    });
+    return list;
+  } catch (error) {
+    console.warn('Fallback to local tournaments cache:', error);
+    return [];
+  }
+}
+
+/**
+ * Persists a discount coupon to Firestore (/coupons/{couponId}).
+ */
+export async function persistCouponToFirestore(coupon: DiscountCoupon): Promise<void> {
+  const currentUser = auth.currentUser;
+  const path = `coupons/${coupon.id}`;
+  try {
+    await setDoc(
+      doc(db, 'coupons', coupon.id),
+      {
+        ...coupon,
+        code: coupon.code.trim().toUpperCase(),
+        ownerId: currentUser?.uid || 'admin',
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Fetches active discount coupons from Firestore.
+ */
+export async function fetchCouponsFromFirestore(arenaId?: string): Promise<DiscountCoupon[]> {
+  const path = 'coupons';
+  try {
+    const snap = await getDocs(collection(db, path));
+    if (snap.empty) return [];
+    const list: DiscountCoupon[] = [];
+    snap.forEach((docSnap) => {
+      const c = docSnap.data() as DiscountCoupon;
+      if (!arenaId || c.scope === 'global' || c.arenaId === arenaId) {
+        list.push(c);
+      }
+    });
+    return list;
+  } catch (error) {
+    console.warn('Fallback to local coupons:', error);
+    return [];
+  }
+}
+
+/**
+ * Validates and calculates discount for a given coupon code.
+ */
+export async function validateAndApplyCouponInFirestore(params: {
+  code: string;
+  arenaId: string;
+  originalPrice: number;
+}): Promise<{
+  valid: boolean;
+  coupon?: DiscountCoupon;
+  discountAmount: number;
+  finalPrice: number;
+  message: string;
+}> {
+  const cleanCode = params.code.trim().toUpperCase();
+  if (!cleanCode) {
+    return {
+      valid: false,
+      discountAmount: 0,
+      finalPrice: params.originalPrice,
+      message: 'Insira um código de cupom.',
+    };
+  }
+
+  try {
+    const coupons = await fetchCouponsFromFirestore(params.arenaId);
+    const target = coupons.find((c) => c.code.toUpperCase() === cleanCode && c.active);
+
+    if (!target) {
+      return {
+        valid: false,
+        discountAmount: 0,
+        finalPrice: params.originalPrice,
+        message: 'Cupom inválido ou expirado.',
+      };
+    }
+
+    if (target.scope === 'arena' && target.arenaId && target.arenaId !== params.arenaId) {
+      return {
+        valid: false,
+        discountAmount: 0,
+        finalPrice: params.originalPrice,
+        message: `Este cupom é exclusivo da arena ${target.arenaName || 'específica'}.`,
+      };
+    }
+
+    if (target.minBookingValue && params.originalPrice < target.minBookingValue) {
+      return {
+        valid: false,
+        discountAmount: 0,
+        finalPrice: params.originalPrice,
+        message: `Valor mínimo da reserva para usar este cupom é R$ ${target.minBookingValue.toFixed(2)}.`,
+      };
+    }
+
+    if (target.maxUses && target.usedCount >= target.maxUses) {
+      return {
+        valid: false,
+        discountAmount: 0,
+        finalPrice: params.originalPrice,
+        message: 'Limite de utilização deste cupom esgotado.',
+      };
+    }
+
+    if (target.expiresAt && new Date(target.expiresAt) < new Date()) {
+      return {
+        valid: false,
+        discountAmount: 0,
+        finalPrice: params.originalPrice,
+        message: 'Este cupom já expirou.',
+      };
+    }
+
+    let discount = 0;
+    if (target.discountType === 'percent') {
+      discount = (params.originalPrice * target.discountValue) / 100;
+    } else {
+      discount = target.discountValue;
+    }
+    discount = Math.min(discount, params.originalPrice);
+    const finalPrice = Math.max(0, params.originalPrice - discount);
+
+    return {
+      valid: true,
+      coupon: target,
+      discountAmount: discount,
+      finalPrice,
+      message: `Cupom "${target.code}" aplicado! Economia de R$ ${discount.toFixed(2)}.`,
+    };
+  } catch {
+    return {
+      valid: false,
+      discountAmount: 0,
+      finalPrice: params.originalPrice,
+      message: 'Falha ao validar cupom.',
+    };
+  }
+}
+
 
 

@@ -23,6 +23,7 @@ import {
   Info,
   Sparkles,
   ShieldCheck,
+  CreditCard,
 } from 'lucide-react';
 import { FreeSlotsNewsTicker } from './FreeSlotsNewsTicker';
 import { TopBarSlotDetailsModal } from './TopBarSlotDetailsModal';
@@ -39,6 +40,11 @@ import {
 import type { UpcomingSlotItem } from '../hooks/useUpcomingFreeSlots';
 import type { AvailabilityCell } from '../services/bookingAvailability';
 import type { Court, TenantConfig } from '../types';
+
+const NavIconPlans: React.FC<{ size?: number; className?: string; isActive?: boolean }> = ({
+  size = 20,
+  className,
+}) => <CreditCard size={size} className={className} />;
 
 export const Navbar: React.FC = () => {
   const {
@@ -171,6 +177,7 @@ export const Navbar: React.FC = () => {
     { id: 'ranking_athletes', label: 'RANKINGS', icon: NavIconPodium },
     { id: 'shark_academy', label: 'COMUNIDADE', icon: NavIconReader },
     { id: 'register_dupla', label: 'INSCRIÇÕES', icon: NavIconBooking },
+    { id: 'saas_hub', label: 'PLANOS', icon: NavIconPlans },
   ];
 
   // Dedicated Arena Page Navigation Items with unified pill standard

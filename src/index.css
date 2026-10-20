@@ -410,19 +410,43 @@ body {
 
 /* Aquarium depth: decoration stays behind every interactive surface. */
 .shark-site-background { position: relative; overflow-x: clip; }
+.tournament-result-toast { animation: tournament-result-enter 280ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes tournament-result-enter {
+  from { opacity: 0; transform: translate3d(0, -10px, 0) scale(.98); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
 .shark-site-background::before { filter: none; transform: none; }
 .shark-site-background::after {
   background: linear-gradient(180deg, rgb(0 25 51 / 30%), rgb(1 22 43 / 48%) 50%, rgb(1 17 35 / 65%));
 }
 .aquarium-world { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; }
 .aquarium-rays {
-  position: absolute; inset: -20%; opacity: .25;
+  position: absolute; z-index: 2; inset: -20%; opacity: .25;
   background: repeating-conic-gradient(from 160deg at 65% -10%, transparent 0deg 12deg, #b5f6ff44 14deg 18deg, transparent 22deg 35deg);
   animation: aquarium-light 28s ease-in-out infinite alternate;
 }
-.aquarium-swimmer { position: absolute; left: -420px; top: 38%; width: clamp(230px, 32vw, 440px); opacity: .8; animation: aquarium-swim 48s linear infinite; will-change: transform; }
-.aquarium-swimmer img { width: 100%; height: auto; animation: aquarium-float 4s ease-in-out infinite alternate; }
-.aquarium-bubbles i { position: absolute; bottom: -50px; border: 1px solid #b8f6ff80; border-radius: 50%; box-shadow: inset 2px 2px 4px #edffff66; animation: aquarium-rise linear infinite; }
+.aquarium-swimmer { position: absolute; z-index: 4; left: -420px; top: 38%; width: clamp(230px, 32vw, 440px); opacity: .9; animation: aquarium-swim 48s linear infinite; will-change: transform; }
+.aquarium-swimmer img { width: 100%; height: auto; filter: drop-shadow(0 12px 18px #00172c70) saturate(1.2); animation: aquarium-float 4s ease-in-out infinite alternate; }
+.aquarium-swimmer::after {
+  content: ''; position: absolute; z-index: -1; left: -25%; top: 42%; width: 50%; height: 26%;
+  border-radius: 50%; background: linear-gradient(90deg, transparent, #8ceeff45, #d5ffff20, transparent);
+  filter: blur(10px); transform: rotate(-8deg); animation: aquarium-wake 2.4s ease-in-out infinite alternate;
+}
+.aquarium-bubbles i { position: absolute; z-index: 6; bottom: -50px; border: 1px solid #b8f6ff80; border-radius: 50%; box-shadow: inset 2px 2px 4px #edffff66; animation: aquarium-rise linear infinite; }
+.aquarium-school { position: absolute; z-index: 3; inset: 0; }
+.aquarium-fish-wrap { position: absolute; left: -16vw; width: clamp(64px, 8vw, 112px); filter: drop-shadow(0 6px 10px #001a3180) saturate(1.12); animation: aquarium-fish-cross 42s linear infinite; will-change: transform; }
+.aquarium-fish { display: block; width: 100%; height: auto; overflow: visible; }
+.aquarium-fish-wrap::after {
+  content: ''; position: absolute; z-index: -1; right: 72%; top: 42%; width: 72%; height: 20%;
+  border-radius: 50%; background: linear-gradient(90deg, transparent, #9ff6ff36, #e1ffff15, transparent); filter: blur(7px);
+}
+.aquarium-fish-one { top: 27%; animation-duration: 48s; animation-delay: -23s; }
+.aquarium-fish-two { top: 57%; width: clamp(52px, 6vw, 82px); animation-duration: 58s; animation-delay: -42s; }
+.aquarium-fish-three { top: 43%; width: clamp(38px, 4.5vw, 62px); animation-duration: 36s; animation-delay: -8s; }
+.aquarium-kelp { position: absolute; z-index: 5; bottom: -5vh; width: clamp(180px, 22vw, 320px); height: clamp(210px, 34vh, 390px); transform-origin: 50% 100%; animation: kelp-tide 7.5s ease-in-out infinite alternate; filter: drop-shadow(0 0 14px #54efc450); }
+.aquarium-kelp svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.aquarium-kelp-left { left: -4vw; }
+.aquarium-kelp-right { right: -4vw; transform: scaleX(-1); animation-name: kelp-tide-right; animation-duration: 9s; animation-delay: -3s; opacity: .85; }
 @keyframes aquarium-swim {
   0% { transform: translate3d(-80px, 0, 0) scaleX(1); }
   45% { transform: translate3d(calc(100vw + 880px), -14vh, 0) scaleX(1); }
@@ -443,8 +467,18 @@ body {
   50% { transform: translate3d(calc(100vw - 100%), -8vh, 0) scaleX(-1); }
   98% { transform: translate3d(0, 0, 0) scaleX(-1); }
 }
+@keyframes aquarium-fish-cross {
+  0% { transform: translate3d(-16vw, 0, 0) scaleX(1); }
+  47% { transform: translate3d(116vw, -3vh, 0) scaleX(1); }
+  50% { transform: translate3d(116vw, -3vh, 0) scaleX(-1); }
+  97% { transform: translate3d(-16vw, 2vh, 0) scaleX(-1); }
+  100% { transform: translate3d(-16vw, 2vh, 0) scaleX(1); }
+}
 @keyframes aquarium-rise { from { transform: translate3d(0, 0, 0); opacity: 0; } 10%, 80% { opacity: .5; } to { transform: translate3d(30px, -110vh, 0); opacity: 0; } }
 @keyframes aquarium-light { from { transform: rotate(-4deg); } to { transform: rotate(5deg); } }
+@keyframes aquarium-wake { from { opacity: .28; transform: rotate(-8deg) scaleX(.72); } to { opacity: .75; transform: rotate(-3deg) scaleX(1.08); } }
+@keyframes kelp-tide { from { transform: rotate(-4deg) translateY(2px); } to { transform: rotate(5deg) translateY(-9px); } }
+@keyframes kelp-tide-right { from { transform: scaleX(-1) rotate(-3deg) translateY(-2px); } to { transform: scaleX(-1) rotate(5deg) translateY(-8px); } }
 .aquarium-paused *, .aquarium-paused .aquarium-swimmer img { animation-play-state: paused !important; }
 .aquarium-motion-control { position: fixed; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; z-index: 35; padding: 10px 14px; color: #d9faff; background: #062b44e8; border: 1px solid #a8eaff55; border-radius: 30px; font-size: 11px; backdrop-filter: blur(10px); }
 .shark-site-background .aquarium-glass {
@@ -492,6 +526,7 @@ body {
   .bracket-close { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); padding: 10px 14px; font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .tournament-result-toast { animation: none; }
   .aquarium-world * { animation: none !important; }
   .aquarium-swimmer { left: 65%; top: 45%; opacity: .35; }
   .aquarium-motion-control { display: none; }
@@ -500,19 +535,44 @@ body {
 
 /* One continuous underwater scene, behind the glass interface. */
 .shark-site-background::before, .shark-site-background::after { content: none; }
-.aquarium-world { background: #011f3f; }
+.aquarium-world { background: transparent; }
+.aquarium-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  filter: saturate(1.18) contrast(1.08) brightness(0.9);
+  transform: scale(1.02);
+  transform-origin: center;
+  will-change: transform, opacity;
+}
 .aquarium-scenery {
-  position: absolute; inset: -2%;
-  background: url('/brand/ocean-bg.jpg') center top / cover no-repeat;
-  animation: aquarium-current 24s ease-in-out infinite alternate;
+  position: absolute; inset: 0;
+  background: url('/brand/ocean-bg.jpg') center center / cover no-repeat;
+  animation: none;
 }
 .aquarium-depth {
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(0, 20, 44, 0.12) 0%, rgba(0, 24, 48, 0.22) 100%);
+  background: radial-gradient(
+    ellipse 100% 90% at 50% 35%,
+    rgba(1, 15, 30, 0.08) 0%,
+    rgba(2, 18, 38, 0.2) 65%,
+    rgba(1, 10, 22, 0.38) 100%
+  );
   pointer-events: none;
 }
 .aquarium-rays { opacity: .3; mix-blend-mode: screen; pointer-events: none; }
-.aquarium-caustics { display: none; }
+.aquarium-caustics {
+  position: absolute; z-index: 2; inset: -18%; opacity: .17; pointer-events: none; mix-blend-mode: screen;
+  background:
+    repeating-radial-gradient(ellipse at 34% 36%, #dcffff1c 0 2px, transparent 3px 38px),
+    repeating-radial-gradient(ellipse at 72% 58%, #56e4ff15 0 1px, transparent 3px 54px);
+  filter: blur(5px); mask-image: radial-gradient(ellipse at center, #000 12%, transparent 76%);
+  animation: aquarium-refraction 22s ease-in-out infinite alternate;
+}
 .aquarium-surface { display: none; }
 .aquarium-swimmer { top: 30%; opacity: .92; animation-duration: 42s; animation-delay: -8s; }
 .aquarium-bubbles i {
@@ -676,7 +736,11 @@ body {
   .aquarium-scenery { background-position: 55% center; animation: none; }
   .aquarium-swimmer { width: 220px; top: 24%; opacity: .8; animation-duration: 48s; animation-delay: -8s; }
   .aquarium-bubbles i:nth-child(n+5):nth-child(-n+12) { display: block; }
-  .aquarium-caustics { display: none; }
+  .aquarium-caustics { opacity: .1; }
+  .aquarium-kelp { width: 155px; height: 27vh; opacity: .75; }
+  .aquarium-fish-one { top: 30%; }
+  .aquarium-fish-two { top: 61%; }
+  .aquarium-fish-three { top: 46%; }
   .shark-site-background header.site-navbar.aquarium-glass { background-color: rgb(2 28 51 / 45%); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -864,8 +928,9 @@ body {
   background: var(--arena-header-bg, #0f172a) !important;
 }
 
-.arena-whitelabel-mode .aquarium-scenery {
-  opacity: 0.14 !important;
+.arena-whitelabel-mode .aquarium-scenery,
+.arena-whitelabel-mode .aquarium-video {
+  opacity: 0.18 !important;
   filter: sepia(0.55) saturate(1.4) brightness(0.6) !important;
 }
 

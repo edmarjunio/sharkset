@@ -1,4 +1,5 @@
 import {
+  AthleteLevel,
   AthleteProfile,
   Booking,
   BracketMatch,
@@ -13,6 +14,14 @@ import {
   Tournament,
   WaitlistEntry,
 } from '../types';
+
+export const ATHLETE_LEVEL_LABELS: Record<AthleteLevel, string> = {
+  iniciante: 'Iniciante',
+  serie_c: 'Série C',
+  serie_b: 'Série B',
+  serie_a: 'Série A',
+  profissional: 'Profissional',
+};
 
 export const INITIAL_ATHLETES: AthleteProfile[] = [];
 

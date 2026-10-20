@@ -20,6 +20,7 @@ import { AthleteLevelBadge } from './AthleteLevelBadge';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import { Top10WhatsAppShareModal } from './Top10WhatsAppShareModal';
 import { IntegrityReportModal } from './IntegrityReportModal';
+import { toast } from '../store/useToastStore';
 import { SharkCardsShowcase } from './SharkCardsShowcase';
 import {
   Trophy,
@@ -97,6 +98,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
 
   // New Athlete Modal Form State
   const [newAthName, setNewAthName] = useState('');
+  const [newAthEmail, setNewAthEmail] = useState('');
   const [newAthPhone, setNewAthPhone] = useState('');
   const [newAthBirthDate, setNewAthBirthDate] = useState('1996-04-15');
   const [newAthExp, setNewAthExp] = useState<ExperienceCategory>('amador');
@@ -235,7 +237,12 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
 
   const handleAddAthlete = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAthName.trim()) return;
+    const normalizedEmail = newAthEmail.trim().toLowerCase();
+    if (!newAthName.trim() || !normalizedEmail) return;
+    if (localAthletes.some((athlete) => (athlete.email || '').trim().toLowerCase() === normalizedEmail)) {
+      toast.error('Este e-mail já está cadastrado. Selecione o perfil existente.');
+      return;
+    }
 
     const chosenArena =
       availableTenants.find((a) => a.id === newAthArenaId) ||
@@ -243,7 +250,8 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
 
     addOrUpdateAthlete({
       name: newAthName.trim(),
-      phone: newAthPhone.trim() || '64999990000',
+      email: normalizedEmail,
+      phone: newAthPhone.trim(),
       birthDate: newAthBirthDate,
       experienceCategory: newAthExp,
       level: newAthLevel,
@@ -257,6 +265,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
 
     const addedName = newAthName;
     setNewAthName('');
+    setNewAthEmail('');
     setNewAthPhone('');
     setIsAddAthleteModalOpen(false);
     setStatusMessage(
@@ -987,6 +996,10 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                 />
               </div>
 
+              <div>
+                <label className="mb-1 block font-bold text-slate-200">E-mail único do atleta:</label>
+                <input type="email" required value={newAthEmail} onChange={(event) => setNewAthEmail(event.target.value)} placeholder="atleta@email.com" className="w-full rounded-lg border border-[#145A9B]/60 bg-[#030D1A] px-3 py-2.5 text-sm text-white" />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-200 mb-1">Data de Nascimento:</label>

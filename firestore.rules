@@ -1,4 +1,69 @@
 rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model & Architecture: Cloud Firestore Security Rules
+// ===============================================================
+//
+// 1. arenas/{arenaId}
+//    - Public catalogue of arenas and courts.
+//    - Fields: id, name, tagline, city, state, address, distanceKm, rating,
+//      whatsapp, primaryColor, accentColor, sandBg, amenities, courts,
+//      operatingHours, subscriptionPlan, monthlyPlanPrice, ownerId, ownerName,
+//      managers (list of up to 20 emails or UIDs), imageUrl, logoUrl,
+//      whiteLabelEnabled, brandPalette, lat, lng, createdAt, updatedAt.
+//    - Subcollections: courts, tournaments, bookings, students.
+//
+// 2. tournaments/{tournamentId}
+//    - Public brackets, registrations and tournament metadata.
+//    - Fields: id, tenantId, name, sport, category, modalityFormat, semiFormat,
+//      date, location, specificRules, format, description, maxPairs, registrationFee,
+//      responsibleName, responsiblePhone, isOpenForRegistration, isFinished,
+//      tableLicenseStatus, tableLicenseFee, createdScope, creatorUid,
+//      creatorTokensSpent, ownerId, createdAt, updatedAt.
+//
+// 3. user_profiles/{userId}
+//    - Private athlete and user profile (PII protected).
+//    - Fields: id, displayName, email, photoURL, phone, level, experienceCategory,
+//      role, managedArenaId, ownerId, points, wins, matchesPlayed, titlesCount,
+//      tournamentsPlayed, tournamentTokens, bio, courtSide, dominantFoot,
+//      preferredSport, city, state, country, stats, achievements, updatedAt, createdAt.
+//
+// 4. athletes_public/{athleteId}
+//    - Public official ranking, podiums and public stats.
+//    - Fields: id, name, level, experienceCategory, points, wins, matchesPlayed,
+//      titlesCount, tournamentsPlayed, country, state, city, arenaId, arenaName,
+//      ownerId, lastMatchAt, rankingInactive, highestHistoricalLevel, levelMatches,
+//      levelWins, levelPoints, photoURL, photoUrl, createdAt, updatedAt.
+//
+// 5. coupons/{couponId}
+//    - Discount coupons for court bookings.
+//    - Fields: id, code, description, discountType ('fixed'|'percent'), discountValue,
+//      scope ('global'|'arena'), arenaId, arenaName, minBookingValue, maxUses,
+//      usedCount, active, expiresAt, createdBy, createdAt.
+//
+// 6. broadcasts/{broadcastId}
+//    - Public live stream read-only catalogue.
+//
+// 7. athlete_contacts/{athleteId}
+//    - Protected athlete WhatsApp/phone contacts.
+//
+// 8. court_blocks/{blockId}
+//    - Arena court maintenance and timetable blocks.
+//
+// 9. bookings/{bookingId}
+//    - Court bookings (server-managed state transitions).
+//
+// 10. notifications/{notificationId}
+//     - Real-time player smart alerts.
+//
+// 11. match_mvp_votes/{voteId}
+//     - Match MVP voting records.
+//
+// 12. academy_posts/{postId}
+//     - Tactical academy training posts.
+//
+// ===============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
     // Global Safety Net: Default-Deny Catch-All
@@ -6,22 +71,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
     function isSignedIn() {
       return request.auth != null;
-    }
-
-    match /broadcasts/{broadcastId} {
-      allow read: if true;
-      allow write: if false;
-    }
-    match /athlete_contacts/{athleteId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create, update: if isVerifiedUser() &&
-        get(/databases/$(database)/documents/athletes_public/$(athleteId)).data.ownerId == request.auth.uid &&
-        request.resource.data.keys().hasOnly(['ownerId', 'phone', 'whatsappOptIn']) &&
-        request.resource.data.ownerId == request.auth.uid &&
-        request.resource.data.phone is string && request.resource.data.phone.matches('^[0-9]{10,15}$') &&
-        request.resource.data.whatsappOptIn is bool;
     }
 
     function isVerifiedUser() {
@@ -51,65 +106,230 @@ service cloud.firestore {
       );
     }
 
-    // Ensures only the authenticated organizer who owns the arena can access or mutate its isolated resources
+    // Returns true if authenticated user is the arena owner, listed in managers (UID or email), or admin
     function isArenaOrganizer(arenaId) {
       return isSignedIn() &&
         isValidId(arenaId) &&
-        exists(/databases/$(database)/documents/arenas/$(arenaId)) &&
-        get(/databases/$(database)/documents/arenas/$(arenaId)).data.ownerId == request.auth.uid;
+        (
+          isAdmin() ||
+          (
+            exists(/databases/$(database)/documents/arenas/$(arenaId)) &&
+            (
+              get(/databases/$(database)/documents/arenas/$(arenaId)).data.ownerId == request.auth.uid ||
+              (
+                'managers' in get(/databases/$(database)/documents/arenas/$(arenaId)).data &&
+                get(/databases/$(database)/documents/arenas/$(arenaId)).data.managers is list &&
+                (
+                  request.auth.uid in get(/databases/$(database)/documents/arenas/$(arenaId)).data.managers ||
+                  (('email' in request.auth.token) && request.auth.token.email in get(/databases/$(database)/documents/arenas/$(arenaId)).data.managers)
+                )
+              )
+            )
+          )
+        );
     }
 
+    // ===============================================================
+    // Domain Validator Functions
+    // ===============================================================
+
     function isValidUserProfile(data) {
-      return data.keys().hasAll(['id', 'displayName', 'email', 'level', 'experienceCategory', 'role', 'ownerId']) &&
+      return data.keys().hasAll(['id', 'displayName', 'role', 'ownerId']) &&
         data.keys().hasOnly([
-          'id', 'displayName', 'email', 'photoURL', 'level',
-          'experienceCategory', 'role', 'managedArenaId', 'ownerId'
+          'id', 'displayName', 'email', 'photoURL', 'phone', 'level',
+          'experienceCategory', 'role', 'managedArenaId', 'ownerId',
+          'points', 'wins', 'matchesPlayed', 'titlesCount', 'tournamentsPlayed',
+          'tournamentTokens', 'bio', 'courtSide', 'dominantFoot', 'preferredSport',
+          'city', 'state', 'country', 'stats', 'achievements', 'updatedAt', 'createdAt'
         ]) &&
-        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.id is string && isValidId(data.id) &&
         data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
-        data.email is string && data.email.size() >= 1 && data.email.size() <= 160 &&
+        (!('email' in data) || (data.email is string && data.email.size() >= 1 && data.email.size() <= 160)) &&
         (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
-        data.level is string && data.level in ['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'] &&
-        data.experienceCategory is string && data.experienceCategory in ['amador', 'profissional'] &&
-        data.role is string && data.role in ['athlete', 'admin'] &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+        (!('level' in data) ||
+          (data.level is string && data.level in ['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'])) &&
+        (!('experienceCategory' in data) ||
+          (data.experienceCategory is string && data.experienceCategory in ['amador', 'profissional'])) &&
+        data.role is string && data.role in ['athlete', 'admin', 'organizer'] &&
+        (data.role != 'admin' || isAdmin()) &&
         (!('managedArenaId' in data) || isValidId(data.managedArenaId)) &&
-        (
-          data.role == 'athlete' ||
-          isAdmin() ||
-          ('managedArenaId' in data && isArenaOrganizer(data.managedArenaId))
-        ) &&
-        data.ownerId is string && data.ownerId == request.auth.uid;
+        (!('points' in data) || (data.points is number && data.points >= 0)) &&
+        (!('wins' in data) || (data.wins is number && data.wins >= 0)) &&
+        (!('matchesPlayed' in data) || (data.matchesPlayed is number && data.matchesPlayed >= 0)) &&
+        (!('titlesCount' in data) || (data.titlesCount is number && data.titlesCount >= 0)) &&
+        (!('tournamentsPlayed' in data) || (data.tournamentsPlayed is number && data.tournamentsPlayed >= 0)) &&
+        (!('tournamentTokens' in data) || (data.tournamentTokens is number && data.tournamentTokens >= 0)) &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
+        (!('courtSide' in data) || (data.courtSide is string && data.courtSide in ['Direita', 'Esquerda', 'Ambos'])) &&
+        (!('dominantFoot' in data) || (data.dominantFoot is string && data.dominantFoot in ['Destro', 'Canhoto', 'Ambidestro'])) &&
+        (!('preferredSport' in data) || (data.preferredSport is string && data.preferredSport in ['futevolei', 'beach_tennis', 'volei_praia'])) &&
+        (!('city' in data) || (data.city is string && data.city.size() <= 80)) &&
+        (!('state' in data) || (data.state is string && data.state.size() <= 10)) &&
+        (!('country' in data) || (data.country is string && data.country.size() <= 60)) &&
+        (!('stats' in data) || data.stats is map) &&
+        (!('achievements' in data) || (data.achievements is list && data.achievements.size() <= 50)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 40)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40)) &&
+        data.ownerId is string && isValidId(data.ownerId);
     }
 
     function isValidArena(data) {
       return data.keys().hasAll(['id', 'name', 'city', 'state', 'ownerId']) &&
         data.keys().hasOnly([
-          'id', 'name', 'city', 'state', 'distanceKm', 'rating', 'whatsapp',
-          'address', 'tagline', 'lat', 'lng', 'ownerName', 'subscriptionPlan', 'ownerId'
+          'id', 'name', 'tagline', 'city', 'state', 'address', 'distanceKm',
+          'rating', 'whatsapp', 'primaryColor', 'accentColor', 'sandBg',
+          'amenities', 'courts', 'operatingHours', 'subscriptionPlan',
+          'monthlyPlanPrice', 'ownerId', 'ownerName', 'managers',
+          'imageUrl', 'logoUrl', 'whiteLabelEnabled', 'brandPalette',
+          'lat', 'lng', 'createdAt', 'updatedAt'
         ]) &&
-        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.id is string && isValidId(data.id) &&
         data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        (!('tagline' in data) || (data.tagline is string && data.tagline.size() <= 200)) &&
         data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
         data.state is string && data.state.size() >= 1 && data.state.size() <= 10 &&
+        (!('address' in data) || (data.address is string && data.address.size() <= 250)) &&
+        (!('distanceKm' in data) || (data.distanceKm is number && data.distanceKm >= 0)) &&
+        (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5)) &&
+        (!('whatsapp' in data) || (data.whatsapp is string && data.whatsapp.size() <= 30)) &&
+        (!('primaryColor' in data) || (data.primaryColor is string && data.primaryColor.size() <= 40)) &&
+        (!('accentColor' in data) || (data.accentColor is string && data.accentColor.size() <= 40)) &&
+        (!('sandBg' in data) || (data.sandBg is string && data.sandBg.size() <= 250)) &&
+        (!('amenities' in data) || (data.amenities is list && data.amenities.size() <= 30)) &&
+        (!('courts' in data) || (data.courts is list && data.courts.size() <= 50)) &&
+        (!('operatingHours' in data) || data.operatingHours is map) &&
+        (!('subscriptionPlan' in data) || (data.subscriptionPlan is string && data.subscriptionPlan in ['arena_pro_99', 'pay_per_table_20'])) &&
+        (!('monthlyPlanPrice' in data) || (data.monthlyPlanPrice is number && data.monthlyPlanPrice >= 0)) &&
+        (!('ownerName' in data) || (data.ownerName is string && data.ownerName.size() <= 120)) &&
+        (!('managers' in data) || (data.managers is list && data.managers.size() <= 20)) &&
+        (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 500)) &&
+        (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 500)) &&
+        (!('whiteLabelEnabled' in data) || data.whiteLabelEnabled is bool) &&
+        (!('brandPalette' in data) || data.brandPalette is map) &&
         (!('lat' in data) || (data.lat is number && data.lat >= -90 && data.lat <= 90)) &&
         (!('lng' in data) || (data.lng is number && data.lng >= -180 && data.lng <= 180)) &&
-        data.ownerId is string && data.ownerId == request.auth.uid;
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 40)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40)) &&
+        data.ownerId is string && isValidId(data.ownerId);
     }
 
     function isValidTournament(data) {
       return data.keys().hasAll(['id', 'tenantId', 'name', 'sport', 'category', 'date', 'ownerId']) &&
         data.keys().hasOnly([
           'id', 'tenantId', 'name', 'sport', 'category', 'modalityFormat',
-          'semiFormat', 'date', 'location', 'specificRules', 'maxPairs',
-          'registrationFee', 'responsibleName', 'responsiblePhone',
-          'isOpenForRegistration', 'isFinished', 'ownerId'
+          'semiFormat', 'date', 'location', 'specificRules', 'format',
+          'description', 'maxPairs', 'registrationFee', 'responsibleName',
+          'responsiblePhone', 'isOpenForRegistration', 'isFinished',
+          'tableLicenseStatus', 'tableLicenseFee', 'createdScope',
+          'creatorUid', 'creatorTokensSpent', 'ownerId', 'createdAt', 'updatedAt'
         ]) &&
-        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
-        data.tenantId is string && data.tenantId.size() >= 1 && data.tenantId.size() <= 64 &&
+        data.id is string && isValidId(data.id) &&
+        data.tenantId is string && isValidId(data.tenantId) &&
         data.name is string && data.name.size() >= 1 && data.name.size() <= 140 &&
         data.sport is string && data.sport in ['futevolei', 'beach_tennis', 'volei_praia'] &&
-        data.date is string && data.date.size() >= 1 && data.date.size() <= 20 &&
-        data.ownerId is string && data.ownerId == request.auth.uid;
+        data.category is string && data.category in ['iniciante', 'iniciante_serie_c', 'serie_c', 'serie_b_serie_c', 'serie_b', 'serie_a_pro', 'mista'] &&
+        (!('modalityFormat' in data) || (data.modalityFormat is string && data.modalityFormat in ['duplas', 'simples'])) &&
+        (!('semiFormat' in data) || (data.semiFormat is string && data.semiFormat in ['semi_direta', 'semi_com_chance'])) &&
+        data.date is string && data.date.size() >= 1 && data.date.size() <= 30 &&
+        (!('location' in data) || (data.location is string && data.location.size() <= 160)) &&
+        (!('specificRules' in data) || (data.specificRules is string && data.specificRules.size() <= 5000)) &&
+        (!('format' in data) || (data.format is string && data.format in ['double_elimination_buraco4'])) &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+        (!('maxPairs' in data) || (data.maxPairs is number && data.maxPairs >= 2 && data.maxPairs <= 128)) &&
+        (!('registrationFee' in data) || (data.registrationFee is number && data.registrationFee >= 0)) &&
+        (!('responsibleName' in data) || (data.responsibleName is string && data.responsibleName.size() <= 120)) &&
+        (!('responsiblePhone' in data) || (data.responsiblePhone is string && data.responsiblePhone.size() <= 30)) &&
+        (!('isOpenForRegistration' in data) || data.isOpenForRegistration is bool) &&
+        (!('isFinished' in data) || data.isFinished is bool) &&
+        (!('tableLicenseStatus' in data) || (data.tableLicenseStatus is string && data.tableLicenseStatus in ['unlocked_single_20', 'unlocked_arena_pro_99'])) &&
+        (!('tableLicenseFee' in data) || (data.tableLicenseFee is number && data.tableLicenseFee >= 0)) &&
+        (!('createdScope' in data) || (data.createdScope is string && data.createdScope in ['arena', 'user'])) &&
+        (!('creatorUid' in data) || (data.creatorUid is string && isValidId(data.creatorUid))) &&
+        (!('creatorTokensSpent' in data) || (data.creatorTokensSpent is number && data.creatorTokensSpent >= 0)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 40)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40)) &&
+        data.ownerId is string && isValidId(data.ownerId);
+    }
+
+    function canManageTournamentMatches(tournamentId) {
+      let tournamentPath = /databases/$(database)/documents/tournaments/$(tournamentId);
+      return isVerifiedUser() && isValidId(tournamentId) && exists(tournamentPath) &&
+        (isAdmin() || isOwner(get(tournamentPath).data.ownerId) || isArenaOrganizer(get(tournamentPath).data.tenantId));
+    }
+
+    function isPublicBracketTeam(team) {
+      return team is map && team.keys().hasAll(['id', 'tournamentId', 'player1', 'player1Level', 'player2', 'player2Level', 'category', 'seed']) &&
+        team.keys().hasOnly(['id', 'tournamentId', 'player1', 'player1Level', 'player2', 'player2Level', 'category', 'seed', 'enrollmentStatus', 'isPresent']) &&
+        isValidId(team.id) && isValidId(team.tournamentId) &&
+        team.player1 is string && team.player1.size() >= 1 && team.player1.size() <= 120 &&
+        team.player2 is string && team.player2.size() <= 120 &&
+        team.seed is int && team.seed >= 0 && team.seed <= 128 &&
+        (!('enrollmentStatus' in team) || team.enrollmentStatus in ['pending', 'confirmed', 'rejected']) &&
+        (!('isPresent' in team) || team.isPresent is bool);
+    }
+
+    function isPublicBracketSource(source) {
+      return source is map && (
+        (source.kind == 'team' && source.keys().hasAll(['kind', 'team', 'slot']) && source.keys().hasOnly(['kind', 'team', 'slot']) &&
+          isPublicBracketTeam(source.team) && source.slot is int && source.slot >= 0) ||
+        (source.kind in ['winner', 'loser'] && source.keys().hasAll(['kind', 'matchId']) && source.keys().hasOnly(['kind', 'matchId']) && isValidId(source.matchId))
+      );
+    }
+
+    function isValidMatchRules(rules) {
+      return rules is map && rules.keys().hasAll(['bestOf', 'targetPoints', 'decidingPoints', 'winBy']) &&
+        rules.keys().hasOnly(['bestOf', 'targetPoints', 'decidingPoints', 'winBy']) &&
+        rules.bestOf in [1, 3, 5] && rules.targetPoints is int && rules.targetPoints >= 1 && rules.targetPoints <= 99 &&
+        rules.decidingPoints is int && rules.decidingPoints >= 1 && rules.decidingPoints <= 99 &&
+        rules.winBy is int && rules.winBy >= 1 && rules.winBy <= 99;
+    }
+
+    function isValidMatchSet(set) {
+      return set is map && set.keys().hasAll(['score1', 'score2']) && set.keys().hasOnly(['score1', 'score2']) &&
+        set.score1 is int && set.score1 >= 0 && set.score1 <= 99 &&
+        set.score2 is int && set.score2 >= 0 && set.score2 <= 99;
+    }
+
+    function isValidPublicBracketMatch(data, tournamentId, matchId) {
+      return data.keys().hasAll(['id', 'tournamentId', 'matchNumber', 'stage', 'round', 'stageName', 'status', 'revision']) &&
+        data.keys().hasOnly([
+          'id', 'tournamentId', 'matchNumber', 'stage', 'round', 'stageName', 'status', 'revision',
+          'source1', 'source2', 'initialLowerSource', 'region', 'rules', 'sets', 'resultMode', 'officialAt',
+          'team1', 'team2', 'score1', 'score2', 'winnerId', 'loserId', 'courtId', 'courtName', 'scheduledTime',
+          'nextMatchWinnerId', 'winnerDestinationSlot', 'nextMatchLoserId', 'loserDestinationSlot', 'linkedBroadcastId', 'semifinalDecision',
+          'serverValidatedRevision'
+        ]) &&
+        data.id == matchId && data.tournamentId == tournamentId &&
+        isValidId(data.id) && isValidId(data.tournamentId) &&
+        data.matchNumber is int && data.matchNumber >= 1 && data.matchNumber <= 10000 &&
+        data.round is int && data.round >= 1 && data.round <= 100 &&
+        data.stage in ['winners', 'losers', 'semifinals', 'third_place', 'grand_final', 'super_final'] &&
+        data.status in ['scheduled', 'in_progress', 'completed'] &&
+        data.stageName is string && data.stageName.size() >= 1 && data.stageName.size() <= 80 &&
+        data.revision is int && data.revision >= 0 && data.revision <= 100000 &&
+        (!('serverValidatedRevision' in data) || (data.serverValidatedRevision is int && data.serverValidatedRevision >= 1 && data.serverValidatedRevision <= data.revision)) &&
+        (!('team1' in data) || isPublicBracketTeam(data.team1)) &&
+        (!('team2' in data) || isPublicBracketTeam(data.team2)) &&
+        (!('source1' in data) || isPublicBracketSource(data.source1)) &&
+        (!('source2' in data) || isPublicBracketSource(data.source2)) &&
+        (!('initialLowerSource' in data) || isPublicBracketSource(data.initialLowerSource)) &&
+        (!('score1' in data) || (data.score1 is int && data.score1 >= 0 && data.score1 <= 500)) &&
+        (!('score2' in data) || (data.score2 is int && data.score2 >= 0 && data.score2 <= 500)) &&
+        (!('winnerId' in data) || isValidId(data.winnerId)) && (!('loserId' in data) || isValidId(data.loserId)) &&
+        (!('resultMode' in data) || data.resultMode in ['played', 'walkover']) &&
+        (!('officialAt' in data) || (data.officialAt is string && data.officialAt.size() <= 40)) &&
+        (!('rules' in data) || isValidMatchRules(data.rules)) &&
+        (!('sets' in data) || (data.sets is list && data.sets.size() <= 5 &&
+          (data.sets.size() == 0 || isValidMatchSet(data.sets[0])) &&
+          (data.sets.size() < 2 || isValidMatchSet(data.sets[1])) &&
+          (data.sets.size() < 3 || isValidMatchSet(data.sets[2])) &&
+          (data.sets.size() < 4 || isValidMatchSet(data.sets[3])) &&
+          (data.sets.size() < 5 || isValidMatchSet(data.sets[4])))) &&
+        (!('courtName' in data) || (data.courtName is string && data.courtName.size() <= 100)) &&
+        (!('courtId' in data) || (data.courtId is string && data.courtId.size() <= 64)) &&
+        (!('scheduledTime' in data) || (data.scheduledTime is string && data.scheduledTime.size() <= 40)) &&
+        (!('linkedBroadcastId' in data) || (data.linkedBroadcastId is string && data.linkedBroadcastId.size() <= 64));
     }
 
     function isValidCourtBlock(data) {
@@ -117,32 +337,49 @@ service cloud.firestore {
         data.keys().hasOnly([
           'id', 'tenantId', 'courtId', 'date', 'startTime', 'endTime', 'reason', 'status', 'ownerId'
         ]) &&
-        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
-        data.tenantId is string && data.tenantId.size() >= 1 && data.tenantId.size() <= 64 &&
-        data.courtId is string && data.courtId.size() >= 1 && data.courtId.size() <= 64 &&
+        data.id is string && isValidId(data.id) &&
+        data.tenantId is string && isValidId(data.tenantId) &&
+        data.courtId is string && isValidId(data.courtId) &&
         data.date is string && data.date.size() >= 1 && data.date.size() <= 20 &&
         data.startTime is string && data.startTime.size() >= 1 && data.startTime.size() <= 10 &&
         data.endTime is string && data.endTime.size() >= 1 && data.endTime.size() <= 10 &&
-        data.ownerId is string && data.ownerId == request.auth.uid;
+        data.ownerId is string && isValidId(data.ownerId);
     }
 
     function isValidAthletePublic(data) {
       return data.keys().hasAll(['id', 'name', 'level', 'points', 'country', 'state', 'city', 'arenaId', 'ownerId']) &&
         data.keys().hasOnly([
           'id', 'name', 'level', 'experienceCategory', 'points', 'wins',
-          'matchesPlayed', 'titlesCount', 'country', 'state', 'city',
+          'matchesPlayed', 'titlesCount', 'tournamentsPlayed', 'country', 'state', 'city',
           'arenaId', 'arenaName', 'ownerId', 'lastMatchAt', 'rankingInactive',
-          'highestHistoricalLevel', 'levelMatches', 'levelWins', 'levelPoints'
+          'highestHistoricalLevel', 'levelMatches', 'levelWins', 'levelPoints',
+          'photoURL', 'photoUrl', 'createdAt', 'updatedAt'
         ]) &&
-        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.id is string && isValidId(data.id) &&
         data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
         data.level is string && data.level in ['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'] &&
+        (!('experienceCategory' in data) || (data.experienceCategory is string && data.experienceCategory in ['amador', 'profissional'])) &&
         data.points is number && data.points >= 0 &&
+        (!('wins' in data) || (data.wins is number && data.wins >= 0)) &&
+        (!('matchesPlayed' in data) || (data.matchesPlayed is number && data.matchesPlayed >= 0)) &&
+        (!('titlesCount' in data) || (data.titlesCount is number && data.titlesCount >= 0)) &&
+        (!('tournamentsPlayed' in data) || (data.tournamentsPlayed is number && data.tournamentsPlayed >= 0)) &&
         data.country is string && data.country.size() >= 1 && data.country.size() <= 60 &&
         data.state is string && data.state.size() >= 1 && data.state.size() <= 10 &&
         data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
-        data.arenaId is string && data.arenaId.size() >= 1 && data.arenaId.size() <= 64 &&
-        data.ownerId is string && data.ownerId == request.auth.uid;
+        data.arenaId is string && isValidId(data.arenaId) &&
+        (!('arenaName' in data) || (data.arenaName is string && data.arenaName.size() <= 120)) &&
+        data.ownerId is string && isValidId(data.ownerId) &&
+        (!('lastMatchAt' in data) || (data.lastMatchAt is string && data.lastMatchAt.size() <= 40)) &&
+        (!('rankingInactive' in data) || data.rankingInactive is bool) &&
+        (!('highestHistoricalLevel' in data) || (data.highestHistoricalLevel is string && data.highestHistoricalLevel in ['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'])) &&
+        (!('levelMatches' in data) || (data.levelMatches is number && data.levelMatches >= 0)) &&
+        (!('levelWins' in data) || (data.levelWins is number && data.levelWins >= 0)) &&
+        (!('levelPoints' in data) || (data.levelPoints is number && data.levelPoints >= 0)) &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+        (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 40)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40));
     }
 
     function isValidBookingRecord(data) {
@@ -151,26 +388,26 @@ service cloud.firestore {
           'id', 'tenantId', 'courtId', 'courtName', 'date', 'startTime',
           'endTime', 'sport', 'customerName', 'price', 'status', 'ownerId'
         ]) &&
-        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
-        data.tenantId is string && data.tenantId.size() >= 1 && data.tenantId.size() <= 64 &&
-        data.courtId is string && data.courtId.size() >= 1 && data.courtId.size() <= 64 &&
+        data.id is string && isValidId(data.id) &&
+        data.tenantId is string && isValidId(data.tenantId) &&
+        data.courtId is string && isValidId(data.courtId) &&
         data.date is string && data.date.size() >= 1 && data.date.size() <= 20 &&
         data.startTime is string && data.startTime.size() >= 1 && data.startTime.size() <= 10 &&
         data.status is string && data.status in ['confirmed', 'cancelled'] &&
-        data.ownerId is string && data.ownerId == request.auth.uid;
+        data.ownerId is string && isValidId(data.ownerId);
     }
 
     function isValidSmartNotification(data) {
       return data.keys().hasAll(['id', 'type', 'title', 'body', 'ownerId']) &&
         data.keys().hasOnly(['id', 'type', 'title', 'body', 'recipientName', 'ownerId']) &&
-        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.id is string && isValidId(data.id) &&
         data.type is string && data.type in [
           'vacant_2h', 'waitlist_freed', 'match_10pts_left', 'booking_15min',
           'match_starting', 'match_modified', 'tuition_due_today', 'tuition_due_2days'
         ] &&
         data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
         data.body is string && data.body.size() >= 1 && data.body.size() <= 400 &&
-        data.ownerId is string && data.ownerId == request.auth.uid;
+        data.ownerId is string && isValidId(data.ownerId);
     }
 
     function isValidMatchMvpVote(data) {
@@ -179,14 +416,14 @@ service cloud.firestore {
           'id', 'matchId', 'tournamentId', 'tournamentName', 'playerName',
           'pairNames', 'voterName', 'votedAt', 'ownerId'
         ]) &&
-        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
-        data.matchId is string && data.matchId.size() >= 1 && data.matchId.size() <= 64 &&
-        data.tournamentId is string && data.tournamentId.size() >= 1 && data.tournamentId.size() <= 64 &&
+        data.id is string && isValidId(data.id) &&
+        data.matchId is string && isValidId(data.matchId) &&
+        data.tournamentId is string && isValidId(data.tournamentId) &&
         data.playerName is string && data.playerName.size() >= 1 && data.playerName.size() <= 120 &&
         data.pairNames is string && data.pairNames.size() >= 1 && data.pairNames.size() <= 160 &&
         data.voterName is string && data.voterName.size() >= 1 && data.voterName.size() <= 120 &&
         data.votedAt is string && data.votedAt.size() >= 1 && data.votedAt.size() <= 40 &&
-        data.ownerId is string && data.ownerId == request.auth.uid;
+        data.ownerId is string && isValidId(data.ownerId);
     }
 
     function isValidAcademyPost(data) {
@@ -195,7 +432,7 @@ service cloud.firestore {
           'id', 'title', 'category', 'mediaType', 'mediaUrl', 'summary',
           'authorName', 'level', 'likesCount', 'ownerId'
         ]) &&
-        data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+        data.id is string && isValidId(data.id) &&
         data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
         data.category is string && data.category in [
           'marcacao_padrao', 'posicionamento_quadra', 'corrida_areia', 'base_defesa', 'ataque_shark', 'comunidade'
@@ -205,30 +442,77 @@ service cloud.firestore {
         data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100 &&
         data.level is string && data.level in ['iniciante', 'intermediario', 'avancado', 'todos'] &&
         data.likesCount is number && data.likesCount >= 0 &&
-        data.ownerId is string && data.ownerId == request.auth.uid;
+        data.ownerId is string && isValidId(data.ownerId);
     }
 
+    function isValidCoupon(data) {
+      return data.keys().hasAll(['id', 'code', 'discountType', 'discountValue', 'scope', 'usedCount', 'active', 'createdAt']) &&
+        data.keys().hasOnly([
+          'id', 'code', 'description', 'discountType', 'discountValue',
+          'scope', 'arenaId', 'arenaName', 'minBookingValue', 'maxUses',
+          'usedCount', 'active', 'expiresAt', 'createdBy', 'createdAt'
+        ]) &&
+        data.id is string && isValidId(data.id) &&
+        data.code is string && data.code.size() >= 1 && data.code.size() <= 40 &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 200)) &&
+        data.discountType is string && data.discountType in ['fixed', 'percent'] &&
+        data.discountValue is number && data.discountValue > 0 &&
+        (data.discountType != 'percent' || data.discountValue <= 100) &&
+        data.scope is string && data.scope in ['global', 'arena'] &&
+        (data.scope != 'arena' || ('arenaId' in data && isValidId(data.arenaId))) &&
+        (!('arenaName' in data) || (data.arenaName is string && data.arenaName.size() <= 120)) &&
+        (!('minBookingValue' in data) || (data.minBookingValue is number && data.minBookingValue >= 0)) &&
+        (!('maxUses' in data) || (data.maxUses is number && data.maxUses >= 1)) &&
+        data.usedCount is number && data.usedCount >= 0 &&
+        data.active is bool &&
+        (!('expiresAt' in data) || (data.expiresAt is string && data.expiresAt.size() <= 30)) &&
+        (!('createdBy' in data) || (data.createdBy is string && isValidId(data.createdBy))) &&
+        data.createdAt is string && data.createdAt.size() >= 1 && data.createdAt.size() <= 40;
+    }
+
+    // ===============================================================
+    // Collections
+    // ===============================================================
+
+    // Broadcasts: Public read-only live streams
+    match /broadcasts/{broadcastId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Athlete Contacts: Direct phone / WhatsApp contact cards
+    match /athlete_contacts/{athleteId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create, update: if isVerifiedUser() &&
+        get(/databases/$(database)/documents/athletes_public/$(athleteId)).data.ownerId == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['ownerId', 'phone', 'whatsappOptIn']) &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.phone is string && request.resource.data.phone.matches('^[0-9]{10,15}$') &&
+        request.resource.data.whatsappOptIn is bool;
+    }
+
+    // Arenas: Public catalog of sports arenas and courts
     match /arenas/{arenaId} {
-      allow get: if isValidId(arenaId) && isOwner(existing().ownerId);
-      allow list: if isOwner(existing().ownerId);
-      allow create: if isVerifiedUser() && isValidId(arenaId) && isValidArena(incoming());
+      allow get: if isValidId(arenaId);
+      allow list: if true;
+      allow create: if isVerifiedUser() && isValidId(arenaId) && isValidArena(incoming()) &&
+        (incoming().ownerId == request.auth.uid || isAdmin());
       allow update: if isVerifiedUser() && isValidId(arenaId) && isValidArena(incoming()) &&
-        isOwner(existing().ownerId) &&
-        incoming().ownerId == existing().ownerId &&
+        (existing().ownerId == request.auth.uid || isAdmin()) &&
         incoming().id == existing().id &&
-        incoming().diff(existing()).affectedKeys().hasOnly([
-          'name', 'distanceKm', 'rating', 'whatsapp', 'address',
-          'tagline', 'lat', 'lng', 'ownerName', 'subscriptionPlan'
-        ]);
-      allow delete: if isVerifiedUser() && isValidId(arenaId) && isOwner(existing().ownerId);
+        (isAdmin() || incoming().ownerId == existing().ownerId);
+      allow delete: if isVerifiedUser() && isValidId(arenaId) &&
+        (existing().ownerId == request.auth.uid || isAdmin());
 
       // Isolated arena subcollections accessible strictly by the arena's organizer
       match /courts/{courtId} {
-        allow read, write: if isValidId(courtId) && isArenaOrganizer(arenaId);
+        allow read: if true;
+        allow write: if isValidId(courtId) && isArenaOrganizer(arenaId);
       }
 
       match /tournaments/{tournamentId} {
-        allow read, write: if isValidId(tournamentId) && isArenaOrganizer(arenaId);
+        allow read: if true;
+        allow write: if isValidId(tournamentId) && isArenaOrganizer(arenaId);
       }
 
       match /bookings/{bookingId} {
@@ -240,22 +524,49 @@ service cloud.firestore {
       }
     }
 
+    // Tournaments: Public tournament tables, brackets and double-elimination games
     match /tournaments/{tournamentId} {
-      allow get: if isValidId(tournamentId) && (isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId));
-      allow list: if isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId);
-      allow create: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) &&
-        isArenaOrganizer(incoming().tenantId);
+      allow get: if isValidId(tournamentId);
+      allow list: if true;
+      allow create: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) && (
+        isAdmin() ||
+        isArenaOrganizer(incoming().tenantId) ||
+        (incoming().ownerId == request.auth.uid && incoming().createdScope == 'user')
+      );
       allow update: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) &&
-        isOwner(existing().ownerId) &&
-        isArenaOrganizer(existing().tenantId) &&
-        incoming().ownerId == existing().ownerId &&
+        (isAdmin() || isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId)) &&
+        incoming().id == existing().id &&
         incoming().tenantId == existing().tenantId &&
-        incoming().id == existing().id;
+        (isAdmin() || incoming().ownerId == existing().ownerId);
       allow delete: if isVerifiedUser() && isValidId(tournamentId) &&
-        isOwner(existing().ownerId) &&
-        isArenaOrganizer(existing().tenantId);
+        (isAdmin() || isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId));
+
+      match /matches/{matchId} {
+        allow read: if true;
+        allow create: if canManageTournamentMatches(tournamentId) && isValidId(matchId) &&
+          !('serverValidatedRevision' in incoming()) && isValidPublicBracketMatch(incoming(), tournamentId, matchId);
+        allow update: if canManageTournamentMatches(tournamentId) && isValidId(matchId) &&
+          isValidPublicBracketMatch(incoming(), tournamentId, matchId) &&
+          ((!('serverValidatedRevision' in existing()) && !('serverValidatedRevision' in incoming())) ||
+            ('serverValidatedRevision' in existing() && 'serverValidatedRevision' in incoming() &&
+              incoming().serverValidatedRevision == existing().serverValidatedRevision));
+        allow delete: if canManageTournamentMatches(tournamentId) && isValidId(matchId);
+      }
+
+      match /result_events/{eventId} {
+        allow read: if isValidId(tournamentId) && isValidId(eventId);
+        allow write: if false;
+      }
     }
 
+    // Viewer lookup for the tournament connected to a public broadcast.
+    // Only trusted server code maintains these mappings.
+    match /broadcast_tournament_links/{broadcastId} {
+      allow read: if isValidId(broadcastId);
+      allow write: if false;
+    }
+
+    // Court Blocks: Administrative timetable and court maintenance locks
     match /court_blocks/{blockId} {
       allow get: if isValidId(blockId) && (isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId));
       allow list: if isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId);
@@ -272,44 +583,45 @@ service cloud.firestore {
         isArenaOrganizer(existing().tenantId);
     }
 
+    // User Profiles: Private athlete identities and personal records (PII protected)
     match /user_profiles/{userId} {
-      allow get: if isValidId(userId) && isOwner(existing().ownerId);
-      allow list: if isOwner(existing().ownerId);
-      allow create: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid && isValidUserProfile(incoming());
-      allow update: if isVerifiedUser() && isValidId(userId) && isValidUserProfile(incoming()) &&
-        isOwner(existing().ownerId) &&
-        incoming().ownerId == existing().ownerId &&
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if (isSignedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow create: if isVerifiedUser() && isValidId(userId) &&
+        (userId == request.auth.uid || isAdmin()) &&
+        incoming().ownerId == userId &&
+        isValidUserProfile(incoming());
+      allow update: if isVerifiedUser() && isValidId(userId) &&
+        (userId == request.auth.uid || isAdmin()) &&
+        isValidUserProfile(incoming()) &&
         incoming().id == existing().id &&
-        incoming().email == existing().email &&
-        incoming().diff(existing()).affectedKeys().hasOnly([
-          'displayName', 'photoURL', 'level', 'experienceCategory', 'role', 'managedArenaId'
-        ]);
-      allow delete: if isVerifiedUser() && isValidId(userId) && isOwner(existing().ownerId);
-    }
-
-    match /athletes_public/{athleteId} {
-      allow get: if isValidId(athleteId) && isOwner(existing().ownerId);
-      allow list: if isOwner(existing().ownerId);
-      allow create: if isVerifiedUser() && isValidId(athleteId) && isValidAthletePublic(incoming());
-      allow update: if isVerifiedUser() && isValidId(athleteId) && isValidAthletePublic(incoming()) &&
-        isOwner(existing().ownerId) &&
         incoming().ownerId == existing().ownerId &&
-        incoming().diff(existing()).affectedKeys().hasOnly([
-          'name', 'level', 'experienceCategory', 'points', 'wins', 'matchesPlayed',
-          'titlesCount', 'country', 'state', 'city', 'arenaId', 'arenaName',
-          'lastMatchAt', 'rankingInactive', 'highestHistoricalLevel',
-          'levelMatches', 'levelWins', 'levelPoints'
-        ]);
-      allow delete: if isVerifiedUser() && isValidId(athleteId) && isOwner(existing().ownerId);
+        (isAdmin() || incoming().role == existing().role);
+      allow delete: if isVerifiedUser() && isValidId(userId) && (isOwner(userId) || isAdmin());
     }
 
+    // Athletes Public: Official ranking, badges, podiums and public stats
+    match /athletes_public/{athleteId} {
+      allow get: if isValidId(athleteId);
+      allow list: if true;
+      allow create: if isVerifiedUser() && isValidId(athleteId) && isValidAthletePublic(incoming()) &&
+        (incoming().ownerId == request.auth.uid || isAdmin());
+      allow update: if isVerifiedUser() && isValidId(athleteId) && isValidAthletePublic(incoming()) &&
+        (existing().ownerId == request.auth.uid || isAdmin()) &&
+        incoming().id == existing().id &&
+        (isAdmin() || incoming().ownerId == existing().ownerId);
+      allow delete: if isVerifiedUser() && isValidId(athleteId) &&
+        (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Bookings: Court bookings; creation and financial transitions belong to the server
     match /bookings/{bookingId} {
       allow get: if isValidId(bookingId) && (isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId));
       allow list: if isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId);
-      // Booking creation, cancellation and payment transitions belong to the server.
       allow create, update, delete: if false;
     }
 
+    // Notifications: In-app real-time alerts
     match /notifications/{notificationId} {
       allow get: if isValidId(notificationId) && isOwner(existing().ownerId);
       allow list: if isOwner(existing().ownerId);
@@ -321,6 +633,7 @@ service cloud.firestore {
       allow delete: if isVerifiedUser() && isValidId(notificationId) && isOwner(existing().ownerId);
     }
 
+    // Match MVP Votes: Post-match public community voting
     match /match_mvp_votes/{voteId} {
       allow get: if isValidId(voteId) && isOwner(existing().ownerId);
       allow list: if isOwner(existing().ownerId);
@@ -332,6 +645,7 @@ service cloud.firestore {
       allow delete: if isVerifiedUser() && isValidId(voteId) && isOwner(existing().ownerId);
     }
 
+    // Academy Posts: Tactical video and image library
     match /academy_posts/{postId} {
       allow get: if isValidId(postId) && isOwner(existing().ownerId);
       allow list: if isOwner(existing().ownerId);
@@ -341,6 +655,27 @@ service cloud.firestore {
         incoming().ownerId == existing().ownerId &&
         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'summary', 'likesCount']);
       allow delete: if isVerifiedUser() && isValidId(postId) && isOwner(existing().ownerId);
+    }
+
+    // Coupons: Promo and discount vouchers for court bookings
+    match /coupons/{couponId} {
+      allow get: if isValidId(couponId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidId(couponId) && isValidCoupon(incoming()) && (
+        (incoming().scope == 'global' && isAdmin()) ||
+        (incoming().scope == 'arena' && 'arenaId' in incoming() && isArenaOrganizer(incoming().arenaId))
+      );
+      allow update: if isVerifiedUser() && isValidId(couponId) && isValidCoupon(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().scope == existing().scope &&
+        (
+          (existing().scope == 'global' && isAdmin()) ||
+          (existing().scope == 'arena' && 'arenaId' in existing() && isArenaOrganizer(existing().arenaId) && incoming().arenaId == existing().arenaId)
+        );
+      allow delete: if isVerifiedUser() && isValidId(couponId) && (
+        (existing().scope == 'global' && isAdmin()) ||
+        (existing().scope == 'arena' && 'arenaId' in existing() && isArenaOrganizer(existing().arenaId))
+      );
     }
   }
 }

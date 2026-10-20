@@ -1,9 +1,11 @@
-import { LiveDirectory } from './components/LiveDirectory';
+﻿import { LiveDirectory } from './components/LiveDirectory';
 import { BroadcastWatchScreen } from './components/BroadcastWatchScreen';
 import { useBroadcastNavigation } from './store/useBroadcastNavigation';
 import { FreeSlotsDateTimeFilter } from './components/FreeSlotsDateTimeFilter';
 import React from 'react';
 import { AquariumBackground } from './components/AquariumBackground';
+import { SportBallIcon } from './components/icons/SportBallIcon';
+import { TournamentResultNotifications } from './components/TournamentResultNotifications';
 import { AppProvider, useApp } from './context/AppContext';
 import { ArenaAdmin } from './components/ArenaAdmin';
 import { Navbar } from './components/Navbar';
@@ -23,8 +25,8 @@ import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
-import { auth } from './lib/firebase';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth, listenToBroadcastTournamentId } from './lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import {
   Maximize2,
   Minimize2,
@@ -39,12 +41,16 @@ import {
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { FloatingBottomDock } from './components/FloatingBottomDock';
 import { TopBarSlotDetailsModal } from './components/TopBarSlotDetailsModal';
+import { GlobalToast } from './components/GlobalToast';
 import type { UpcomingSlotItem } from './hooks/useUpcomingFreeSlots';
 
 const MainContent: React.FC = () => {
   const {
     activeTab,
     setActiveTab,
+    activeTournamentId,
+    setActiveTournamentId,
+    tournamentMatches,
     tenant,
     setTenantId,
     setArenaSubTab,
@@ -55,43 +61,47 @@ const MainContent: React.FC = () => {
     focusMode,
     toggleFocusMode,
   } = useApp();
+  const watchSource = useBroadcastNavigation((state) => state.source);
+  const [publishedWatchTournamentId, setPublishedWatchTournamentId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (watchSource?.kind !== 'published') {
+      setPublishedWatchTournamentId(null);
+      return;
+    }
+    return listenToBroadcastTournamentId(watchSource.id, setPublishedWatchTournamentId, () => setPublishedWatchTournamentId(null));
+  }, [watchSource?.kind, watchSource?.id]);
+  const linkedWatchMatch = tournamentMatches.find((match) =>
+    (watchSource?.kind === 'match' && match.id === watchSource.id) || match.linkedBroadcastId === watchSource?.id
+  );
+  const watchTournamentId = watchSource?.tournamentId || linkedWatchMatch?.tournamentId || publishedWatchTournamentId;
+  const resultNotificationTournamentIds = React.useMemo(() => {
+    const ids = activeTab === 'tournaments' ? [activeTournamentId, watchTournamentId] : [watchTournamentId];
+    return ids.filter((id): id is string => Boolean(id));
+  }, [activeTab, activeTournamentId, watchTournamentId]);
+
+  const openResultMatch = (event: import('./lib/firebase').TournamentResultEvent) => {
+    useBroadcastNavigation.getState().close();
+    setActiveTournamentId(event.tournamentId);
+    setActiveTab('tournaments');
+    window.setTimeout(() => {
+      document.querySelector(`[data-match-id="${event.matchId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 350);
+  };
 
   const [floatingSlotModal, setFloatingSlotModal] = React.useState<UpcomingSlotItem | null>(null);
 
   // Onboarding state: triggers if user has not yet completed initial technical category setup
-  const [currentUser, setCurrentUser] = React.useState<FirebaseUser | null>(() => auth.currentUser);
   const [showOnboarding, setShowOnboarding] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      if (user) {
-        try {
-          const userKey = 'sharkset_onboarding_completed_' + user.uid;
-          const userLevelKey = 'sharkset_user_level_' + user.uid;
-          const done = localStorage.getItem(userKey) === 'true' || Boolean(localStorage.getItem(userLevelKey));
-          setShowOnboarding(!done);
-        } catch {
-          setShowOnboarding(!userProfile.level);
-        }
-      } else {
-        setShowOnboarding(false);
-      }
+      setShowOnboarding(Boolean(user && !userProfile.level));
     });
     return () => unsub();
   }, [userProfile.level]);
 
   const handleCompleteOnboarding = (level: typeof userProfile.level) => {
     setUserProfile({ ...userProfile, level });
-    try {
-      if (currentUser) {
-        localStorage.setItem('sharkset_onboarding_completed_' + currentUser.uid, 'true');
-        if (level) localStorage.setItem('sharkset_user_level_' + currentUser.uid, level);
-      }
-      localStorage.setItem('sharkset_onboarding_completed', 'true');
-    } catch {
-      // ignore
-    }
     setShowOnboarding(false);
   };
 
@@ -124,7 +134,9 @@ const MainContent: React.FC = () => {
           : undefined
       }
     >
-      {!isArenaWhiteLabel && <AquariumBackground />}
+      <AquariumBackground />
+      <GlobalToast />
+      <TournamentResultNotifications tournamentIds={resultNotificationTournamentIds} onOpenMatch={openResultMatch} />
 
       {/* Floating Focus Mode Bar when active */}
       {focusMode && (
@@ -150,13 +162,13 @@ const MainContent: React.FC = () => {
       {!focusMode && (
         <>
           <Navbar />
-          <SmartNotificationBanner />
-          <FreeSlotsDateTimeFilter homeTop />
+          {activeTab === 'home' && <SmartNotificationBanner />}
+          {activeTab === 'home' && <FreeSlotsDateTimeFilter homeTop />}
         </>
       )}
 
       {/* Uninterrupted Live Broadcast Hub (Full on Home, Picture-in-Picture Floating Dock on other tabs) */}
-      {!focusMode && activeTab !== 'home' && <PersistentLiveStreamDock />}
+      {!focusMode && !['home', 'tournaments', 'arenas_directory', 'register_dupla'].includes(activeTab) && <PersistentLiveStreamDock />}
 
       <main className={`site-content relative flex-1 min-w-0 w-full ${focusMode ? 'pt-4 px-2 sm:px-4' : 'pb-6 sm:pb-10'}`}>
         {activeTab === 'arena_admin' && <ArenaAdmin />}
@@ -174,7 +186,7 @@ const MainContent: React.FC = () => {
 
       {!focusMode && (
         <footer
-          className="relative z-10 w-full mt-auto border-t border-b border-cyan-500/20 bg-[#020B17]/95 backdrop-blur-xl text-slate-300 transition-all mb-[var(--floating-dock-offset,9.5rem)] sm:mb-[var(--floating-dock-offset,8.75rem)]"
+          className="relative z-10 w-full mt-auto border-t border-b border-cyan-300/20 bg-[#03172b]/75 backdrop-blur-md text-slate-300 transition-all mb-[var(--floating-dock-offset,9.5rem)] sm:mb-[var(--floating-dock-offset,8.75rem)]"
           style={
             isArenaWhiteLabel && arenaPalette
               ? {
@@ -186,13 +198,13 @@ const MainContent: React.FC = () => {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
             {/* Top Row: Brand & Sports & Badges */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-white/10">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-cyan-100/10">
               {/* Brand Info */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3.5">
-                <div className="p-1.5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 shadow-md">
+              <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-3.5">
+                <div className="p-1.5 rounded-2xl bg-[#062b45]/75 border border-cyan-300/25 shadow-md">
                   <SharksetLogo size="sm" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center justify-center sm:justify-start gap-2">
                     <span className="font-black text-white text-base tracking-wider">
                       SHARK<span className="text-[#FF6B00]">SET</span>
@@ -201,7 +213,7 @@ const MainContent: React.FC = () => {
                       PLATAFORMA OFICIAL
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                  <p className="text-xs leading-relaxed text-slate-300/90 mt-1 max-w-sm">
                     Gestão esportiva inteligente, rankings automatizados, chaveamento de torneios e transmissões ao vivo.
                   </p>
                 </div>
@@ -210,13 +222,13 @@ const MainContent: React.FC = () => {
               {/* Sports Modalities Pills */}
               <div className="flex flex-wrap justify-center items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
-                  ⚽ Futevôlei
+                  <SportBallIcon sport="futevolei" /> Futevôlei
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
-                  🎾 Beach Tennis
+                  <SportBallIcon sport="beach-tennis" /> Beach Tennis
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
-                  🏐 Vôlei de Praia
+                  <SportBallIcon sport="volei-praia" /> Vôlei de Praia
                 </span>
               </div>
             </div>
@@ -240,7 +252,7 @@ const MainContent: React.FC = () => {
       )}
 
       {/* Floating Bottom Navigation & Featured Slots Carousel (Visible on Scroll Down) */}
-      {!focusMode && (
+      {!focusMode && !['tournaments', 'arenas_directory', 'register_dupla'].includes(activeTab) && (
         <FloatingBottomDock onSelectSlot={(slot) => setFloatingSlotModal(slot)} />
       )}
 

@@ -3,10 +3,13 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { defineBoolean, defineSecret, defineString } from 'firebase-functions/params';
 import { onRequest, type Request } from 'firebase-functions/v2/https';
+import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import { WebhookReceiver } from 'livekit-server-sdk';
 import { LiveService, applyWebhook } from './service';
 import { listBroadcasts } from './directory';
 import { LiveError, PROJECT_ID, REGION, validId } from './policy';
+import { didOfficialResultChange, validateOfficialResult } from './tournament-results';
 
 const apiKey = defineSecret('LIVEKIT_API_KEY');
 const apiSecret = defineSecret('LIVEKIT_API_SECRET');
@@ -75,4 +78,93 @@ export const livekitWebhook = onRequest({ ...common, serviceAccount: `livekit-we
   catch { res.sendStatus(401); return; }
   try { await applyWebhook(database(), event); res.sendStatus(204); }
   catch { res.sendStatus(503); } // Provider can retry. Never log body, Authorization, SDK errors or secrets.
+});
+
+export const tournamentResultNotification = onDocumentWritten({
+  document: 'tournaments/{tournamentId}/matches/{matchId}',
+  region: REGION,
+  maxInstances: 4,
+  retry: true,
+}, async (event) => {
+  const before = event.data?.before.data();
+  const after = event.data?.after.data();
+  if (!after || after.status !== 'completed' || !didOfficialResultChange(before, after)) return;
+
+  const { tournamentId, matchId } = event.params;
+  if (!validId(tournamentId) || !validId(matchId)) return;
+
+  const db = database();
+  const tournamentSnapshot = await db.doc(`tournaments/${tournamentId}`).get();
+  if (!tournamentSnapshot.exists) return;
+  const tournamentName = typeof tournamentSnapshot.data()?.name === 'string' ? tournamentSnapshot.data()!.name : '';
+  const notification = validateOfficialResult({
+    tournamentId,
+    matchId,
+    match: after,
+    tournamentName,
+    isCorrection: before?.status === 'completed',
+  });
+  if (!notification) return;
+
+  const matchRef = db.doc(`tournaments/${tournamentId}/matches/${matchId}`);
+  const notificationRef = db.doc(`tournaments/${tournamentId}/result_events/${notification.eventId}`);
+  await db.runTransaction(async (transaction) => {
+    const [latestSnapshot, notificationSnapshot] = await Promise.all([
+      transaction.get(matchRef),
+      transaction.get(notificationRef),
+    ]);
+    const latest = latestSnapshot.data();
+    if (!latest || latest.status !== 'completed' || latest.revision !== notification.revision) return;
+    if (!didOfficialResultChange(before, latest)) return;
+
+    transaction.set(matchRef, { serverValidatedRevision: notification.revision }, { merge: true });
+    if (!notificationSnapshot.exists) {
+      transaction.set(notificationRef, { ...notification, createdAt: FieldValue.serverTimestamp() });
+    }
+  });
+});
+
+// Public, server-managed lookup lets viewers connect a broadcast directory entry
+// to the tournament whose official result events they should receive.
+export const tournamentBroadcastLink = onDocumentWritten({
+  document: 'tournaments/{tournamentId}/matches/{matchId}',
+  region: REGION,
+  maxInstances: 4,
+  retry: true,
+}, async (event) => {
+  const before = event.data?.before.data();
+  const after = event.data?.after.data();
+  const { tournamentId, matchId } = event.params;
+  if (!validId(tournamentId) || !validId(matchId)) return;
+  const db = database();
+  const previousId = typeof before?.linkedBroadcastId === 'string' && validId(before.linkedBroadcastId)
+    ? before.linkedBroadcastId
+    : '';
+  const nextId = typeof after?.linkedBroadcastId === 'string' && validId(after.linkedBroadcastId)
+    ? after.linkedBroadcastId
+    : '';
+  if (previousId === nextId) return;
+
+  const matchRef = db.doc(`tournaments/${tournamentId}/matches/${matchId}`);
+  const previousRef = previousId ? db.doc(`broadcast_tournament_links/${previousId}`) : null;
+  const nextRef = nextId ? db.doc(`broadcast_tournament_links/${nextId}`) : null;
+  await db.runTransaction(async (transaction) => {
+    const currentMatchSnapshot = await transaction.get(matchRef);
+    const currentLink = currentMatchSnapshot.data()?.linkedBroadcastId;
+    const currentId = typeof currentLink === 'string' && validId(currentLink) ? currentLink : '';
+    // Firestore may deliver an older write after a newer one. Only project the
+    // current link, so a delayed trigger cannot recreate a stale mapping.
+    if (currentId !== nextId) return;
+
+    const previousSnapshot = previousRef ? await transaction.get(previousRef) : null;
+    const nextSnapshot = nextRef && nextRef.path !== previousRef?.path ? await transaction.get(nextRef) : null;
+    const previous = previousSnapshot?.data();
+    const next = nextSnapshot?.data();
+    if (previousRef && previous?.tournamentId === tournamentId && previous?.matchId === matchId) {
+      transaction.delete(previousRef);
+    }
+    if (nextRef && (next?.tournamentId !== tournamentId || next?.matchId !== matchId)) {
+      transaction.set(nextRef, { tournamentId, matchId });
+    }
+  });
 });
