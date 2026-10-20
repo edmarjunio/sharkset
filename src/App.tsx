@@ -218,7 +218,7 @@ const MainContent: React.FC = () => {
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-cyan-100/10">
               {/* Brand Info */}
               <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3.5">
-                <div className="p-1.5 rounded-2xl bg-[#062b45]/75 border border-cyan-300/25 shadow-md shrink-0 sm:mt-0.5">
+                <div className="box-border flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-2xl border border-cyan-300/25 bg-[#062b45]/75 p-1.5 shadow-md sm:self-center">
                   <SharksetLogo size="sm" />
                 </div>
                 <div className="min-w-0">

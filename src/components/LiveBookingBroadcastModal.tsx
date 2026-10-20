@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { BroadcastOverlay } from './BroadcastOverlay';
 import { useApp } from '../context/AppContext';
@@ -373,7 +374,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
 
           <div className="flex w-full xl:w-auto items-center gap-2">
             {/* Switch between user's or invited bookings */}
-            <select
+            <DropdownUI
               value={activeBooking.id}
               onChange={(e) => {
                 setSelectedBookingId(e.target.value);
@@ -388,7 +389,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                     📅 {b.startTime} · {b.courtName} ({b.customerName})
                   </option>
                 ))}
-            </select>
+            </DropdownUI>
 
             <button
               onClick={onClose}
@@ -588,7 +589,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                         </button>
                       </div>
 
-                      <select
+                      <DropdownUI
                         value={part.athleteId}
                         onChange={(e) => handleSelectParticipant(idx, e.target.value)}
                         className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-orange-500"
@@ -598,7 +599,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                             {ath.name} ({ATHLETE_LEVEL_LABELS[ath.level]} · {ath.points} pts)
                           </option>
                         ))}
-                      </select>
+                      </DropdownUI>
                     </div>
                   );
                 })}
@@ -626,7 +627,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                   </div>
 
                   <div className="sm:w-64 shrink-0">
-                    <select
+                    <DropdownUI
                       disabled={!all4IdentifiedAndPresent}
                       value={activeBooking.referee?.athleteId || ''}
                       onChange={(e) => handleInviteReferee(e.target.value)}
@@ -638,7 +639,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                           👑 Convidar {ath.name} ({ATHLETE_LEVEL_LABELS[ath.level]})
                         </option>
                       ))}
-                    </select>
+                    </DropdownUI>
                   </div>
                 </div>
               </div>

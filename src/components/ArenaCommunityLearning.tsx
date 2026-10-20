@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useState } from 'react';
 import { TenantConfig, SportType } from '../types';
 import {
@@ -382,7 +383,7 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
                   <label className="block text-xs font-bold text-slate-300 mb-1">
                     Categoria:
                   </label>
-                  <select
+                  <DropdownUI
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as any)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs"
@@ -392,7 +393,7 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
                     <option value="defesa">Defesa</option>
                     <option value="tatico">Tático</option>
                     <option value="regras">Regras</option>
-                  </select>
+                  </DropdownUI>
                 </div>
               </div>
 

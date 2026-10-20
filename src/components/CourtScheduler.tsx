@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import { BOOKING_DEMO } from '../services/bookingMode';
 import { STATE_LABELS } from '../services/bookingAvailability';
 import { useArenaAvailability } from '../hooks/useArenaAvailability';
@@ -1687,7 +1688,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
               <label className="text-xs font-bold text-slate-500 whitespace-nowrap">
                 Professor:
               </label>
-              <select
+              <DropdownUI
                 value={selectedCoachFilter}
                 onChange={(e) => setSelectedCoachFilter(e.target.value)}
                 className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
@@ -1698,7 +1699,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                     {coach}
                   </option>
                 ))}
-              </select>
+              </DropdownUI>
             </div>
           </div>
 
@@ -2238,7 +2239,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Quadra:</label>
-                <select
+                <DropdownUI
                   value={newClassCourtId}
                   onChange={(e) => setNewClassCourtId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
@@ -2248,12 +2249,12 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                       {c.name}
                     </option>
                   ))}
-                </select>
+                </DropdownUI>
               </div>
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Esporte:</label>
-                <select
+                <DropdownUI
                   value={newClassSport}
                   onChange={(e) => setNewClassSport(e.target.value as SportType)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
@@ -2261,7 +2262,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                   <option value="futevolei">⚽ Futevôlei (Foco Principal)</option>
                   <option value="beach_tennis">🎾 Beach Tennis</option>
                   <option value="volei_praia">🏐 Vôlei de Praia</option>
-                </select>
+                </DropdownUI>
               </div>
 
               <div>
@@ -2562,7 +2563,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
 
               <div className="flex items-center gap-2 text-xs">
                 <span className="font-bold text-slate-600">Filtrar Professor:</span>
-                <select
+                <DropdownUI
                   value={selectedCoachFilter}
                   onChange={(e) => setSelectedCoachFilter(e.target.value)}
                   className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
@@ -2573,7 +2574,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                       {coach}
                     </option>
                   ))}
-                </select>
+                </DropdownUI>
               </div>
             </div>
 
@@ -3185,7 +3186,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Esporte:</label>
-                    <select
+                    <DropdownUI
                       value={tournSport}
                       onChange={(e) => setTournSport(e.target.value as SportType)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
@@ -3193,12 +3194,12 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                       <option value="futevolei">Futevôlei</option>
                       <option value="beach_tennis">Beach Tennis</option>
                       <option value="volei_praia">Vôlei de Praia</option>
-                    </select>
+                    </DropdownUI>
                   </div>
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Categoria & Trava de Nível:</label>
-                    <select
+                    <DropdownUI
                       value={tournCategory}
                       onChange={(e) => setTournCategory(e.target.value as TournamentCategory)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
@@ -3208,7 +3209,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                           {label}
                         </option>
                       ))}
-                    </select>
+                    </DropdownUI>
                   </div>
                 </div>
 

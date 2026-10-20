@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, getDocsFromServer, query, where } from 'firebase/firestore';
@@ -6,6 +7,7 @@ import { useApp } from '../context/AppContext';
 import { CourtScheduler } from './CourtScheduler';
 import { UserProfileModal } from './UserProfileModal';
 import { CreateArenaModal } from './CreateArenaModal';
+import { AccessLockedAction } from './AccessLockedAction';
 import { toast } from '../store/useToastStore';
 import type { CouponDiscountType, CouponScope } from '../types';
 import {
@@ -251,7 +253,7 @@ export const ArenaAdmin: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-300 font-semibold">Alternar Arena:</span>
-            <select
+            <DropdownUI
               className="min-h-10 rounded-xl border border-cyan-800/80 px-3 py-1.5 text-white bg-[#05182C] text-xs font-bold focus:outline-none focus:border-cyan-400 cursor-pointer"
               value={authorized ? tenant.id : ''}
               onChange={(event) => {
@@ -267,7 +269,7 @@ export const ArenaAdmin: React.FC = () => {
                   {arena.name} ({arena.city} - {arena.state})
                 </option>
               ))}
-            </select>
+            </DropdownUI>
           </div>
         </div>
       )}
@@ -471,14 +473,14 @@ export const ArenaAdmin: React.FC = () => {
                       <label className="block font-semibold text-slate-300 mb-1">
                         Tipo de Desconto:
                       </label>
-                      <select
+                      <DropdownUI
                         value={couponType}
                         onChange={(e) => setCouponType(e.target.value as CouponDiscountType)}
                         className="w-full px-3 py-2 bg-slate-900 border border-cyan-700/70 rounded-xl text-white font-semibold"
                       >
                         <option value="fixed">Valor Fixo em Reais (R$)</option>
                         <option value="percent">Porcentagem (%)</option>
-                      </select>
+                      </DropdownUI>
                     </div>
 
                     <div>
@@ -506,7 +508,7 @@ export const ArenaAdmin: React.FC = () => {
                       <label className="block font-semibold text-slate-300 mb-1">
                         Alcance / Escopo:
                       </label>
-                      <select
+                      <DropdownUI
                         value={couponScope}
                         onChange={(e) => setCouponScope(e.target.value as CouponScope)}
                         disabled={!isSiteAdmin}
@@ -516,7 +518,7 @@ export const ArenaAdmin: React.FC = () => {
                         {isSiteAdmin && (
                           <option value="global">Global (Todas as Arenas do SHARKSET)</option>
                         )}
-                      </select>
+                      </DropdownUI>
                     </div>
 
                     <div>
@@ -665,13 +667,14 @@ export const ArenaAdmin: React.FC = () => {
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             {!auth.currentUser ? (
-              <button
-                type="button"
+              <AccessLockedAction
+                message="Faça login para acessar a administração da arena"
                 onClick={() => setLoginOpen(true)}
-                className="min-h-11 px-5 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs cursor-pointer"
+                className="w-64 max-w-full rounded-xl"
+                previewClassName="min-h-11 px-5 rounded-xl bg-cyan-700 text-white font-bold text-xs items-center justify-center"
               >
                 Entrar com Google
-              </button>
+              </AccessLockedAction>
             ) : (
               <button
                 type="button"

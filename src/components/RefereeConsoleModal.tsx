@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useEffect, useRef, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { BracketMatch, PointSkillType, RefereeCardEvent, RefereePointEvent, RefereeTimeoutEvent } from '../types';
@@ -724,7 +725,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1">
-              <select
+              <DropdownUI
                 aria-label="Vincular transmissão oficial da partida"
                 value={match.linkedBroadcastId || ''}
                 onChange={(e) => handleSelectBroadcast(e.target.value)}
@@ -742,7 +743,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
                     </option>
                   );
                 })}
-              </select>
+              </DropdownUI>
             </div>
 
             {linkedBroadcast && (
@@ -1012,7 +1013,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
 
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-slate-400 font-bold">Motivo:</span>
-              <select
+              <DropdownUI
                 aria-label="Motivo da advertência disciplinar"
                 value={cardReason}
                 onChange={(e) => setCardReason(e.target.value)}
@@ -1022,7 +1023,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
                 <option value="Retardar início do saque">Retardar início do saque</option>
                 <option value="Invasão / Toque acintoso na rede">Invasão / Toque na rede</option>
                 <option value="Conduta antidesportiva">Conduta antidesportiva</option>
-              </select>
+              </DropdownUI>
             </div>
           </div>
 

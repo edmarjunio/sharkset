@@ -1,5 +1,8 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { AccessLockedAction } from './AccessLockedAction';
+import { signInWithGooglePopup } from '../lib/firebase';
 import { AthleteLevel, ClassScheduleConfig, Court, TenantConfig } from '../types';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
 import { WEEKDAY_SHORT_NAMES, WEEKDAY_FULL_NAMES } from '../services/courtSlotPricing';
@@ -218,7 +221,12 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
                   <strong className="text-white">{ATHLETE_LEVEL_LABELS[userProfile.level]}</strong>
                 </>
               ) : (
-                <span className="text-slate-400">Faça login para definir sua categoria</span>
+                <AccessLockedAction
+                  message="Faça login para definir sua categoria"
+                  onClick={() => void signInWithGooglePopup().catch(() => {})}
+                  className="min-w-[190px] rounded-full"
+                  previewClassName="min-h-9 min-w-[190px] justify-center rounded-full border border-cyan-500/30 bg-slate-900/80 px-3 py-1 text-xs text-slate-300"
+                >Sua Categoria Oficial</AccessLockedAction>
               )}
             </span>
           </div>
@@ -320,7 +328,7 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
             <Clock className="w-3.5 h-3.5 text-[#0987CE]" />
             2. Intervalo de Horário (Ex: 07:00 às 08:00):
           </label>
-          <select
+          <DropdownUI
             value={selectedTimeStart}
             onChange={(e) => setSelectedTimeStart(e.target.value)}
             className="w-full px-3 py-2 bg-[#071D3D] border border-[#145A9B] rounded-lg text-xs font-extrabold text-white"
@@ -330,7 +338,7 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
                 {ti.label}
               </option>
             ))}
-          </select>
+          </DropdownUI>
         </div>
 
         {/* Step 3: Filter by Student Level */}
@@ -339,7 +347,7 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
             <GraduationCap className="w-3.5 h-3.5 text-[#12C7BB]" />
             3. Nível da Aula:
           </label>
-          <select
+          <DropdownUI
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value as AthleteLevel | 'todos')}
             className="w-full px-3 py-2 bg-[#071D3D] border border-[#145A9B] rounded-lg text-xs font-extrabold text-white"
@@ -348,7 +356,7 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
             <option value="serie_c">Aula Série C</option>
             <option value="serie_b">Aula Série B / Avançado</option>
             <option value="todos">Todas as Turmas da Região</option>
-          </select>
+          </DropdownUI>
         </div>
       </div>
 

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { createLocalTracks, Room, RoomEvent, Track, type LocalTrack } from 'livekit-client';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Radio, Square, LogIn } from 'lucide-react';
+import { Radio, Square } from 'lucide-react';
 import { auth, signInWithGooglePopup } from '../lib/firebase';
 import { livekitRequest, publicLivekitUrl } from '../services/livekitApi';
 import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
+import { AccessLockedAction } from './AccessLockedAction';
 
 interface Ticket { id: string; sessionId: string; token: string }
 export function ArenaLivePublisher({ arenaId }: { arenaId: string }) {
@@ -101,7 +102,12 @@ export function ArenaLivePublisher({ arenaId }: { arenaId: string }) {
     <p className="text-sm text-slate-300">Transmita pela câmera deste dispositivo. A live aparece no site após a confirmação da publicação.</p>
     <video ref={preview} autoPlay muted playsInline hidden={!active} className="w-full aspect-video object-contain rounded-xl bg-black" />
     <div className="flex flex-wrap items-center gap-2">
-      {!user ? <button className="site-secondary-action aquarium-glass" onClick={() => void signInWithGooglePopup().catch(() => setError('Não foi possível entrar. Tente novamente.'))}><LogIn size={16} />Entrar para transmitir</button> : <button disabled={!configured || active || !!session.current} onClick={() => void start()} className="rounded-xl bg-red-600 px-4 py-3 font-bold text-white disabled:opacity-50 inline-flex items-center gap-2"><Radio size={16} />{state === 'starting' ? 'Conectando câmera…' : 'Iniciar transmissão'}</button>}
+      {!user ? <AccessLockedAction
+        message="Entre na sua conta para iniciar uma transmissão"
+        onClick={() => void signInWithGooglePopup().catch(() => setError('Não foi possível entrar. Tente novamente.'))}
+        className="rounded-xl"
+        previewClassName="site-secondary-action aquarium-glass items-center gap-2 px-4 py-3"
+      ><Radio size={16} />Iniciar transmissão</AccessLockedAction> : <button disabled={!configured || active || !!session.current} onClick={() => void start()} className="rounded-xl bg-red-600 px-4 py-3 font-bold text-white disabled:opacity-50 inline-flex items-center gap-2"><Radio size={16} />{state === 'starting' ? 'Conectando câmera…' : 'Iniciar transmissão'}</button>}
       {(active || session.current) && <button disabled={state === 'ending'} onClick={() => void stop()} className="site-secondary-action aquarium-glass"><Square size={16} />{state === 'ending' ? 'Encerrando…' : 'Encerrar transmissão'}</button>}
       {state === 'live' && broadcastId && <button className="site-secondary-action aquarium-glass" onClick={() => useBroadcastNavigation.getState().open({ kind: 'published', id: broadcastId })}>Abrir tela do público</button>}
       {state === 'live' && <span role="status" className="text-sm text-emerald-300">Ao vivo · câmera confirmada</span>}

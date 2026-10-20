@@ -1,9 +1,11 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { auth, getArenaCreationAccess, signInWithGooglePopup } from '../lib/firebase';
 import { Court, SportType, TenantConfig } from '../types';
 import { toast } from '../store/useToastStore';
 import { Building2, MapPin, Phone, Clock, DollarSign, X, Check, Plus, Shield } from 'lucide-react';
+import { AccessLockedAction } from './AccessLockedAction';
 
 interface Props {
   isOpen: boolean;
@@ -171,6 +173,13 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
                 ? 'Entre com sua conta para cadastrar uma arena.'
                 : 'Para cadastrar uma arena, assine o plano de R$ 99 ou R$ 149, ou solicite uma liberação administrativa.'}
             </p>
+            {accessState !== 'checking' && <AccessLockedAction
+              message={accessState === 'login' ? 'Faça login para cadastrar uma arena' : 'Assine um plano pago para cadastrar uma arena'}
+              className="mx-auto rounded-xl"
+              previewClassName="items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 font-black text-slate-950"
+            >
+              <Building2 size={16} />Cadastrar Nova Arena
+            </AccessLockedAction>}
             {accessState === 'login' && <button type="button" onClick={() => { setAccessState('checking'); void signInWithGooglePopup().then(({ user }) => getArenaCreationAccess(user.uid)).then((access) => setAccessState(access.allowed ? 'allowed' : access.reason === 'login' ? 'login' : 'plan')).catch(() => setAccessState('login')); }} className="rounded-xl bg-cyan-600 px-4 py-2.5 font-black text-white">Entrar com Google</button>}
             {accessState === 'plan' && <button type="button" onClick={() => { onClose(); setActiveTab('saas_hub'); }} className="rounded-xl bg-amber-400 px-4 py-2.5 font-black text-slate-950">Ver planos</button>}
           </div>
@@ -327,28 +336,28 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
           <div className="grid grid-cols-3 gap-3">
             <label className="text-slate-300">
               Tipo de areia *
-              <select required value={surface} onChange={(event) => setSurface(event.target.value as Court['surface'] | '')}
+              <DropdownUI required value={surface} onChange={(event) => setSurface(event.target.value as Court['surface'] | '')}
                 className="mt-1 block w-full rounded-xl bg-[#030D1A] border border-cyan-800/60 p-2 text-white">
                 <option value="">Selecione</option>
                 <option value="Areia Fina">Areia Fina</option>
                 <option value="Areia Quartzosa Premium">Areia Quartzosa Premium</option>
-              </select>
+              </DropdownUI>
             </label>
             <label className="text-slate-300">
               Coberta? *
-              <select required value={isCovered === null ? '' : String(isCovered)}
+              <DropdownUI required value={isCovered === null ? '' : String(isCovered)}
                 onChange={(event) => setIsCovered(event.target.value === '' ? null : event.target.value === 'true')}
                 className="mt-1 block w-full rounded-xl bg-[#030D1A] border border-cyan-800/60 p-2 text-white">
                 <option value="">Selecione</option><option value="true">Sim</option><option value="false">Não</option>
-              </select>
+              </DropdownUI>
             </label>
             <label className="text-slate-300">
               Tem iluminação? *
-              <select required value={hasLighting === null ? '' : String(hasLighting)}
+              <DropdownUI required value={hasLighting === null ? '' : String(hasLighting)}
                 onChange={(event) => setHasLighting(event.target.value === '' ? null : event.target.value === 'true')}
                 className="mt-1 block w-full rounded-xl bg-[#030D1A] border border-cyan-800/60 p-2 text-white">
                 <option value="">Selecione</option><option value="true">Sim</option><option value="false">Não</option>
-              </select>
+              </DropdownUI>
             </label>
           </div>
 

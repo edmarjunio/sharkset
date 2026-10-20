@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useCallback, useState } from 'react';
 import type { SportType, TenantConfig } from '../types';
 import { useArenaAvailability, BOOKING_DEMO } from '../hooks/useArenaAvailability';
@@ -206,7 +207,7 @@ function BookingReview({ data, onClose }: { data: QuickBookingSlotData; onClose:
 
             <label className="block text-xs font-semibold text-slate-300">
               Modalidade
-              <select
+              <DropdownUI
                 value={sport}
                 onChange={(e) => setSport(e.target.value as SportType)}
                 className="block w-full mt-1.5 rounded-xl bg-slate-900 border border-cyan-800 p-2 text-white font-medium"
@@ -220,7 +221,7 @@ function BookingReview({ data, onClose }: { data: QuickBookingSlotData; onClose:
                       : 'Vôlei de praia'}
                   </option>
                 ))}
-              </select>
+              </DropdownUI>
             </label>
           </>
         )}

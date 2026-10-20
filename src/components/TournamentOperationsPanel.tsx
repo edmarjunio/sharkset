@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useState } from 'react';
 import type { BracketMatch, MatchSet, TeamPair } from '../types';
 import { allowSemifinalException, changeMatchRules, correctionImpact, declareWalkover, editMatchDetails, editRegisteredTeam, officializeMatch, resetBracketMatch } from '../services/bracketOperations';
@@ -46,9 +47,9 @@ function MatchOperations({ match, matches, teams, onSelect, onApply }: {
   return <details className="aquarium-glass rounded-2xl border p-4 space-y-4">
     <summary className="font-bold cursor-pointer">⚙️ Administrar tabela avançada · placares por set, W.O., duplas e correções</summary>
     <p className="text-sm">Você pode editar jogos iniciados ou encerrados. Confira o impacto antes de aplicar ou salve diretamente: resultados que perderem seus participantes serão reabertos, com histórico preservado.</p>
-    <label className="block">Jogo<select className="block w-full p-3 rounded-xl" value={match.id} onChange={event => onSelect(event.target.value)}>
+    <label className="block">Jogo<DropdownUI className="block w-full p-3 rounded-xl" value={match.id} onChange={event => onSelect(event.target.value)}>
       {matches.map(item => <option key={item.id} value={item.id}>#{item.matchNumber} · {item.stageName} · {item.team1?.player1 || 'A definir'} × {item.team2?.player1 || 'A definir'}</option>)}
-    </select></label>
+    </DropdownUI></label>
     <label className="block">Motivo (opcional para placares normais; obrigatório para W.O. e exceção de semifinal)<input className="block w-full p-3 rounded-xl" value={reason} onChange={event => setReason(event.target.value)} placeholder="Ex.: resultado informado pelo árbitro / correção de placar" /></label>
     {error && <p role="alert" className="text-rose-200">{error}</p>}
     <div className="grid md:grid-cols-2 gap-4">
@@ -65,21 +66,21 @@ function MatchOperations({ match, matches, teams, onSelect, onApply }: {
           {([1, 2] as const).map(winner => <button key={winner} className="px-3 py-2" onClick={() => prepare(() => declareWalkover(matches, match.id, winner, reason || 'W.O. confirmado pela organização', context))}>W.O. para dupla {winner}</button>)}
         </div>
         <details><summary>Regras deste jogo</summary><div className="flex flex-wrap gap-2 mt-2">
-          <label>Melhor de<select value={rules.bestOf} onChange={event => setRules({ ...rules, bestOf: Number(event.target.value) as 1 | 3 | 5 })}>{[1, 3, 5].map(n => <option key={n}>{n}</option>)}</select></label>
+          <label>Melhor de<DropdownUI value={rules.bestOf} onChange={event => setRules({ ...rules, bestOf: Number(event.target.value) as 1 | 3 | 5 })}>{[1, 3, 5].map(n => <option key={n}>{n}</option>)}</DropdownUI></label>
           {(['targetPoints', 'decidingPoints', 'winBy'] as const).map((key, i) => <label key={key}>{['Pontos por set', 'Set decisivo', 'Vantagem'][i]}<input className="w-16 p-2" type="number" min={1} max={99} value={rules[key]} onChange={event => setRules({ ...rules, [key]: Number(event.target.value) })} /></label>)}
           <button className="px-3 py-2" onClick={() => prepare(() => changeMatchRules(matches, match.id, rules, context))}>Conferir novas regras</button>
         </div></details>
       </section>
       <section className="space-y-3"><h3 className="font-bold">Participantes, quadra e horário</h3>
         <p className="text-xs">Trocar uma dupla troca sua posição na chave, recalculando os caminhos afetados.</p>
-        {[{ value: team1, set: setTeam1 }, { value: team2, set: setTeam2 }].map((field, i) => <label key={i} className="block">Dupla {i + 1}<select className="w-full p-2" value={field.value} onChange={event => field.set(event.target.value)}><option value="">A definir</option>{teams.map(team => <option key={team.id} value={team.id}>{team.player1} & {team.player2}</option>)}</select></label>)}
+        {[{ value: team1, set: setTeam1 }, { value: team2, set: setTeam2 }].map((field, i) => <label key={i} className="block">Dupla {i + 1}<DropdownUI className="w-full p-2" value={field.value} onChange={event => field.set(event.target.value)}><option value="">A definir</option>{teams.map(team => <option key={team.id} value={team.id}>{team.player1} & {team.player2}</option>)}</DropdownUI></label>)}
         <label>Quadra<input className="w-full p-2" value={court} onChange={event => setCourt(event.target.value)} /></label>
         <label>Horário<input className="w-full p-2" value={time} onChange={event => setTime(event.target.value)} /></label>
         <button className="px-3 py-2" onClick={() => prepare(() => editMatchDetails(matches, match.id, { team1: teams.find(team => team.id === team1), team2: teams.find(team => team.id === team2), courtName: court, scheduledTime: time }, context))}>Conferir alteração</button>
       </section>
     </div>
     {matches.some(item => item.semifinalDecision === 'blocked') && <div className="p-3 border border-amber-400 rounded-xl"><p>Os dois cruzamentos possíveis repetem confrontos anteriores. O responsável pode autorizar uma exceção justificada.</p><button className="px-3 py-2" onClick={() => prepare(() => allowSemifinalException(matches, match.tournamentId, reason, context))}>Conferir autorização de revanche</button></div>}
-    {editingTeam && <details><summary>Editar nomes de uma dupla</summary><select value={editingTeam.id} onChange={event => setEditingTeam(teams.find(team => team.id === event.target.value)!)}>{teams.map(team => <option key={team.id} value={team.id}>{team.player1} & {team.player2}</option>)}</select>
+    {editingTeam && <details><summary>Editar nomes de uma dupla</summary><DropdownUI value={editingTeam.id} onChange={event => setEditingTeam(teams.find(team => team.id === event.target.value)!)}>{teams.map(team => <option key={team.id} value={team.id}>{team.player1} & {team.player2}</option>)}</DropdownUI>
       {(['player1', 'player2'] as const).map(key => <input key={key} aria-label={key === 'player1' ? 'Nome do atleta 1' : 'Nome do atleta 2'} className="p-2 m-2" value={editingTeam[key]} onChange={event => setEditingTeam({ ...editingTeam, [key]: event.target.value })} />)}
       <button className="p-2" onClick={() => prepare(() => { if (!editingTeam.player1.trim() || !editingTeam.player2.trim()) throw new Error('Informe os dois nomes.'); return editRegisteredTeam(matches, editingTeam, context); }, teams.map(team => team.id === editingTeam.id ? editingTeam : team))}>Conferir nomes</button>
     </details>}

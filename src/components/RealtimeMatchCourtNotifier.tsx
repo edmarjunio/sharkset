@@ -3,7 +3,9 @@ import { useApp } from '../context/AppContext';
 import {
   auth,
   listenToPlayerNotifications,
+  signInWithGooglePopup,
 } from '../lib/firebase';
+import { AccessLockedAction } from './AccessLockedAction';
 import {
   Bell,
   Radio,
@@ -228,9 +230,14 @@ export const RealtimeMatchCourtNotifier: React.FC = () => {
                   <strong className="text-emerald-400">Ouvinte Firestore em Tempo Real Ativo:</strong> Alertas imediatos de chamada e alteração de quadra
                 </>
               ) : (
-                <>
-                  <strong className="text-amber-400">Ouvinte Firestore:</strong> Faça login para receber chamadas de quadra no seu dispositivo
-                </>
+                <AccessLockedAction
+                  message="Faça login para receber chamadas de quadra"
+                  onClick={() => void signInWithGooglePopup().catch(() => {})}
+                  className="rounded-lg"
+                  previewClassName="items-center rounded-lg border border-amber-500/30 bg-slate-950/80 px-3 py-1.5 text-amber-100"
+                >
+                  <strong>Ativar alertas de quadra</strong>
+                </AccessLockedAction>
               )}
             </span>
           </div>

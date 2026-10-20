@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Court, SportType, TenantConfig } from '../types';
@@ -241,7 +242,7 @@ export function FreeSlotsDateTimeFilter({
               <div className="hidden lg:flex items-center gap-2 text-xs font-bold shrink-0">
                 <label className="flex items-center gap-1.5">
                   <span className="text-slate-400 text-[11px] font-bold">Arena:</span>
-                  <select
+                  <DropdownUI
                     aria-label="Filtrar por arena"
                     value={arenaFilter}
                     onChange={(event) => setArenaFilter(event.target.value)}
@@ -253,7 +254,7 @@ export function FreeSlotsDateTimeFilter({
                         {arena.name}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                 </label>
 
                 <label className="flex items-center gap-1">
@@ -308,7 +309,7 @@ export function FreeSlotsDateTimeFilter({
               <div className="lg:hidden grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-xs font-bold">
                 <label className="col-span-2 sm:col-span-1 flex flex-col gap-1">
                   <span className="text-slate-400 text-[10px] font-bold">Arena:</span>
-                  <select
+                  <DropdownUI
                     aria-label="Filtrar por arena"
                     value={arenaFilter}
                     onChange={(event) => setArenaFilter(event.target.value)}
@@ -320,7 +321,7 @@ export function FreeSlotsDateTimeFilter({
                         {arena.name}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                 </label>
 
                 <label className="flex flex-col gap-1">

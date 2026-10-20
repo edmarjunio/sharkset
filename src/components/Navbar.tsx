@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp, ArenaSubTab } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
 import { SharksetLogo } from './SharksetLogo';
+import { AccessLockedAction } from './AccessLockedAction';
 import { UserProfileModal } from './UserProfileModal';
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -164,7 +165,16 @@ export const Navbar: React.FC = () => {
         </span>
         <Radio size={14} className="text-slate-950 stroke-[2.5]" />
         <span>INICIAR TRANSMISSÃO</span>
-      </button> : <span role="status" className="max-w-36 text-center text-[10px] font-bold leading-tight text-amber-200">Entre na sua conta para iniciar uma transmissão</span>}
+      </button> : <AccessLockedAction
+        message="Entre na sua conta para iniciar uma transmissão"
+        className="rounded-full"
+        previewClassName="navbar-live-action items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#FF6B00] via-[#FF8533] to-[#E65100] text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,107,0,0.45)] border border-amber-300"
+        messageClassName="rounded-full"
+      >
+        <span className="relative flex h-2 w-2"><span className="inline-flex rounded-full h-2 w-2 bg-white" /></span>
+        <Radio size={14} className="text-slate-950 stroke-[2.5]" />
+        <span>INICIAR TRANSMISSÃO</span>
+      </AccessLockedAction>}
     </div>
   );
 

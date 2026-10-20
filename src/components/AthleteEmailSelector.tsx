@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useMemo, useState } from 'react';
 import { AthleteProfile } from '../types';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
@@ -56,7 +57,7 @@ export const AthleteEmailSelector: React.FC<AthleteEmailSelectorProps> = ({
           className="w-full rounded-lg border border-slate-700 bg-slate-950 py-2 pl-8 pr-3 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
         />
       </div>
-      <select
+      <DropdownUI
         required
         value={normalizedSelectedEmail}
         onChange={(event) => {
@@ -77,7 +78,7 @@ export const AthleteEmailSelector: React.FC<AthleteEmailSelectorProps> = ({
             </option>
           );
         })}
-      </select>
+      </DropdownUI>
       {selectedAthlete ? (
         <div className="grid grid-cols-1 gap-1 border-t border-slate-700 pt-2 text-[11px] text-slate-300 sm:grid-cols-3">
           <span className="flex min-w-0 items-center gap-1.5 truncate" title={selectedAthlete.email}>

@@ -22,6 +22,7 @@ import {
 import { AthleteLevel, AthleteProfile, RankingMatchLog } from '../types';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
 import { SharksetLogo } from './SharksetLogo';
+import { AccessLockedAction } from './AccessLockedAction';
 
 export interface SharkCardTerritorialRankings {
   generalRank?: number;
@@ -139,6 +140,7 @@ export const SharkCard3D: React.FC<SharkCard3DProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [rotate, setRotate] = useState({ x: 0, y: 0 });
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
+  const requiresLogin = lockReason?.toLowerCase().includes('login') ?? false;
 
   const level: AthleteLevel = athlete?.level || 'iniciante';
   const theme = CATEGORY_THEMES[level];
@@ -341,7 +343,17 @@ export const SharkCard3D: React.FC<SharkCard3DProps> = ({
                   </div>
                 </div>
 
-                {onUnlockClick && (
+                {onUnlockClick && requiresLogin ? (
+                  <AccessLockedAction
+                    message="Faça login para emitir seu Card Oficial"
+                    onClick={onUnlockClick}
+                    className="w-full rounded-xl"
+                    previewClassName="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg items-center justify-center gap-1.5"
+                  >
+                    <span>Jogar Agora & Desbloquear</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </AccessLockedAction>
+                ) : onUnlockClick && (
                   <button
                     type="button"
                     onClick={onUnlockClick}

@@ -1,9 +1,11 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useState, useMemo, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { AcademyCategory, AcademyMediaType, AcademyPost } from '../types';
 import { useApp } from '../context/AppContext';
 import { persistAcademyPostToFirestore } from '../lib/firebase';
 import { SharksetLogo } from './SharksetLogo';
+import { AccessLockedAction } from './AccessLockedAction';
 import { auth, signInWithGooglePopup } from '../lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import {
@@ -458,8 +460,13 @@ export const SharkAcademyCommunity: React.FC = () => {
               >
                 <Plus className="w-4 h-4" />
                 Postar Vídeo, Documento ou Imagem
-              </button> : <button type="button" onClick={() => { setLoginError(''); void signInWithGooglePopup().catch(() => setLoginError('Não foi possível entrar com Google. Tente novamente.')); }} className="px-5 py-2.5 rounded-2xl bg-[#0987CE] text-white font-black text-xs sm:text-sm inline-flex items-center gap-2"><Plus className="w-4 h-4" />Entre para postar uma aula</button>}
-
+              </button> : <AccessLockedAction
+                message="Entre para postar uma aula"
+                onClick={() => { setLoginError(''); void signInWithGooglePopup().catch(() => setLoginError('Não foi possível entrar com Google. Tente novamente.')); }}
+                previewClassName="px-5 py-2.5 rounded-2xl bg-[#0987CE] text-white font-black text-xs sm:text-sm items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />Postar Vídeo, Documento ou Imagem
+              </AccessLockedAction>}
               <button
                 type="button"
                 onClick={handleDownloadPlaybookPDF}
@@ -827,7 +834,7 @@ export const SharkAcademyCommunity: React.FC = () => {
               ))}
             </div>
 
-            <select
+            <DropdownUI
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value as 'all' | AcademyCategory)}
               className="px-3 py-2 rounded-xl bg-[#030B17] border border-[#145A9B] text-xs font-bold text-white focus:outline-none focus:border-[#0987CE]"
@@ -838,7 +845,7 @@ export const SharkAcademyCommunity: React.FC = () => {
               <option value="corrida_areia">Corrida na Areia</option>
               <option value="base_defesa">Base Direcionada (Defesa)</option>
               <option value="ataque_shark">Ataque & Shark Attack</option>
-            </select>
+            </DropdownUI>
           </div>
         </div>
 
@@ -1040,7 +1047,7 @@ export const SharkAcademyCommunity: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-300 block mb-1">Fundamento *</label>
-                  <select
+                  <DropdownUI
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as AcademyCategory)}
                     className="w-full px-3 py-2 rounded-xl bg-[#030B17] border border-[#145A9B] text-white font-semibold"
@@ -1051,12 +1058,12 @@ export const SharkAcademyCommunity: React.FC = () => {
                     <option value="base_defesa">Base Direcionada (Defesa)</option>
                     <option value="ataque_shark">Ataque & Shark Attack</option>
                     <option value="comunidade">Dica Geral da Comunidade</option>
-                  </select>
+                  </DropdownUI>
                 </div>
 
                 <div>
                   <label className="font-bold text-slate-300 block mb-1">Formato do Material *</label>
-                  <select
+                  <DropdownUI
                     value={newMediaType}
                     onChange={(e) => setNewMediaType(e.target.value as AcademyMediaType)}
                     className="w-full px-3 py-2 rounded-xl bg-[#030B17] border border-[#145A9B] text-white font-semibold"
@@ -1064,7 +1071,7 @@ export const SharkAcademyCommunity: React.FC = () => {
                     <option value="video">🎬 Vídeo Técnico</option>
                     <option value="document">📄 Documento / Apostila PDF</option>
                     <option value="image">🖼️ Imagem / Diagrama de Quadra</option>
-                  </select>
+                  </DropdownUI>
                 </div>
               </div>
 
@@ -1080,7 +1087,7 @@ export const SharkAcademyCommunity: React.FC = () => {
                 </div>
                 <div>
                   <label className="font-bold text-slate-300 block mb-1">Nível Recomendado</label>
-                  <select
+                  <DropdownUI
                     value={newLevel}
                     onChange={(e) =>
                       setNewLevel(
@@ -1093,7 +1100,7 @@ export const SharkAcademyCommunity: React.FC = () => {
                     <option value="iniciante">Iniciante</option>
                     <option value="intermediario">Série C / Série B</option>
                     <option value="avancado">Série A / Profissional</option>
-                  </select>
+                  </DropdownUI>
                 </div>
               </div>
 

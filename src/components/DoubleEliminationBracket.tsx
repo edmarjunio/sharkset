@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import { LocationScopeFilter } from './LocationScopeFilter';
 import { PodiumCardStudio } from './PodiumCardStudio';
 import { useScopedCatalog } from '../hooks/useScopedCatalog';
@@ -1156,7 +1157,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
               </div>
 
               {/* Status Filter */}
-              <select
+              <DropdownUI
                 value={tournamentStatusFilter}
                 onChange={(e) => setTournamentStatusFilter(e.target.value as any)}
                 className="px-3 py-2 bg-slate-900 border border-cyan-800 rounded-xl text-xs text-white font-semibold focus:outline-none focus:border-cyan-400 cursor-pointer"
@@ -1165,10 +1166,10 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                 <option value="live">🔴 Ao Vivo Agora</option>
                 <option value="open">Inscrições Abertas</option>
                 <option value="finished">Finalizados</option>
-              </select>
+              </DropdownUI>
 
               {/* Category Filter */}
-              <select
+              <DropdownUI
                 value={tournamentCategoryFilter}
                 onChange={(e) => setTournamentCategoryFilter(e.target.value as any)}
                 className="px-3 py-2 bg-slate-900 border border-cyan-800 rounded-xl text-xs text-white font-semibold focus:outline-none focus:border-cyan-400 cursor-pointer"
@@ -1179,7 +1180,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                     {label}
                   </option>
                 ))}
-              </select>
+              </DropdownUI>
             </div>
 
             {/* Create Tournament Button */}
@@ -1221,8 +1222,9 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                     setTournamentStatusFilter('all');
                     setTournamentCategoryFilter('all');
                   }}
-                  className="text-xs text-cyan-400 hover:underline font-bold cursor-pointer"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#0987CE] px-4 py-2.5 text-xs font-black text-white shadow-sm transition-all hover:bg-[#0772b0] active:scale-[0.98] cursor-pointer"
                 >
+                  <RotateCcw className="h-3.5 w-3.5" />
                   Limpar filtros
                 </button>
               </div>
@@ -1390,7 +1392,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
 
             {/* Primary Tournament Selector & Fullscreen Toggle */}
             <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <select
+              <DropdownUI
                 value={activeTournamentId}
                 onChange={(e) => {
                   setActiveTournamentId(e.target.value);
@@ -1404,7 +1406,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                     {t.name}
                   </option>
                 ))}
-              </select>
+              </DropdownUI>
 
               <button
                 type="button"
@@ -2153,7 +2155,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                       <label className="block font-semibold text-slate-300">
                         Selecione a Arena Sede do Torneio:
                       </label>
-                      <select
+                      <DropdownUI
                         value={formTenantId}
                         onChange={(e) => {
                           setFormTenantId(e.target.value);
@@ -2169,7 +2171,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                             {arena.name} ({arena.city} - {arena.state})
                           </option>
                         ))}
-                      </select>
+                      </DropdownUI>
 
                       {/* Token Pack Purchase Quick Panel */}
                       <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-600/40 space-y-2">
@@ -2318,7 +2320,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-300 mb-1">Categoria / Série:</label>
-                  <select
+                  <DropdownUI
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as TournamentCategory)}
                     className="w-full px-2.5 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-semibold text-white"
@@ -2328,7 +2330,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                         {label}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                 </div>
 
                 <div>
@@ -2453,7 +2455,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
               <div className="p-3.5 bg-[#030B17] border border-[#145A9B] rounded-xl space-y-2">
                 <label className="block font-bold text-slate-200">Lado 1 (Substituir ou manter):</label>
                 <div className="flex items-center gap-2">
-                  <select
+                  <DropdownUI
                     value={overrideTeam1Id}
                     onChange={(e) => setOverrideTeam1Id(e.target.value)}
                     className="flex-1 px-2.5 py-2 bg-[#071D3D] border border-[#145A9B] rounded-lg font-semibold text-white"
@@ -2464,7 +2466,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                         #{p.seed} - {formatParticipantName(p)}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                   <input
                     type="number"
                     min={0}
@@ -2479,7 +2481,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
               <div className="p-3.5 bg-[#030B17] border border-[#145A9B] rounded-xl space-y-2">
                 <label className="block font-bold text-slate-200">Lado 2 (Substituir ou manter):</label>
                 <div className="flex items-center gap-2">
-                  <select
+                  <DropdownUI
                     value={overrideTeam2Id}
                     onChange={(e) => setOverrideTeam2Id(e.target.value)}
                     className="flex-1 px-2.5 py-2 bg-[#071D3D] border border-[#145A9B] rounded-lg font-semibold text-white"
@@ -2490,7 +2492,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                         #{p.seed} - {formatParticipantName(p)}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                   <input
                     type="number"
                     min={0}

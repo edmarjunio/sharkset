@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useState, useMemo, useEffect } from 'react';
 import { MatchMvpVoteRecord, TeamPair } from '../types';
 import {
@@ -233,7 +234,7 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
               <label className="text-[11px] font-black uppercase text-[#0987CE] block mb-1">
                 Dupla 1
               </label>
-              <select
+              <DropdownUI
                 value={selectedPair1Id}
                 onChange={(e) => setSelectedPair1Id(e.target.value)}
                 className="w-full px-3 py-2 text-xs font-bold bg-[#071D3D] border border-[#145A9B] rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#0987CE]"
@@ -243,14 +244,14 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
                     {p.player1} & {p.player2} ({p.category.toUpperCase()})
                   </option>
                 ))}
-              </select>
+              </DropdownUI>
             </div>
 
             <div>
               <label className="text-[11px] font-black uppercase text-[#12C7BB] block mb-1">
                 Dupla 2 (Adversária)
               </label>
-              <select
+              <DropdownUI
                 value={selectedPair2Id}
                 onChange={(e) => setSelectedPair2Id(e.target.value)}
                 className="w-full px-3 py-2 text-xs font-bold bg-[#071D3D] border border-[#145A9B] rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#12C7BB]"
@@ -260,7 +261,7 @@ export const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({
                     {p.player1} & {p.player2} ({p.category.toUpperCase()})
                   </option>
                 ))}
-              </select>
+              </DropdownUI>
             </div>
           </div>
 

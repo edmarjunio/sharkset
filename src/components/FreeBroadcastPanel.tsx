@@ -1,7 +1,8 @@
 import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
 import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { auth, db, signInWithGooglePopup } from '../lib/firebase';
+import { AccessLockedAction } from './AccessLockedAction';
 import { BroadcastOverlay, elapsedTime, type ScoreboardState } from './BroadcastOverlay';
 import { isYouTubeUrl, getYouTubeEmbedUrl } from '../utils/videoUtils';
 
@@ -47,7 +48,12 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
   const externalPanel = <section className="aquarium-glass rounded-2xl border border-sky-200 bg-white p-4 space-y-3 text-slate-900">
     <h2 className="font-bold">{arenaId ? 'Transmissão da arena' : 'Transmissão livre'}</h2>
     <p className="text-sm text-slate-600">Sem reserva ou outros jogadores. Não vale pontos no ranking.</p>
-    {!id && <button disabled={busy} onClick={() => save()} className="rounded-xl bg-[#0987CE] text-white px-4 py-3 font-bold">Criar transmissão</button>}
+    {!id && (!auth.currentUser ? <AccessLockedAction
+      message="Entre na sua conta para criar uma transmissão"
+      onClick={() => void signInWithGooglePopup().then(() => save()).catch(() => setError('Não foi possível entrar. Tente novamente.'))}
+      className="rounded-xl"
+      previewClassName="rounded-xl bg-[#0987CE] px-4 py-3 font-bold text-white"
+    >Criar transmissão</AccessLockedAction> : <button disabled={busy} onClick={() => save()} className="rounded-xl bg-[#0987CE] text-white px-4 py-3 font-bold">Criar transmissão</button>)}
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     {broadcast && <>
       <div className="relative rounded-2xl overflow-hidden bg-[#071D3D] aspect-video flex items-center justify-center border-2 border-slate-900 shadow-xl">

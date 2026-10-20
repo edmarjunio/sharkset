@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import { useRankingAthletes } from '../hooks/useRankingAthletes';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
@@ -446,7 +447,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
               {rankingScope === 'pais' && (
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-slate-300 font-bold">País:</span>
-                  <select
+                  <DropdownUI
                     value={selectedCountry}
                     onChange={(e) => setSelectedCountry(e.target.value)}
                     className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
@@ -456,14 +457,14 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         🌍 {country}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                 </div>
               )}
 
               {rankingScope === 'estado' && (
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-slate-300 font-bold">Estado (UF):</span>
-                  <select
+                  <DropdownUI
                     value={selectedState}
                     onChange={(e) => setSelectedState(e.target.value)}
                     className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
@@ -473,14 +474,14 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         📍 {st}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                 </div>
               )}
 
               {rankingScope === 'cidade' && (
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-slate-300 font-bold">Cidade:</span>
-                  <select
+                  <DropdownUI
                     value={selectedCity}
                     onChange={(e) => setSelectedCity(e.target.value)}
                     className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
@@ -490,14 +491,14 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         🏙️ {city}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                 </div>
               )}
 
               {rankingScope === 'arena' && (
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-slate-300 font-bold">Arena:</span>
-                  <select
+                  <DropdownUI
                     value={selectedArenaId}
                     onChange={(e) => setSelectedArenaId(e.target.value)}
                     className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 rounded-lg text-white"
@@ -507,7 +508,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         🏟️ {arena.name}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                 </div>
               )}
             </div>
@@ -516,7 +517,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
             <div className="flex flex-wrap items-center gap-2 text-xs shrink-0">
               <Filter className="w-3.5 h-3.5 text-[#12C7BB]" />
               <span className="font-bold text-slate-300">Categoria:</span>
-              <select
+              <DropdownUI
                 aria-label="Categoria do ranking"
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value as AthleteLevel | 'all')}
@@ -528,9 +529,9 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                 <option value="serie_b">Série B</option>
                 <option value="serie_c">Série C</option>
                 <option value="iniciante">Iniciante</option>
-              </select>
+              </DropdownUI>
 
-              <select
+              <DropdownUI
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'points' | 'winRate' | 'wins' | 'titles')}
                 className="px-3 py-2 text-xs font-bold bg-[#030D1A] border border-[#145A9B]/60 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0987CE]"
@@ -539,7 +540,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                 <option value="winRate">Ordenar: Win Rate %</option>
                 <option value="wins">Ordenar: Vitórias</option>
                 <option value="titles">Ordenar: Títulos</option>
-              </select>
+              </DropdownUI>
 
               <button
                 type="button"
@@ -972,20 +973,20 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                 </div>
                 <div>
                   <label className="block font-bold text-slate-200 mb-1">Experiência:</label>
-                  <select
+                  <DropdownUI
                     value={newAthExp}
                     onChange={(e) => setNewAthExp(e.target.value as ExperienceCategory)}
                     className="w-full px-2.5 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-semibold text-white"
                   >
                     <option value="amador">Amador</option>
                     <option value="profissional">Profissional</option>
-                  </select>
+                  </DropdownUI>
                 </div>
               </div>
 
               <div>
                 <label className="block font-bold text-slate-200 mb-1">Série / Nível Técnico:</label>
-                <select
+                <DropdownUI
                   value={newAthLevel}
                   onChange={(e) => setNewAthLevel(e.target.value as AthleteLevel)}
                   className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-bold text-white"
@@ -995,7 +996,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                       {label}
                     </option>
                   ))}
-                </select>
+                </DropdownUI>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1032,7 +1033,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                 </div>
                 <div>
                   <label className="block font-bold text-slate-200 mb-1">Arena Base:</label>
-                  <select
+                  <DropdownUI
                     value={newAthArenaId}
                     onChange={(e) => setNewAthArenaId(e.target.value)}
                     className="w-full px-2.5 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-semibold text-white"
@@ -1042,7 +1043,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         {ar.name}
                       </option>
                     ))}
-                  </select>
+                  </DropdownUI>
                 </div>
               </div>
 

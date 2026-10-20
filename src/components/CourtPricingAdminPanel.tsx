@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Court, DayPricingRule, SportType } from '../types';
@@ -300,7 +301,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
               <Sun className="w-3.5 h-3.5 text-emerald-600" />
               Abertura do Expediente
             </label>
-            <select
+            <DropdownUI
               value={activeCourt.openTime || '06:00'}
               onChange={(e) => {
                 updateCourtConfig(activeCourt.id, { openTime: e.target.value });
@@ -313,7 +314,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
                   {h}
                 </option>
               ))}
-            </select>
+            </DropdownUI>
           </div>
 
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
@@ -321,7 +322,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
               <Clock className="w-3.5 h-3.5 text-slate-600" />
               Fechamento do Expediente
             </label>
-            <select
+            <DropdownUI
               value={activeCourt.closeTime || '23:00'}
               onChange={(e) => {
                 updateCourtConfig(activeCourt.id, { closeTime: e.target.value });
@@ -334,7 +335,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
                   {h}
                 </option>
               ))}
-            </select>
+            </DropdownUI>
           </div>
 
           <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1.5">
@@ -342,7 +343,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
               <Flame className="w-3.5 h-3.5 text-amber-600" />
               Início do Horário de Pico
             </label>
-            <select
+            <DropdownUI
               value={activeCourt.peakStartTime || '18:00'}
               onChange={(e) => {
                 updateCourtConfig(activeCourt.id, { peakStartTime: e.target.value });
@@ -355,7 +356,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
                   A partir das {h}
                 </option>
               ))}
-            </select>
+            </DropdownUI>
           </div>
 
           <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1.5">
@@ -363,7 +364,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
               <Zap className="w-3.5 h-3.5 text-amber-600" />
               Término do Horário de Pico
             </label>
-            <select
+            <DropdownUI
               value={activeCourt.peakEndTime || '22:00'}
               onChange={(e) => {
                 updateCourtConfig(activeCourt.id, { peakEndTime: e.target.value });
@@ -376,7 +377,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
                   Até as {h}
                 </option>
               ))}
-            </select>
+            </DropdownUI>
           </div>
         </div>
       </div>
@@ -826,7 +827,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
 
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Horário (Início):</label>
-            <select
+            <DropdownUI
               value={newClassStart}
               onChange={(e) => {
                 const h = parseInt(e.target.value.split(':')[0], 10);
@@ -842,7 +843,7 @@ export const CourtPricingAdminPanel: React.FC<CourtPricingAdminPanelProps> = ({
                   </option>
                 )
               )}
-            </select>
+            </DropdownUI>
           </div>
 
           <div className="grid grid-cols-2 gap-2">

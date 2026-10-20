@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import { lazy, Suspense, useEffect, useReducer, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ArrowLeft, Maximize2, Minimize2, Pause, Play, Trophy, Volume2, VolumeX } from 'lucide-react';
@@ -200,7 +201,7 @@ function WatchScreen({ source }: { source: WatchSource }) {
       {tableOpened && <div className="watch-table relative" hidden={session.view !== 'table'}>
         <header className="watch-table-heading">
           <button autoFocus onClick={() => { dispatch({ type: 'video' }); reveal(); }} className="watch-control watch-table-shortcut"><ArrowLeft size={18} />Voltar à transmissão</button>
-          <label className="text-xs flex items-center gap-2">Campeonato<select value={session.tournamentId} onChange={event => dispatch({ type: 'select', tournamentId: event.target.value })} className="bg-slate-800 rounded-lg px-3 py-2 max-w-[40vw]"><option value="">Selecione</option>{tournaments.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label className="text-xs flex items-center gap-2">Campeonato<DropdownUI value={session.tournamentId} onChange={event => dispatch({ type: 'select', tournamentId: event.target.value })} className="bg-slate-800 rounded-lg px-3 py-2 max-w-[40vw]"><option value="">Selecione</option>{tournaments.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</DropdownUI></label>
           <button onClick={() => setFullscreen(value => !value)} className="watch-control" aria-label={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>{fullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}</button>
         </header>
         {tournament ? <FutevoleiVisualBracketCanvas key={tournament.id} readOnly matches={matchesByTournament[tournament.id] || []} semiFormat={tournament.semiFormat} isSingles={tournament.modalityFormat === 'simples'} formatParticipantName={pairName} getInlineScore={(item, side) => String((side === 's1' ? item.score1 : item.score2) ?? '')} onInlineScoreChange={noop} onInlineSubmit={noop} onOpenRefereeModal={noop} onOpenMatchEditor={noop} onToggleFullscreen={() => setFullscreen(true)} /> : <p className="p-6 text-slate-300">{tournaments.length ? 'Selecione um campeonato para acompanhar a tabela.' : 'Nenhum campeonato disponível.'}</p>}

@@ -1,3 +1,4 @@
+import { DropdownUI } from './DropdownUI';
 import { LocationScopeFilter } from './LocationScopeFilter';
 import { useScopedCatalog } from '../hooks/useScopedCatalog';
 import { useDirectoryScope } from '../store/useDirectoryScope';
@@ -175,7 +176,7 @@ export const HomeHighlights: React.FC = () => {
               </div>
               <label className="flex items-center gap-2 text-xs font-bold text-slate-300">
                 Status:
-                <select
+                <DropdownUI
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                   className="min-h-9 rounded-xl bg-slate-900 border border-cyan-800/60 px-3 py-1.5 text-xs text-white"
@@ -186,7 +187,7 @@ export const HomeHighlights: React.FC = () => {
                       {label}
                     </option>
                   ))}
-                </select>
+                </DropdownUI>
               </label>
             </div>
 
