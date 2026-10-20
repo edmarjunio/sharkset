@@ -20,8 +20,6 @@ import {
   Trophy,
   MessageSquare,
   Send,
-  Plus,
-  Minus,
   CheckCircle2,
   UserCheck,
   Sparkles,
@@ -222,58 +220,17 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
     });
   };
 
-  const handleStartOrToggleLiveBroadcast = async (useCameraDevice: boolean) => {
-    const nowStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-    if (useCameraDevice) {
-      try {
-        setWebcamError(null);
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        cameraStream.current?.getTracks().forEach(track => track.stop());
-        cameraStream.current = stream;
-        setUsingWebcam(true);
-      } catch {
-        setWebcamError(
-          'Não foi possível abrir a câmera. Confira a permissão no navegador.'
-        );
-        setUsingWebcam(false);
-      }
-      return; // A local preview does not publish video.
-    } else {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((t) => t.stop());
-      }
+  const handleStartCameraPreview = async () => {
+    try {
+      setWebcamError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      cameraStream.current?.getTracks().forEach((track) => track.stop());
+      cameraStream.current = stream;
+      setUsingWebcam(true);
+    } catch {
+      setWebcamError('Não foi possível abrir a câmera. Confira a permissão no navegador.');
       setUsingWebcam(false);
     }
-
-    updateBookingMatchSetup(activeBooking.id, (prev) => {
-      const curr = prev.liveBroadcast || liveState;
-      const nextIsLive = false;
-      return {
-        ...prev,
-        participants: currentParticipants,
-        liveBroadcast: {
-          ...curr,
-          isLive: nextIsLive,
-          streamTitle:
-            streamTitleInput.trim() || `Ao Vivo: ${team1Names} vs ${team2Names} (Placar)`,
-          spectatorsCount: curr.spectatorsCount || 0,
-          startedAt: curr.startedAt || nowStr,
-          chatMessages: [
-            {
-              id: `start-live-${Date.now()}`,
-              author: prev.referee?.name || userProfile.name,
-              role: 'referee_broadcaster',
-              roleLabel: '👑 ÁRBITRO & DONO DA TRANSMISSÃO',
-              text: `🔴 TRANSMISSÃO AO VIVO NO AR! ${team1Names} vs ${team2Names} na ${prev.courtName}!`,
-              timestamp: nowStr,
-            },
-            ...curr.chatMessages,
-          ],
-        },
-      };
-    });
   };
 
   const handleStopBroadcast = () => {
@@ -324,7 +281,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
         participants: currentParticipants,
         liveBroadcast: {
           ...curr,
-          isLive: false,
+          isLive: curr.isLive,
           score1: nextS1,
           score2: nextS2,
           servingTeam: team,
@@ -397,18 +354,18 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
   if (!activeBooking) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="aquarium-glass bg-white border border-slate-200 rounded-3xl max-w-6xl w-full overflow-hidden shadow-2xl my-auto flex flex-col max-h-[95vh]">
+    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-3 lg:p-5 overflow-hidden">
+      <div className="aquarium-glass bg-white border border-slate-200 rounded-none sm:rounded-3xl max-w-[1600px] w-full h-[100dvh] sm:h-auto sm:max-h-[96dvh] overflow-hidden shadow-2xl flex flex-col min-h-0">
         {/* Top Modal Header */}
-        <div className="bg-slate-900 text-white px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="bg-slate-900 text-white px-3 sm:px-5 py-3 flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-slate-800 shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-black uppercase tracking-wider shadow-sm">
               <Radio className="w-3.5 h-3.5 animate-pulse" />
               {liveState.isLive ? 'TRANSMISSÃO AO VIVO NO AR' : 'ESTÚDIO DE TRANSMISSÃO & ÁRBITRO'}
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-cyan-300 text-xs font-black border border-slate-700">
               <Eye className="w-3.5 h-3.5 text-cyan-400" />
-              {liveState.spectatorsCount} jogadores acompanhando agora
+              Audiência não conectada
             </span>
             <span className="hidden md:inline-flex items-center gap-1 text-xs font-bold text-emerald-400">
               <ShieldCheck className="w-4 h-4" />
@@ -416,7 +373,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full xl:w-auto items-center gap-2">
             {/* Switch between user's or invited bookings */}
             <select
               value={activeBooking.id}
@@ -424,7 +381,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                 setSelectedBookingId(e.target.value);
                 setRankingFeedback(null);
               }}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-white focus:outline-none focus:border-orange-500"
+              className="min-w-0 flex-1 xl:w-[420px] xl:flex-none px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-white focus:outline-none focus:border-orange-500"
             >
               {bookings
                 .filter((b) => b.status === 'confirmed')
@@ -437,7 +394,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              className="shrink-0 p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
               title="Fechar Estúdio Ao Vivo"
             >
               <X className="w-5 h-5" />
@@ -446,11 +403,11 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
         </div>
 
         {/* Scrollable Content Grid */}
-        <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-6 bg-slate-50">
+        <div className="min-h-0 flex-1 p-3 sm:p-5 xl:p-6 overflow-y-auto grid grid-cols-1 xl:grid-cols-12 items-start gap-4 xl:gap-6 bg-slate-50">
           {/* LEFT 7 COLUMNS: Live Video Player + Scoreboard + 4 Players Verification + Referee Invite */}
-          <div className="lg:col-span-7 space-y-5">
+          <div className="contents xl:col-span-7 xl:block xl:space-y-5">
             {/* Video Stream Container */}
-            <div className="aquarium-glass relative rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-900 shadow-lg aspect-video">
+            <div className="order-1 xl:order-none aquarium-glass relative rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-900 shadow-lg aspect-video min-w-0">
               {usingWebcam ? (
                 <video
                   ref={videoRef}
@@ -460,15 +417,13 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <video
-                  src={liveState.videoUrl}
-                  poster={liveState.thumbnailUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover opacity-90"
-                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-slate-300">
+                  <Camera className="h-10 w-10 text-cyan-300" aria-hidden="true" />
+                  <div>
+                    <p className="font-bold text-white">Prévia da câmera fechada</p>
+                    <p className="mt-1 text-sm">Abra a prévia para conferir o enquadramento neste dispositivo.</p>
+                  </div>
+                </div>
               )}
 
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-slate-950/60 pointer-events-none" />
@@ -485,10 +440,6 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                   >
                     <Radio className="w-3.5 h-3.5 animate-pulse" />
                     {liveState.isLive ? 'AO VIVO' : 'PRONTO P/ TRANSMITIR'}
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-slate-950/85 backdrop-blur-md text-white text-xs font-black flex items-center gap-1.5 border border-white/15">
-                    <Eye className="w-3.5 h-3.5 text-orange-400" />
-                    {liveState.spectatorsCount} assistindo
                   </span>
                 </div>
 
@@ -513,14 +464,14 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             </div>
 
             {webcamError && (
-              <div className="p-3 rounded-xl bg-sky-50 border border-sky-200 text-xs font-bold text-sky-900 flex items-center gap-2">
+              <div className="order-2 xl:order-none p-3 rounded-xl bg-sky-50 border border-sky-200 text-xs font-bold text-sky-900 flex items-center gap-2">
                 <Camera className="w-4 h-4 text-sky-600 shrink-0" />
                 <span>{webcamError}</span>
               </div>
             )}
 
             {/* Broadcast Camera & Title Controls */}
-            <div className="aquarium-glass bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div className="order-2 xl:order-none aquarium-glass bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                   <Video className="w-4 h-4 text-orange-500" />
@@ -529,21 +480,22 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleStartOrToggleLiveBroadcast(true)}
-                    className="px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                    onClick={() => usingWebcam ? handleStopBroadcast() : handleStartCameraPreview()}
+                    className="min-h-11 px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
                   >
                     <Camera className="w-3.5 h-3.5" />
-                    Prévia da câmera
+                    {usingWebcam ? 'Encerrar prévia' : 'Abrir prévia da câmera'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleStartOrToggleLiveBroadcast(false)}
-                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all"
+                    disabled
+                    title="A publicação ao vivo ainda não está conectada neste estúdio."
+                    className="min-h-11 px-3.5 py-2 rounded-xl bg-slate-900 text-slate-400 text-xs font-black flex items-center gap-1.5 cursor-not-allowed opacity-70"
                   >
                     <Play className="w-3.5 h-3.5 text-orange-400" />
-                    Transmitir Feed da Quadra
+                    Publicação ao vivo indisponível
                   </button>
-                  {liveState.isLive && (
+                  {liveState.isLive && !usingWebcam && (
                     <button
                       type="button"
                       onClick={handleStopBroadcast}
@@ -556,13 +508,17 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <p className="text-xs text-slate-500">
+                A prévia abre a câmera somente neste dispositivo. Ela ainda não é enviada ao público.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={streamTitleInput}
                   onChange={(e) => setStreamTitleInput(e.target.value)}
                   placeholder="Título da transmissão ao vivo..."
-                  className="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-orange-500"
+                  className="min-w-0 flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 focus:outline-none focus:border-orange-500"
                 />
                 <button
                   type="button"
@@ -575,7 +531,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                       },
                     }))
                   }
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold cursor-pointer"
+                  className="min-h-11 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-extrabold cursor-pointer"
                 >
                   Salvar Título
                 </button>
@@ -583,7 +539,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             </div>
 
             {/* STEP 1: 4 Identified Players in the Match (Prova Real for Ranking) */}
-            <div className="aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="order-5 xl:order-none aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
@@ -692,14 +648,16 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
           </div>
 
           {/* RIGHT 5 COLUMNS: Referee Scoreboard Console + Ranking Proof Validation + Highlighted Live Chat */}
-          <div className="lg:col-span-5 flex flex-col gap-5">
+          <div className="contents xl:col-span-5 xl:flex xl:flex-col xl:gap-5">
+            <div className="order-3 xl:order-none min-w-0">
             <BroadcastOverlay state={liveState} team1={team1Names} team2={team2Names}
               onPoint={handleScorePoint}
               onChange={patch => updateBookingMatchSetup(activeBooking.id, previous => ({
                 ...previous, liveBroadcast: { ...(previous.liveBroadcast || liveState), ...patch },
               }))} />
+            </div>
             {/* Referee Live Score & Ranking Validation Panel */}
-            <div className="aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="order-6 xl:order-none aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4 min-w-0">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
@@ -741,59 +699,14 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                 </div>
               </div>
 
-              {/* Score Buttons */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-2">
-                  <div className="text-xs font-black text-emerald-950 truncate">{team1Names}</div>
-                  <div className="text-3xl font-black text-emerald-700 tabular-nums">
-                    {liveState.score1}
-                  </div>
-                  <div className="flex items-center justify-center gap-2">
-                    <button aria-label="Diminuir 1 ponto da dupla 1" title="Diminuir 1 ponto da dupla 1"
-                      type="button"
-                      onClick={() => handleScorePoint(1, -1)}
-                      className="score-control score-control-subtract p-2 rounded-xl bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 cursor-pointer"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <button aria-label="Adicionar 1 ponto da dupla 1" title="Adicionar 1 ponto da dupla 1"
-                      type="button"
-                      onClick={() => handleScorePoint(1, 1)}
-                      className="score-control score-control-add flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 text-center space-y-2">
-                  <div className="text-xs font-black text-sky-950 truncate">{team2Names}</div>
-                  <div className="text-3xl font-black text-sky-700 tabular-nums">
-                    {liveState.score2}
-                  </div>
-                  <div className="flex items-center justify-center gap-2">
-                    <button aria-label="Diminuir 1 ponto da dupla 2" title="Diminuir 1 ponto da dupla 2"
-                      type="button"
-                      onClick={() => handleScorePoint(2, -1)}
-                      className="score-control score-control-subtract p-2 rounded-xl bg-white border border-sky-200 text-sky-800 hover:bg-sky-100 cursor-pointer"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <button aria-label="Adicionar 1 ponto da dupla 2" title="Adicionar 1 ponto da dupla 2"
-                      type="button"
-                      onClick={() => handleScorePoint(2, 1)}
-                      className="score-control score-control-add flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <p className="rounded-xl border border-cyan-200/30 bg-cyan-950/30 px-3 py-2 text-xs font-semibold text-cyan-100">
+                Use o painel de arbitragem acima para marcar ou corrigir pontos. Esta área confirma os atletas e mostra as opções de resultado.
+              </p>
 
               {/* Official Finish & Credit Ranking Stats Button */}
               <div className="pt-2 border-t border-slate-100 space-y-2">
                 <div className="text-[11px] font-bold text-slate-600">
-                  Finalizar partida transmitida ao vivo e creditar pontos reais no Ranking para os 4 jogadores:
+                    Registrar o resultado da partida. A prévia e o placar local não geram pontos no ranking.
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -802,7 +715,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                     onClick={() => handleFinishAndCreditRanking(1)}
                     className="py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-black cursor-pointer transition-all"
                   >
-                    🏆 Vitória Dupla 1 (+Ranking)
+                    Solicitar validação da vitória da Dupla 1
                   </button>
                   <button
                     type="button"
@@ -810,7 +723,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                     onClick={() => handleFinishAndCreditRanking(2)}
                     className="py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-black cursor-pointer transition-all"
                   >
-                    🏆 Vitória Dupla 2 (+Ranking)
+                    Solicitar validação da vitória da Dupla 2
                   </button>
                 </div>
 
@@ -841,7 +754,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
             </div>
 
             {/* Live Chat with Highlighted Referee / Broadcast Owner Messages */}
-            <div className="aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex-1 flex flex-col justify-between space-y-3 min-h-[340px]">
+            <div className="order-7 xl:order-none aquarium-glass bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex-1 flex flex-col justify-between space-y-3 min-h-[260px] xl:min-h-[340px] min-w-0">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">

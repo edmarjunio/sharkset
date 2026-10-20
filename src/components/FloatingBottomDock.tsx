@@ -74,14 +74,14 @@ export function FloatingBottomDock({ onSelectSlot }: Props) {
           <button
             type="button"
             onClick={goHome}
-            className="shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden p-0 border border-cyan-400/80 hover:border-cyan-200 shadow-[0_0_12px_rgba(0,180,255,0.6)] transition-all active:scale-95 cursor-pointer flex items-center justify-center mr-1 group bg-slate-950"
+            className="shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full p-0 border border-cyan-400/80 hover:border-cyan-200 shadow-[0_0_12px_rgba(0,180,255,0.6)] hover:shadow-[0_0_22px_rgba(18,199,187,0.9)] hover:scale-120 hover:-translate-y-1 transition-all duration-300 active:scale-95 cursor-pointer flex items-center justify-center mr-1 group bg-slate-950 relative z-10"
             title="SHARKSET — Ir para o Início"
             aria-label="SHARKSET Início"
           >
             <img
               src="/brand/sharkset-logo-transparent.png"
               alt="SHARKSET"
-              className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300 pointer-events-none drop-shadow-md"
+              className="w-full h-full object-contain rounded-full pointer-events-none drop-shadow-md transition-transform duration-300 group-hover:scale-105"
             />
           </button>
 
