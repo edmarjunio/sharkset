@@ -29,6 +29,7 @@ import {
   MapPin,
   Navigation,
   ArrowRight,
+  Plus,
   Search,
   Trophy,
   GraduationCap,
@@ -60,6 +61,7 @@ export const ArenasDirectory: React.FC = () => {
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => getRecentSearches());
   const [activeFinderSection, setActiveFinderSection] = useState<'free_slots' | 'classes' | 'none'>('free_slots');
+  const [isCreateArenaOpen, setIsCreateArenaOpen] = useState(false);
 
   const popularArenas = useMemo(
     () => getPopularArenaSuggestions(availableTenants, tenant),
@@ -122,6 +124,15 @@ export const ArenasDirectory: React.FC = () => {
             >
               <RotateCw className={`w-3 h-3 ${geoStatus === 'locating' ? 'animate-spin' : ''}`} />
               <span>{geoStatus === 'granted' ? 'GPS Ativo' : 'Usar GPS'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCreateArenaOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-[11px] shadow-sm transition-all active:scale-95 cursor-pointer"
+              title="Cadastrar uma nova arena"
+            >
+              <Plus size={13} className="stroke-[3]" />
+              <span>Cadastrar Arena</span>
             </button>
           </div>
 
@@ -310,7 +321,7 @@ export const ArenasDirectory: React.FC = () => {
         </div>
 
         <div className="pt-2 border-t border-slate-800/80">
-          <LocationScopeFilter compact />
+          <LocationScopeFilter />
         </div>
       </div>
 
@@ -474,7 +485,7 @@ export const ArenasDirectory: React.FC = () => {
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setActiveTab('saas_hub')}
+                onClick={() => setIsCreateArenaOpen(true)}
                 className="px-6 py-3 text-xs font-black text-white bg-gradient-to-r from-[#FF6B00] to-[#FF8800] hover:brightness-110 rounded-xl transition-all cursor-pointer shadow-lg"
               >
                 + Cadastrar Minha Arena Agora
@@ -492,6 +503,11 @@ export const ArenasDirectory: React.FC = () => {
           </div>
         )}
       </div>
+
+      <CreateArenaModal
+        isOpen={isCreateArenaOpen}
+        onClose={() => setIsCreateArenaOpen(false)}
+      />
     </div>
   );
 };

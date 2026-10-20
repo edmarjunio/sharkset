@@ -516,16 +516,16 @@ body {
 }
 .aquarium-scenery {
   position: absolute; inset: -2%;
-  background: url('/brand/ocean-bg.jpg') center top / cover no-repeat;
+  background: url('/brand/sharkset-background.png') center 48% / cover no-repeat;
   animation: aquarium-current 24s ease-in-out infinite alternate;
 }
 .aquarium-depth {
   position: absolute; inset: 0;
   background: radial-gradient(
     ellipse 100% 90% at 50% 35%,
-    rgba(1, 15, 30, 0.28) 0%,
-    rgba(2, 18, 38, 0.52) 65%,
-    rgba(1, 10, 22, 0.78) 100%
+    rgba(1, 15, 30, 0.08) 0%,
+    rgba(2, 18, 38, 0.2) 65%,
+    rgba(1, 10, 22, 0.38) 100%
   );
   pointer-events: none;
 }
@@ -691,7 +691,7 @@ body {
   }
 }
 @media (max-width: 639px) {
-  .aquarium-scenery { background-position: 55% center; animation: none; }
+  .aquarium-scenery { background-position: 39% center; animation: none; }
   .aquarium-swimmer { width: 220px; top: 24%; opacity: .8; animation-duration: 48s; animation-delay: -8s; }
   .aquarium-bubbles i:nth-child(n+5):nth-child(-n+12) { display: block; }
   .aquarium-caustics { display: none; }

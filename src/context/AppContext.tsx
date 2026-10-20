@@ -116,6 +116,7 @@ interface AppContextType {
   tenant: TenantConfig;
   setTenantId: (id: string) => void;
   availableTenants: TenantConfig[];
+  addArena: (arena: TenantConfig) => void;
   radiusKm: number;
   setRadiusKm: (km: number) => void;
   selectedSport: 'all' | SportType;
@@ -326,7 +327,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const isCleanSlate = () => {
   try {
-    // Modo de produção limpo: se o usuário limpou ou não tem demo explícito, inicia 100% zerado
+    // Modo de produÃ§Ã£o limpo: se o usuÃ¡rio limpou ou nÃ£o tem demo explÃ­cito, inicia 100% zerado
     return localStorage.getItem('sharkset_seed_demo') !== 'true';
   } catch {
     return true;
@@ -386,6 +387,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const availableTenants = useMemo(() => Object.values(arenasMap), [arenasMap]);
 
+  const addArena = (arena: TenantConfig) => {
+    setArenasMap((prev) => ({
+      ...prev,
+      [arena.id]: arena,
+    }));
+  };
+
   // Location radius filter (in km)
   const [radiusKm, setRadiusKm] = useState<number>(50);
 
@@ -417,7 +425,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const uid = auth.currentUser?.uid;
       if (uid) localStorage.removeItem(`sharkset_user_level_${uid}`);
     }).catch(() => {
-      console.warn('Não foi possível sincronizar o perfil com o Firestore.');
+      console.warn('NÃ£o foi possÃ­vel sincronizar o perfil com o Firestore.');
     });
   };
 
@@ -467,7 +475,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 // The migration remains complete in Firestore.
               }
             }).catch(() => {
-              console.warn('Não foi possível migrar o perfil desta conta para o Firestore.');
+              console.warn('NÃ£o foi possÃ­vel migrar o perfil desta conta para o Firestore.');
             });
           }
         } catch {
@@ -491,7 +499,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
 
   const resetAllDataToCleanSlate = () => {
-    if (!window.confirm('Atenção: Isso irá apagar todo o histórico de teste em cache e iniciar o Sharkset completamente do zero. Deseja continuar?')) {
+    if (!window.confirm('AtenÃ§Ã£o: Isso irÃ¡ apagar todo o histÃ³rico de teste em cache e iniciar o Sharkset completamente do zero. Deseja continuar?')) {
       return;
     }
     try {
@@ -853,9 +861,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Create Booking
   const createBooking = (slotId: string, sport: SportType, customerName: string, customerPhone: string): Booking => {
-    if (!BOOKING_DEMO) throw new Error('Reserva online indisponível. A arena deve confirmar o horário.');
+    if (!BOOKING_DEMO) throw new Error('Reserva online indisponÃ­vel. A arena deve confirmar o horÃ¡rio.');
     const slot = slots.find((s) => s.id === slotId);
-    if (!slot) throw new Error('Slot não encontrado');
+    if (!slot) throw new Error('Slot nÃ£o encontrado');
 
     const court = tenant.courts.find((c) => c.id === slot.courtId);
     const newBooking: Booking = {
@@ -904,7 +912,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Cancel Booking & Automatically Notify Next Person in Waitlist (with Push Notification)
   const cancelBooking = (bookingId: string): WaitlistEntry | null => {
-    if (!BOOKING_DEMO) throw new Error('Cancelamento online indisponível. Contate a arena.');
+    if (!BOOKING_DEMO) throw new Error('Cancelamento online indisponÃ­vel. Contate a arena.');
     const targetBooking = bookings.find((b) => b.id === bookingId);
     if (!targetBooking) return null;
 
@@ -969,7 +977,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     customerPhone: string
   ): WaitlistEntry => {
     const slot = slots.find((s) => s.id === slotId);
-    if (!slot) throw new Error('Horário não encontrado');
+    if (!slot) throw new Error('HorÃ¡rio nÃ£o encontrado');
 
     const court = tenant.courts.find((c) => c.id === slot.courtId);
     const activeInSlot = waitlist.filter(
@@ -1017,9 +1025,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const claimWaitlistSlot = (waitlistId: string): Booking => {
-    if (!BOOKING_DEMO) throw new Error('Reserva online indisponível. A arena deve confirmar o horário.');
+    if (!BOOKING_DEMO) throw new Error('Reserva online indisponÃ­vel. A arena deve confirmar o horÃ¡rio.');
     const entry = waitlist.find((w) => w.id === waitlistId);
-    if (!entry) throw new Error('Registro da lista de espera não encontrado');
+    if (!entry) throw new Error('Registro da lista de espera nÃ£o encontrado');
 
     const newBooking: Booking = {
       id: `book-${Date.now()}`,
@@ -1205,7 +1213,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       courtName: court ? court.name : 'Quadra Principal',
       classId: data.classConfig.id,
       classTitle: data.classConfig.title,
-      classTime: `${data.classConfig.startTime} às ${data.classConfig.endTime}`,
+      classTime: `${data.classConfig.startTime} Ã s ${data.classConfig.endTime}`,
       coachName: data.classConfig.coachName,
       sport: data.classConfig.sport,
       studentName: data.studentName,
@@ -1224,11 +1232,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           ? data.classConfig.coachName
           : data.enrolledByRole === 'dono'
           ? 'Dono da Arena'
-          : 'Auto-Matrícula pelo App'),
+          : 'Auto-MatrÃ­cula pelo App'),
     };
     setClassStudents((prev) => [newStudent, ...prev]);
 
-    // Se a mensalidade vence hoje (início no dia da inscrição), envia notificação automática pro aluno
+    // Se a mensalidade vence hoje (inÃ­cio no dia da inscriÃ§Ã£o), envia notificaÃ§Ã£o automÃ¡tica pro aluno
     if (data.billingType === 'mensal' && cycle.isDueToday) {
       const notif = buildTuitionDueTodayNotification(newStudent, tenant.name);
       useSharkStore.getState().pushSmartNotification(notif);
@@ -1242,7 +1250,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       prev.map((s) => {
         if (s.id !== studentId) return s;
         const nextStatus = s.paymentStatus === 'pago' ? 'pendente' : 'pago';
-        // Quando pago, avança o próximo vencimento em +1 mês mantendo o dia da inscrição
+        // Quando pago, avanÃ§a o prÃ³ximo vencimento em +1 mÃªs mantendo o dia da inscriÃ§Ã£o
         let updatedNextDue = s.nextDueDate;
         if (nextStatus === 'pago' && s.billingType === 'mensal') {
           const baseStr = s.nextDueDate || s.enrolledAt;
@@ -1334,9 +1342,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       location: data.location || `${tenant.name} (${tenant.city} - ${tenant.state})`,
       specificRules:
         data.specificRules ||
-        'Sets de 18 pontos (diferença mínima de 2 pontos). Semifinal conforme formato escolhido. Pontuação oficial para o Ranking de Futevôlei.',
+        'Sets de 18 pontos (diferenÃ§a mÃ­nima de 2 pontos). Semifinal conforme formato escolhido. PontuaÃ§Ã£o oficial para o Ranking de FutevÃ´lei.',
       format: 'double_elimination_buraco4',
-      description: `Torneio oficial em ${data.location || tenant.name}. Responsável técnico: ${data.responsibleName}.`,
+      description: `Torneio oficial em ${data.location || tenant.name}. ResponsÃ¡vel tÃ©cnico: ${data.responsibleName}.`,
       maxPairs: data.maxPairs || 8,
       registrationFee: data.registrationFee,
       responsibleName: data.responsibleName,
@@ -1399,7 +1407,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const p2Email = isSingles ? '' : (data.player2Email || '').trim().toLowerCase();
 
     if (!isSingles && p1Email && p2Email && p1Email === p2Email) {
-      throw new Error('Os dois atletas da dupla não podem ter o mesmo e-mail.');
+      throw new Error('Os dois atletas da dupla nÃ£o podem ter o mesmo e-mail.');
     }
 
     const pairsInTourn = registeredPairs.filter(
@@ -1426,7 +1434,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
 
     if (duplicateEnrollment) {
-      throw new Error('Este atleta (e-mail) ou dupla já está inscrita neste torneio.');
+      throw new Error('Este atleta (e-mail) ou dupla jÃ¡ estÃ¡ inscrita neste torneio.');
     }
 
     const nextSeed = pairsInTourn.length + 1;
@@ -1607,7 +1615,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     });
 
-    if (tourn && eligiblePairs.length > tourn.maxPairs) throw new Error('Número de duplas excede o limite do torneio.');
+    if (tourn && eligiblePairs.length > tourn.maxPairs) throw new Error('NÃºmero de duplas excede o limite do torneio.');
     const generatedMatches = createBracketForPresentPairs(
       tournamentId,
       eligiblePairs,
@@ -1619,7 +1627,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Initialize Referee state on Round 1 ready matches
     const withReferee = generatedMatches.map((m) =>
       m.team1 && m.team2 && m.status !== 'completed'
-        ? { ...m, liveReferee: buildDefaultRefereeState(m, tourn?.responsibleName || 'Árbitro SHARK SET') }
+        ? { ...m, liveReferee: buildDefaultRefereeState(m, tourn?.responsibleName || 'Ãrbitro SHARK SET') }
         : m
     );
 
@@ -1725,7 +1733,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       (a) => (a.email || '').trim().toLowerCase() === emailToUse
     );
     if (emailAlreadyExists) {
-      throw new Error('Já existe um usuário cadastrado com este e-mail.');
+      throw new Error('JÃ¡ existe um usuÃ¡rio cadastrado com este e-mail.');
     }
 
     const newAth: AthleteProfile = {
@@ -1737,7 +1745,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       experienceCategory: data.experienceCategory || (data.level === 'profissional' ? 'profissional' : 'amador'),
       courtSide: 'Ambos',
       dominantFoot: 'Destro',
-      bio: `Atleta SHARK SET de ${data.preferredSport === 'futevolei' ? 'Futevôlei' : 'Areia'} (${data.city}).`,
+      bio: `Atleta SHARK SET de ${data.preferredSport === 'futevolei' ? 'FutevÃ´lei' : 'Areia'} (${data.city}).`,
       level: data.level,
       highestHistoricalLevel: data.level,
       points: 0,
@@ -1904,7 +1912,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         matches: changed.map(({ audit, ...match }) => match),
         removedIds: matches.filter(match => !previous.some(old => old.id === match.id)).map(match => match.id),
         teams: teams ? registeredPairs.filter(team => team.tournamentId === tournamentId) : undefined }]));
-    } catch { throw new Error('Não foi possível preservar o histórico neste navegador. Libere espaço antes de salvar a alteração.'); }
+    } catch { throw new Error('NÃ£o foi possÃ­vel preservar o histÃ³rico neste navegador. Libere espaÃ§o antes de salvar a alteraÃ§Ã£o.'); }
     const updated = [...tournamentMatches.filter(match => match.tournamentId !== tournamentId), ...matches];
     setTournamentMatches(updated);
     if (teams) setRegisteredPairs(prev => [...prev.filter(team => team.tournamentId !== tournamentId), ...teams]);
@@ -1974,7 +1982,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const handleAdvanceMatch = (matchId: string, winningTeam: 1 | 2, score1: number, score2: number) => {
     const target = tournamentMatches.find(match => match.id === matchId);
-    if (!target) throw new Error('Partida não encontrada.');
+    if (!target) throw new Error('Partida nÃ£o encontrada.');
     const matches = tournamentMatches.filter(match => match.tournamentId === target.tournamentId);
     applyTournamentEdit(target.tournamentId, advanceWinner(matches, matchId, winningTeam, score1, score2));
   };
@@ -2088,10 +2096,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ): { credited: boolean; message: string } => {
     const target = bookings.find((b) => b.id === bookingId);
     if (!target) {
-      return { credited: false, message: 'Partida não encontrada.' };
+      return { credited: false, message: 'Partida nÃ£o encontrada.' };
     }
     // A browser preview or an editable local scoreboard is not verified match evidence.
-    return { credited: false, message: 'O ranking de lives será liberado após a integração de vídeo e validação do resultado no servidor. A prévia não pontua.' };
+    return { credited: false, message: 'O ranking de lives serÃ¡ liberado apÃ³s a integraÃ§Ã£o de vÃ­deo e validaÃ§Ã£o do resultado no servidor. A prÃ©via nÃ£o pontua.' };
   };
 
   return (
@@ -2103,6 +2111,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         tenant,
         setTenantId,
         availableTenants,
+        addArena,
         radiusKm,
         setRadiusKm,
         selectedSport,

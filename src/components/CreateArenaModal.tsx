@@ -13,7 +13,7 @@ interface Props {
 }
 
 export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
-  const { setAvailableTenants, setTenantId, setActiveTab, setArenaSubTab } = useApp();
+  const { addArena, setTenantId, setActiveTab, setArenaSubTab } = useApp();
 
   const [name, setName] = useState('');
   const [city, setCity] = useState('Mineiros');
@@ -50,7 +50,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
       const courts: Court[] = Array.from({ length: Math.max(1, courtCount) }, (_, i) => ({
         id: `court-${i + 1}`,
         name: `Quadra ${i + 1}`,
-        description: `Quadra ${i + 1} oficial de areia quartzosa com iluminação LED`,
+        description: `Quadra ${i + 1} oficial de areia quartzosa com iluminaÃ§Ã£o LED`,
         sports: selectedSports,
         surface: 'Areia Quartzosa Premium',
         isCovered: i === 0,
@@ -68,7 +68,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
       const newArena: TenantConfig = {
         id: arenaId,
         name: name.trim(),
-        tagline: 'Gestão Esportiva & Agendamento Inteligente',
+        tagline: 'GestÃ£o Esportiva & Agendamento Inteligente',
         city: city.trim(),
         state: state.trim().toUpperCase(),
         address: address.trim() || `${city.trim()} - ${state.trim().toUpperCase()}`,
@@ -80,10 +80,10 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
         sandBg: 'linear-gradient(180deg, #0987CE 0%, #031526 100%)',
         amenities: [
           'Ducha aquecida',
-          'Vestiário completo',
+          'VestiÃ¡rio completo',
           'Churrasqueira',
           'Bar e lanchonete',
-          'Iluminação LED noturna',
+          'IluminaÃ§Ã£o LED noturna',
           'Wi-Fi gratuito',
         ],
         courts,
@@ -110,7 +110,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
       }
 
       // Update state in AppContext
-      setAvailableTenants((prev) => [newArena, ...prev]);
+      addArena(newArena);
       setTenantId(newArena.id);
       setArenaSubTab('agendamentos');
       setActiveTab('scheduler');
@@ -145,7 +145,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
                 Cadastrar Nova Arena
               </h3>
               <p className="text-[11px] text-slate-300">
-                Adicione sua arena à plataforma oficial SHARKSET
+                Adicione sua arena Ã  plataforma oficial SHARKSET
               </p>
             </div>
           </div>
@@ -198,7 +198,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
           </div>
 
           <div>
-            <label className="block text-slate-300 mb-1">Endereço Completo</label>
+            <label className="block text-slate-300 mb-1">EndereÃ§o Completo</label>
             <div className="relative">
               <MapPin className="w-4 h-4 text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -227,7 +227,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 mb-1">Número de Quadras</label>
+              <label className="block text-slate-300 mb-1">NÃºmero de Quadras</label>
               <input
                 type="number"
                 min={1}
@@ -238,7 +238,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
               />
             </div>
             <div>
-              <label className="block text-slate-300 mb-1">Valor Médio / Hora (R$)</label>
+              <label className="block text-slate-300 mb-1">Valor MÃ©dio / Hora (R$)</label>
               <div className="relative">
                 <DollarSign className="w-4 h-4 text-amber-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
@@ -255,7 +255,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 mb-1">Horário de Abertura</label>
+              <label className="block text-slate-300 mb-1">HorÃ¡rio de Abertura</label>
               <input
                 type="time"
                 value={openTime}
@@ -264,7 +264,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
               />
             </div>
             <div>
-              <label className="block text-slate-300 mb-1">Horário de Fechamento</label>
+              <label className="block text-slate-300 mb-1">HorÃ¡rio de Fechamento</label>
               <input
                 type="time"
                 value={closeTime}
@@ -275,12 +275,12 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
           </div>
 
           <div>
-            <label className="block text-slate-300 mb-1.5">Modalidades Disponíveis</label>
+            <label className="block text-slate-300 mb-1.5">Modalidades DisponÃ­veis</label>
             <div className="flex flex-wrap gap-2">
               {[
-                { id: 'futevolei' as SportType, label: '⚽ Futevôlei' },
-                { id: 'beach_tennis' as SportType, label: '🎾 Beach Tennis' },
-                { id: 'volei_praia' as SportType, label: '🏐 Vôlei de Praia' },
+                { id: 'futevolei' as SportType, label: 'âš½ FutevÃ´lei' },
+                { id: 'beach_tennis' as SportType, label: 'ðŸŽ¾ Beach Tennis' },
+                { id: 'volei_praia' as SportType, label: 'ðŸ VÃ´lei de Praia' },
               ].map((sport) => {
                 const isSelected = selectedSports.includes(sport.id);
                 return (
@@ -317,7 +317,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:brightness-110 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
               <Building2 size={14} />
-              <span>{isSubmitting ? 'Cadastrando…' : 'Cadastrar Arena'}</span>
+              <span>{isSubmitting ? 'Cadastrandoâ€¦' : 'Cadastrar Arena'}</span>
             </button>
           </div>
         </form>

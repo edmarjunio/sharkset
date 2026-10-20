@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 export function AquariumBackground() {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [paused, setPaused] = useState(() => {
     try {
       return localStorage.getItem('sharkset_aquarium_paused') === 'true';
@@ -10,7 +9,6 @@ export function AquariumBackground() {
     }
   });
   const [hidden, setHidden] = useState(typeof document !== 'undefined' ? document.hidden : false);
-  const [videoLoaded, setVideoLoaded] = useState(false);
 
   useEffect(() => {
     const update = () => setHidden(document.hidden);
@@ -18,44 +16,13 @@ export function AquariumBackground() {
     return () => document.removeEventListener('visibilitychange', update);
   }, []);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (paused || hidden) {
-      video.pause();
-    } else {
-      video.play().catch(() => {
-        // Autoplay may wait for user interaction in certain strict browser settings
-      });
-    }
-  }, [paused, hidden]);
-
   return (
     <>
       <div
         className={`aquarium-world ${paused || hidden ? 'aquarium-paused' : ''}`}
         aria-hidden="true"
       >
-        {/* Real HD Looping Aquarium Video Background (Zero Audio, Enhanced Aquarium Depth) */}
-        <video
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          poster="/brand/ocean-bg.jpg"
-          onLoadedData={() => setVideoLoaded(true)}
-          className={`aquarium-video transition-opacity duration-700 ${
-            videoLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          <source src="/brand/aquarium-bg.mp4" type="video/mp4" />
-        </video>
-
-        {/* Fallback Static Scenery for loading state */}
-        {!videoLoaded && <div className="aquarium-scenery" />}
+        <div className="aquarium-scenery" />
 
         {/* Cinematic Aquarium Depth, Light Rays & Water Caustics Overlay */}
         <div className="aquarium-rays" />
