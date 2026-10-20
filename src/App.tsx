@@ -124,7 +124,7 @@ const MainContent: React.FC = () => {
           : undefined
       }
     >
-      <AquariumBackground />
+      {!isArenaWhiteLabel && <AquariumBackground />}
 
       {/* Floating Focus Mode Bar when active */}
       {focusMode && (
@@ -290,3 +290,4 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+

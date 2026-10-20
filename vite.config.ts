@@ -6,6 +6,14 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        input: {
+          app: path.resolve(import.meta.dirname, 'index.html'),
+          aquarium: path.resolve(import.meta.dirname, 'aquarium-preview.html'),
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),
@@ -23,3 +31,4 @@ export default defineConfig(() => {
     },
   };
 });
+
