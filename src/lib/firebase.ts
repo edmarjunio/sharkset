@@ -20,27 +20,25 @@ import {
   where,
 } from 'firebase/firestore';
 import { AcademyPost, AthleteProfile, MatchMvpVoteRecord } from '../types';
-import firebaseConfig from '../../firebase-applet-config.json';
+import {
+  app,
+  db,
+  auth,
+  googleProvider,
+  enableFirestoreOfflinePersistence,
+  offlinePersistenceReady,
+  isOfflinePersistenceEnabled,
+} from '../firebase-config';
 
-interface ExtendedFirebaseConfig {
-  apiKey: string;
-  authDomain: string;
-  projectId: string;
-  storageBucket?: string;
-  messagingSenderId?: string;
-  appId: string;
-  measurementId?: string;
-  firestoreDatabaseId?: string;
-}
-
-const config = firebaseConfig as ExtendedFirebaseConfig;
-const app = initializeApp(config);
-export const db = config.firestoreDatabaseId
-  ? getFirestore(app, config.firestoreDatabaseId)
-  : getFirestore(app);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
+export {
+  app,
+  db,
+  auth,
+  googleProvider,
+  enableFirestoreOfflinePersistence,
+  offlinePersistenceReady,
+  isOfflinePersistenceEnabled,
+};
 
 export enum OperationType {
   CREATE = 'create',

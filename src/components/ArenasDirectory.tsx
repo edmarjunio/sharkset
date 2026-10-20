@@ -345,7 +345,7 @@ export const ArenasDirectory: React.FC = () => {
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-xs">
                     <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 backdrop-blur-xs text-white font-mono font-black tabular-nums border border-white/15 flex items-center gap-1 shadow-sm">
                       <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{Number.isFinite(arena.calculatedDistanceKm) ? `${arena.calculatedDistanceKm.toFixed(1)} km` : 'Distância não informada'}</span>
+                      <span>{formatArenaDistanceKm(arena.calculatedDistanceKm)}</span>
                       <span className="text-slate-400 text-[10px]">({arena.city}/{arena.state})</span>
                     </span>
                     <div className="flex items-center gap-1.5">
