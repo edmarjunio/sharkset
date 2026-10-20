@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
-import { generateWeeklySlots } from '../data/initialData';
+import { generateWeeklySlots } from '../services/courtSlotPricing';
 import type { Court, TenantConfig, TimeSlot } from '../types';
 import {
   buildBooking15MinReminderNotification,

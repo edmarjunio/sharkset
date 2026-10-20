@@ -73,6 +73,27 @@ export const ATHLETE_TIERS: TierMeta[] = [
   },
 ];
 
+export function getInitialFloorPointsForLevel(level: AthleteLevel): number {
+  const tier = ATHLETE_TIERS.find((t) => t.level === level);
+  return tier ? tier.minPoints : 0;
+}
+
+export function resolveMmrCategoryLevel(
+  points: number,
+  minimumBaseLevel?: AthleteLevel
+): AthleteLevel {
+  let resolved: AthleteLevel = 'iniciante';
+  for (const tier of ATHLETE_TIERS) {
+    if (points >= tier.minPoints) {
+      resolved = tier.level;
+    }
+  }
+  if (minimumBaseLevel && ATHLETE_LEVEL_WEIGHT[minimumBaseLevel] > ATHLETE_LEVEL_WEIGHT[resolved]) {
+    return minimumBaseLevel;
+  }
+  return resolved;
+}
+
 export const TOURNAMENT_CATEGORY_LABELS: Record<TournamentCategory, string> = {
   iniciante: 'Iniciante Puro (Só Iniciantes)',
   iniciante_serie_c: 'Iniciante + Série C (Proibido 2 Série C)',

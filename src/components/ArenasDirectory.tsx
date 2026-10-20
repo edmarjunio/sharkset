@@ -52,10 +52,10 @@ export const ArenasDirectory: React.FC = () => {
     volei_praia: 'Vôlei de Praia',
   };
 
-  // Compute calculated distance for each arena using GPS if available
+  // Compute calculated distance for each arena using browser GPS if available, with fallback to reference distanceKm
   const arenasWithCalculatedDistance = useMemo(() => {
     return scopedArenas.map((arena) => {
-      let distanceKm = Infinity;
+      let distanceKm = Number.isFinite(arena.distanceKm) ? arena.distanceKm : Infinity;
       if (validCoordinates(userCoords) && validCoordinates({ lat: arena.lat!, lng: arena.lng! })) {
         distanceKm = calculateHaversineDistance(
           userCoords.lat,
@@ -135,7 +135,11 @@ export const ArenasDirectory: React.FC = () => {
               <span className="text-slate-400">·</span>
 
               <span className="text-amber-400 font-extrabold">
-                {locationFilter.mode === 'nearby' ? 'ATÉ 50 KM' : locationFilter.mode === 'city' ? locationFilter.city : 'TODAS NO SITE'}
+                {locationFilter.mode === 'nearby'
+                  ? `ATÉ ${locationFilter.radiusKm ?? 50} KM`
+                  : locationFilter.mode === 'city'
+                  ? locationFilter.city
+                  : 'TODAS NO SITE'}
               </span>
 
               {/* Refresh GPS Button */}
@@ -273,7 +277,11 @@ export const ArenasDirectory: React.FC = () => {
           <span>
             Exibindo <strong className="text-slate-950 font-black tabular-nums">{filteredArenas.length}</strong>{' '}
             {filteredArenas.length === 1 ? 'arena mais próxima' : 'arenas mais próximas'} dentro de{' '}
-            {locationFilter.mode === 'nearby' ? '50 km' : locationFilter.mode === 'city' ? locationFilter.city : 'todo o site'}
+            {locationFilter.mode === 'nearby'
+              ? `${locationFilter.radiusKm ?? 50} km`
+              : locationFilter.mode === 'city'
+              ? locationFilter.city
+              : 'todo o site'}
           </span>
           {geoStatus === 'granted' && (
             <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">

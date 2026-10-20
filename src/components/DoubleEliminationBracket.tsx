@@ -1017,13 +1017,84 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           </p>
           <button
             type="button"
-            onClick={() => setShowCreateModal(true)}
+            onClick={openCreateModal}
             className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#FF6B00] to-[#FF8800] text-white font-black text-base shadow-lg hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
           >
             + Criar Primeiro Torneio
           </button>
         </div>
-        {showCreateModal && renderCreateTournamentModal()}
+        {showTournamentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 text-left">
+            <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#145A9B] max-h-[90vh] overflow-y-auto">
+              <form onSubmit={handleSaveTournamentModal} className="space-y-4 text-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
+                      Gestão de Torneios de Futevôlei
+                    </span>
+                    <h3 className="text-base font-bold text-white">Criar Novo Torneio de Futevôlei</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTournamentModal(null)}
+                    className="text-slate-400 hover:text-white p-1 cursor-pointer font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Nome do Torneio:</label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder="Ex: Copa Regional de Futevôlei Mineiros"
+                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-sm text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Data do Torneio:</label>
+                    <input
+                      type="date"
+                      required
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Local / Arena:</label>
+                    <input
+                      type="text"
+                      required
+                      value={formLocation}
+                      onChange={(e) => setFormLocation(e.target.value)}
+                      placeholder="Ex: SHARK SET Arena Matriz - Mineiros/GO"
+                      className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
+                    />
+                  </div>
+                </div>
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTournamentModal(null)}
+                    className="px-4 py-2 text-xs font-medium text-slate-300 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 text-xs font-black text-white bg-[#0987CE] hover:bg-[#0772b0] rounded-xl cursor-pointer"
+                  >
+                    Criar Torneio Oficial
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

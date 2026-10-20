@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { AthleteLevel, ClassScheduleConfig, Court, TenantConfig } from '../types';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
-import { WEEKDAY_SHORT_NAMES, WEEKDAY_FULL_NAMES } from '../data/initialData';
+import { WEEKDAY_SHORT_NAMES, WEEKDAY_FULL_NAMES } from '../services/courtSlotPricing';
 import {
   Calendar,
   Clock,

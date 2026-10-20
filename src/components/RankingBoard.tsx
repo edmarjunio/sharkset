@@ -62,6 +62,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
     addOrUpdateAthlete,
     awardAthletePoints,
     rankingLogs,
+    openAthleteDialog,
   } = useApp();
 
   const { sourceAthletes, isLoading, refresh: loadAthletesFromFirestore } = useRankingAthletes();
@@ -659,7 +660,14 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                       {/* Athlete Name + Evolution & Status */}
                       <td className="py-3.5 px-4">
                         <div className="font-extrabold text-white text-sm flex items-center gap-2">
-                          <span>{athlete.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => openAthleteDialog(athlete.id)}
+                            className="hover:text-[#12C7BB] hover:underline transition-colors cursor-pointer text-left"
+                            title="Abrir ficha técnica, pódios e MMR do atleta"
+                          >
+                            {athlete.name}
+                          </button>
                           {(athlete.titlesCount || 0) > 0 && (
                             <span className="text-xs font-bold text-amber-400" title="Títulos conquistados">
                               🏆 {athlete.titlesCount}
@@ -809,6 +817,14 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
+                            onClick={() => openAthleteDialog(athlete.id)}
+                            className="px-2.5 py-1.5 rounded-lg bg-[#030B17] hover:bg-[#0B254E] text-[#12C7BB] border border-[#145A9B] font-bold text-[11px] transition-colors cursor-pointer whitespace-nowrap"
+                            title={`Ver ficha completa, pódios e MMR de ${athlete.name}`}
+                          >
+                            Ficha & Pódios
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setReportTarget({ id: athlete.id, name: athlete.name })}
                             className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/40 font-bold text-xs transition-colors"
                             title={`Denunciar suspeita de fraude/entrega de pontos para ${athlete.name}`}
@@ -818,7 +834,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                           <button
                             type="button"
                             onClick={() => setActiveTab('register_dupla')}
-                            className="px-3 py-1.5 rounded-lg bg-[#071D3D] hover:bg-[#0B254E] text-slate-200 border border-slate-700 font-bold text-[11px] transition-transform active:translate-y-0.5 shadow-sm"
+                            className="px-3 py-1.5 rounded-lg bg-[#071D3D] hover:bg-[#0B254E] text-slate-200 border border-slate-700 font-bold text-[11px] transition-transform active:translate-y-0.5 shadow-sm whitespace-nowrap"
                             title="Inscrever este atleta no campeonato"
                           >
                             Inscrever →

@@ -42,8 +42,7 @@ export function registerBookingRoutes(app: Express, getDatabase = adminDatabase)
           blocks: administrativeBlocks,
         });
       return { status: 200, body: { cells, maxDate, today, timeZone: arena.timeZone || 'America/Sao_Paulo' } };
-    } catch (error) {
-      console.error('Availability lookup failed', error instanceof Error ? error.message : 'Unknown error');
+    } catch {
       return { status: 503, body: { error: 'Não foi possível verificar a disponibilidade. Tente novamente.' } };
     }
   };

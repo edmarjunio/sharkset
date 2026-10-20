@@ -229,91 +229,9 @@ const TACTICAL_MODULES: TacticalModule[] = [
   },
 ];
 
-const INITIAL_ACADEMY_POSTS: AcademyPost[] = [
-  {
-    id: 'post-acad-1',
-    title: 'Masterclass: Marcação Padrão Diagonal vs Paralela no Buraco 4',
-    category: 'marcacao_padrao',
-    mediaType: 'video',
-    mediaUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    summary:
-      'Análise em câmera lenta mostrando como o homem de rede induz o atacante a bater onde o defensor de fundo já está posicionado esperando de peito.',
-    tacticalKeyPoints: [
-      'Sinalização oculta antes do saque',
-      'Finta de bloqueio na rede para forçar o lob',
-      'Transição rápida após a defesa de peito',
-    ],
-    authorName: 'Prof. Rodrigo "Tubarão"',
-    authorRole: 'Head Coach SHARK SET',
-    arenaName: 'Arena Conflora Matriz',
-    level: 'intermediario',
-    likesCount: 48,
-    createdAt: 'Hoje · 10:30',
-  },
-  {
-    id: 'post-acad-2',
-    title: 'Guia Biomecânico: Corrida na Areia Fofa sem Perder Explosão',
-    category: 'corrida_areia',
-    mediaType: 'document',
-    mediaUrl: '#apostila-pdf-biom-areia',
-    summary:
-      'Documento técnico detalhando os exercícios de pliometria na areia, apoio no metatarso e passinhos de ajuste para chegar equilibrado nas bolas curtas e longas.',
-    tacticalKeyPoints: [
-      'Proibido cravar o calcanhar na arrancada',
-      'Drills de escada de agilidade na areia fofa',
-      '3 micro-passos de frenagem antes do toque',
-    ],
-    authorName: 'Dr. Felipe Moura · Preparador Físico',
-    authorRole: 'Especialista em Biomecânica de Praia',
-    arenaName: 'CT Shark Set Goiânia',
-    level: 'todos',
-    likesCount: 64,
-    createdAt: 'Ontem · 18:15',
-  },
-  {
-    id: 'post-acad-3',
-    title: 'Diagrama Oficial: Como Deixar a Base Direcionada em 45° na Defesa',
-    category: 'base_defesa',
-    mediaType: 'image',
-    mediaUrl:
-      'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=900&auto=format&fit=crop&q=80',
-    summary:
-      'Infográfico visual demonstrando o posicionamento do pé externo à frente para fechar o corredor lateral e canalizar todas as defesas para o centro da rede.',
-    tacticalKeyPoints: [
-      'Pé de fora 15cm adiantado',
-      'Quadril aberto apontando para o levantador',
-      'Split-step sincronizado com o salto do atacante',
-    ],
-    authorName: 'Lucas "Tubarão" & Gabriel "Pingo"',
-    authorRole: 'Dupla Campeã Série A',
-    arenaName: 'Arena Conflora',
-    level: 'iniciante',
-    likesCount: 92,
-    createdAt: 'Há 2 dias',
-  },
-  {
-    id: 'post-acad-4',
-    title: 'Posicionamento em Pêndulo: Nunca Mais Deixe o Meio da Quadra Aberto',
-    category: 'posicionamento_quadra',
-    mediaType: 'video',
-    mediaUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    summary:
-      'Treino prático de sombra em dupla ensinando a cobertura automática quando seu parceiro vai buscar o segundo toque colado na rede.',
-    tacticalKeyPoints: [
-      'Sincronia visual com as costas do parceiro',
-      'Cobertura de bola de segunda do adversário',
-      'Voz de comando: "Minha!", "Vai na curta!", "Fundo livre!"',
-    ],
-    authorName: 'Coach Matheus Areia',
-    authorRole: 'Instrutor Oficial SHARK SET',
-    arenaName: 'Arena Praia Clube',
-    level: 'intermediario',
-    likesCount: 39,
-    createdAt: 'Há 3 dias',
-  },
-];
+const INITIAL_ACADEMY_POSTS: AcademyPost[] = [];
 
-const LOCAL_ACADEMY_STORAGE_KEY = 'sharkset_v1_academy_posts';
+const LOCAL_ACADEMY_STORAGE_KEY = 'sharkset_v6_academy_posts';
 
 const CATEGORY_LABELS: Record<AcademyCategory, string> = {
   marcacao_padrao: 'Marcação Padrão',

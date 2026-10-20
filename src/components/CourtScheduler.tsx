@@ -34,7 +34,7 @@ import {
 import {
   buildDefaultDayOfWeekPricing,
   WEEKDAY_FULL_NAMES,
-} from '../data/initialData';
+} from '../services/courtSlotPricing';
 import { CourtPricingAdminPanel } from './CourtPricingAdminPanel';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
 import { ArenaWhiteLabelCustomizerModal } from './ArenaWhiteLabelCustomizerModal';

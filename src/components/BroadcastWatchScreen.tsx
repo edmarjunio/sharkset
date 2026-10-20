@@ -153,8 +153,14 @@ function WatchScreen({ source }: { source: WatchSource }) {
               state={{
                 score1: (match ? match.score1 : published ? published.score1 : booking?.liveBroadcast?.score1) ?? 0,
                 score2: (match ? match.score2 : published ? published.score2 : booking?.liveBroadcast?.score2) ?? 0,
-                sets1: match?.sets1 ?? booking?.liveBroadcast?.sets1 ?? 0,
-                sets2: match?.sets2 ?? booking?.liveBroadcast?.sets2 ?? 0,
+                sets1:
+                  (match?.sets ? match.sets.filter(s => s.score1 > s.score2).length : undefined) ??
+                  booking?.liveBroadcast?.sets1 ??
+                  0,
+                sets2:
+                  (match?.sets ? match.sets.filter(s => s.score2 > s.score1).length : undefined) ??
+                  booking?.liveBroadcast?.sets2 ??
+                  0,
                 bestOf: (match?.stageName && isSemiOrFinalStage(match.stageName)) ? 3 : (booking?.liveBroadcast?.bestOf || 1),
                 stageName: match?.stageName || 'Ao Vivo',
               }}

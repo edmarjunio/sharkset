@@ -1,8 +1,10 @@
 import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { HISTORICAL_LEGEND_VIDEOS, INITIAL_LIVE_CHAT } from '../data/initialData';
 import { BracketMatch, HistoricalLegendVideo, LiveChatMessage } from '../types';
+
+const HISTORICAL_LEGEND_VIDEOS: HistoricalLegendVideo[] = [];
+const INITIAL_LIVE_CHAT: LiveChatMessage[] = [];
 import {
   X,
   Radio,
@@ -142,12 +144,16 @@ export const PersistentLiveStreamDock: React.FC = () => {
     return () => window.removeEventListener('keydown', dismiss);
   }, [showFloatingPiP, isMinimized]);
 
+  if (!activeLiveEntry && !activeLegend) {
+    return null;
+  }
+
   if (showFloatingPiP) {
     if (isMinimized) return null;
 
     const title = streamMode === 'live' && activeLiveEntry
       ? `Jogo ${activeLiveEntry.match.matchNumber} · ${activeLiveEntry.match.courtName || 'Quadra Central'}`
-      : activeLegend.title;
+      : activeLegend?.title || 'Transmissão Ao Vivo';
     const expandPlayer = () => {
       setIsTheaterExpanded(false);
       if (streamMode === 'live' && activeLiveEntry) useBroadcastNavigation.getState().open({ kind: 'match', id: activeLiveEntry.match.id, tournamentId: activeLiveEntry.match.tournamentId });

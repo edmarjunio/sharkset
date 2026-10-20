@@ -89,7 +89,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
   const [refereeNameInput, setRefereeNameInput] = useState<string>(refState.refereeName || 'Árbitro Oficial SHARK SET');
 
   // Chat state per match (persisted in localStorage so comments stay alive)
-  const storageKey = `sharkset_match_chat_${match.id}`;
+  const storageKey = `sharkset_v6_match_chat_${match.id}`;
   const [comments, setComments] = useState<MatchCommentItem[]>(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -97,31 +97,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
     } catch {
       // ignore
     }
-    const t1Name = match.team1?.player1 || 'Dupla 1';
-    const t2Name = match.team2?.player1 || 'Dupla 2';
-    return [
-      {
-        id: 'c-1',
-        author: 'Narrador SHARK SET',
-        roleBadge: 'Transmissão Oficial',
-        text: `Transmissão e súmula em tempo real abertas para o Jogo #${match.matchNumber} (${match.stageName}) na ${match.courtName || 'Quadra Central'}!`,
-        timestamp: '10:02',
-      },
-      {
-        id: 'c-2',
-        author: 'Torcedor Gustavo',
-        roleBadge: 'Arquibancada',
-        text: `Jogo muito equilibrado entre ${t1Name} e ${t2Name}! Quem fechar a diagonal longa leva o set!`,
-        timestamp: '10:08',
-      },
-      {
-        id: 'c-3',
-        author: 'Prof. Tavinho',
-        roleBadge: 'Comentarista Tático',
-        text: 'Reparem na leitura de base na defesa: quadril sempre apontado pro ombro do atacante!',
-        timestamp: '10:14',
-      },
-    ];
+    return [];
   });
   const [commentInput, setCommentInput] = useState<string>('');
   const [commentAuthor, setCommentAuthor] = useState<string>('Torcedor Shark Set');

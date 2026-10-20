@@ -96,13 +96,13 @@ export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
             })}
           </div>
 
-          <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
-            <span className="text-[11px] text-slate-400">
-              * Você pode evoluir de nível vencendo jogos oficiais nas arenas.
+          <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span className="text-[11px] text-amber-300 font-semibold">
+              🔒 Escolha única no cadastro: após confirmar, a categoria não poderá ser alterada manualmente e subirá por pontuação (MMR).
             </span>
             <button
               type="submit"
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:from-[#0878b8] hover:to-[#0ea89e] text-[#030E1F] font-black text-sm uppercase tracking-wider flex items-center gap-2 shadow-[0_4px_16px_rgba(9,135,206,0.4)] active:scale-[0.98] transition-all cursor-pointer shrink-0"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:from-[#0878b8] hover:to-[#0ea89e] text-[#030E1F] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(9,135,206,0.4)] active:scale-[0.98] transition-all cursor-pointer shrink-0"
             >
               <span>Confirmar Categoria</span>
               <ArrowRight className="w-4 h-4 stroke-[3]" />

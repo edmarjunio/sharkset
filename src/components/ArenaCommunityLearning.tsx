@@ -29,68 +29,7 @@ export interface ArenaVideoItem {
 }
 
 const INITIAL_ARENA_VIDEOS: Record<string, ArenaVideoItem[]> = {
-  default: [
-    {
-      id: 'vid-1',
-      title: 'Dominando o Ataque Shark Attack: Ponto de Contato e Salto',
-      coachName: 'Prof. Tavinho',
-      category: 'ataque',
-      sport: 'futevolei',
-      duration: '4:15',
-      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      thumbnailUrl:
-        'https://images.unsplash.com/photo-1544919982-b61976f0ba43?auto=format&fit=crop&w=800&q=80',
-      description:
-        'Aprenda como calibrar o tempo de bola e a impulsão para golpear na diagonal curta e no fundo de quadra com máxima precisão.',
-      views: 1420,
-      uploadedAt: 'Há 3 dias',
-    },
-    {
-      id: 'vid-2',
-      title: 'Defesa de Peito & Joelho na Areia: Postura Baixa',
-      coachName: 'Profa. Camila',
-      category: 'defesa',
-      sport: 'futevolei',
-      duration: '5:40',
-      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      thumbnailUrl:
-        'https://images.unsplash.com/photo-1519766304817-4f37bda74a29?auto=format&fit=crop&w=800&q=80',
-      description:
-        'Como manter o centro de gravidade rebaixado para salvar bolas rápidas nos cantos da quadra e amortecer no peito com tranquilidade.',
-      views: 980,
-      uploadedAt: 'Há 1 semana',
-    },
-    {
-      id: 'vid-3',
-      title: 'Saque Chapado e Leitura do Vento na Arena',
-      coachName: 'Prof. Bruninho',
-      category: 'fundamentos',
-      sport: 'futevolei',
-      duration: '3:50',
-      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      thumbnailUrl:
-        'https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?auto=format&fit=crop&w=800&q=80',
-      description:
-        'Dicas essenciais para aproveitar a direção do vento da nossa arena e colocar pressão máxima na recepção adversária desde o primeiro saque.',
-      views: 2150,
-      uploadedAt: 'Há 2 semanas',
-    },
-    {
-      id: 'vid-4',
-      title: 'Comunicação e Cobertura de Dupla em Jogos de Torneio',
-      coachName: 'Prof. Tavinho',
-      category: 'tatico',
-      sport: 'futevolei',
-      duration: '6:10',
-      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      thumbnailUrl:
-        'https://images.unsplash.com/photo-1526676037777-05a232554f77?auto=format&fit=crop&w=800&q=80',
-      description:
-        'Táticas de entrosamento: quem vai na bola do meio, sinais com as mãos e chamadas de voz para nunca deixar cair bola boba.',
-      views: 1780,
-      uploadedAt: 'Há 3 semanas',
-    },
-  ],
+  default: [],
 };
 
 interface ArenaCommunityLearningProps {

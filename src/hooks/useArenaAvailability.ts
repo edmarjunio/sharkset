@@ -32,6 +32,39 @@ export function useArenaAvailability(arena: TenantConfig, date: string, refreshK
     }
     const controller = new AbortController();
     let sequence = 0;
+    let stream: EventSource | null = null;
+    const connectStream = () => {
+      if (stream || controller.signal.aborted) return;
+      try {
+        stream = new EventSource('/api/booking/stream?tenantId=' + encodeURIComponent(arena.id) + '&date=' + encodeURIComponent(date));
+        stream.addEventListener('availability', event => {
+          if (controller.signal.aborted) return;
+          try {
+            const result = JSON.parse((event as MessageEvent).data);
+            if (!Array.isArray(result.cells)) return;
+            sequence++;
+            setState({ queryKey, cells: result.cells, loading: false, error: '', maxDate: result.maxDate });
+          } catch {
+            // ignore stream parse failure on static host
+          }
+        });
+        stream.addEventListener('availability-error', () => {
+          if (stream) {
+            stream.close();
+            stream = null;
+          }
+        });
+        stream.onerror = () => {
+          if (stream) {
+            stream.close();
+            stream = null;
+          }
+        };
+      } catch {
+        // EventSource não suportado ou offline
+      }
+    };
+
     const load = async () => {
       const requestSequence = ++sequence;
       setState(prev => ({ ...prev, queryKey, cells: [], loading: true, error: '' }));
@@ -53,8 +86,9 @@ export function useArenaAvailability(arena: TenantConfig, date: string, refreshK
         if (!response.ok) throw new Error(result.error || 'Não foi possível consultar a agenda.');
         if (!controller.signal.aborted && requestSequence === sequence) {
           setState({ queryKey, cells: result.cells, loading: false, error: '', maxDate: result.maxDate });
+          connectStream();
         }
-      } catch (error) {
+      } catch {
         // Fallback local seguro para nunca quebrar a interface do usuário
         const localCells = buildArenaAvailability(arena, date, bookings, { slots: tenant.id === arena.id ? slots : undefined });
         if (!controller.signal.aborted && requestSequence === sequence) {
@@ -63,33 +97,6 @@ export function useArenaAvailability(arena: TenantConfig, date: string, refreshK
       }
     };
     void load();
-
-    let stream: EventSource | null = null;
-    try {
-      stream = new EventSource('/api/booking/stream?tenantId=' + encodeURIComponent(arena.id) + '&date=' + encodeURIComponent(date));
-      stream.addEventListener('availability', event => {
-        if (controller.signal.aborted) return;
-        try {
-          const result = JSON.parse((event as MessageEvent).data);
-          if (!Array.isArray(result.cells)) return;
-          sequence++;
-          setState({ queryKey, cells: result.cells, loading: false, error: '', maxDate: result.maxDate });
-        } catch {
-          // ignore stream parse failure on static host
-        }
-      });
-      stream.addEventListener('availability-error', () => {
-        // ignore
-      });
-      stream.onerror = () => {
-        if (stream) {
-          stream.close();
-          stream = null;
-        }
-      };
-    } catch {
-      // EventSource não suportado ou offline
-    }
 
     const timer = window.setInterval(load, 60000);
     const onFocus = () => { void load(); };

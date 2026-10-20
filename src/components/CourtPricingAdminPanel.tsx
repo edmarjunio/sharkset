@@ -5,7 +5,7 @@ import {
   buildDefaultDayOfWeekPricing,
   WEEKDAY_FULL_NAMES,
   WEEKDAY_SHORT_NAMES,
-} from '../data/initialData';
+} from '../services/courtSlotPricing';
 import {
   Check,
   Clock,
