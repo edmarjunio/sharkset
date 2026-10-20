@@ -438,9 +438,23 @@ export const MyBookings: React.FC = () => {
             <h2 className="text-2xl sm:text-3xl font-black text-white">
               Olá, {currentUser.displayName || 'Atleta'}! Selecione sua Categoria Inicial
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
-              Agora que sua conta está conectada, selecione seu nível técnico oficial de jogo para ingressar no Ranking Oficial SHARK SET:
-            </p>
+            <div className="space-y-2 max-w-xl mx-auto text-left sm:text-center">
+              <p className="text-xs sm:text-sm text-slate-200">
+                Agora que sua conta está conectada, selecione seu nível técnico oficial.
+              </p>
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1 text-left">
+                <div className="font-black text-amber-300">
+                  🔒 Escolha Única no Cadastro · Progressão por MMR
+                </div>
+                <p className="text-[11px] text-slate-200 leading-relaxed">
+                  Você <strong>só poderá escolher sua categoria esta única vez</strong>. Após confirmar, ela não poderá ser alterada manualmente; a subida ocorrerá exclusivamente pela pontuação de MMR conquistada no app.
+                </p>
+                <div className="pt-1 border-t border-amber-500/20 text-[10px] text-amber-300/90 space-y-0.5">
+                  <p>⚠️ <strong>30 Dias sem Jogar:</strong> Inatividade por 30 dias desclassifica o atleta do ranking (quanto mais tempo sem jogar, mais pontos perde).</p>
+                  <p>🚨 <strong>Integridade:</strong> Outros atletas podem denunciar caso seu nível não seja o mesmo citado. Jogue limpo!</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -809,31 +823,39 @@ export const MyBookings: React.FC = () => {
               </div>
             )}
 
-            {/* 5 Tier Badges Selector */}
+            {/* Categoria Travada & Progressão por MMR */}
             <div className="pt-2 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-800">Série / Categoria no Ranking:</span>
-                <span className="text-slate-500 font-mono text-[11px]">{promoStatus?.explanation || ''}</span>
+                <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-cyan-600" />
+                  Categoria Oficial de Jogo:
+                </span>
+                <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200">
+                  🔒 Fixada no Cadastro · Subida por MMR
+                </span>
               </div>
               <div className="grid grid-cols-5 gap-1.5">
                 {ATHLETE_TIERS.map((tier) => {
                   const isCurrent = myAthleteProfile.level === tier.level;
                   return (
-                    <button
+                    <div
                       key={tier.level}
-                      type="button"
-                      onClick={() => handleLevelSwitch(tier.level)}
-                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                      className={`p-2 rounded-xl border text-center select-none transition-all ${
                         isCurrent
-                          ? 'border-slate-900 bg-slate-900 text-white font-bold'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'
+                          ? 'border-cyan-500 bg-gradient-to-br from-cyan-600 to-blue-700 text-white font-black shadow-md shadow-cyan-500/25 ring-2 ring-cyan-400'
+                          : 'border-slate-200 bg-slate-100 text-slate-400 opacity-60'
                       }`}
+                      title={isCurrent ? 'Sua categoria técnica ativa' : 'Evolução por pontuação conquistada em jogos'}
                     >
-                      <span className="text-[10px] block truncate">{tier.label}</span>
-                    </button>
+                      <span className="text-[10px] block truncate font-bold">{tier.label}</span>
+                      <span className="text-[9px] block opacity-80">{tier.minPoints} pts</span>
+                    </div>
                   );
                 })}
               </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                🔒 <strong>Trava de Categoria:</strong> A troca manual é bloqueada para garantir a integridade das arenas. Sua série sobe automaticamente ao atingir os pontos de MMR ou títulos necessários.
+              </p>
             </div>
           </div>
 

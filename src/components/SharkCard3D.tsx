@@ -42,7 +42,7 @@ interface SharkCard3DProps {
 }
 
 // Category themes inspired by Pokémon TCG holographic cards
-const CATEGORY_THEMES: Record<
+export const CATEGORY_THEMES: Record<
   AthleteLevel,
   {
     gradientBorder: string;

@@ -103,9 +103,18 @@ export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
             <span className="text-sm text-white font-bold">
               Categoria selecionada: {ATHLETE_TIERS.find(tier => tier.level === selectedLevel)?.label}
             </span>
-            <span className="text-[11px] text-amber-300 font-semibold">
-              🔒 Escolha única no cadastro: após confirmar, a categoria não poderá ser alterada manualmente e subirá por pontuação (MMR).
-            </span>
+            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1.5 text-left">
+              <div className="flex items-center gap-1.5 font-black text-amber-300">
+                <span>🔒 Escolha única de categoria:</span>
+              </div>
+              <p className="text-[11px] text-slate-200 leading-relaxed">
+                Você <strong>só poderá escolher sua categoria esta única vez</strong> no cadastro. Após confirmar, não será mais possível alterá-la manualmente; sua evolução ocorrerá exclusivamente por pontuação (MMR) conquistada nas partidas do app.
+              </p>
+              <div className="pt-1 border-t border-amber-500/20 text-[10px] text-amber-300/90 space-y-0.5">
+                <p>⚠️ <strong>Regra de Inatividade:</strong> Se ficar <strong>30 dias sem pontuar</strong>, você será desclassificado do ranking. Quanto mais tempo sem jogar, mais pontos você perde!</p>
+                <p>🚨 <strong>Integridade Competitiva:</strong> Os outros atletas podem te denunciar caso seu nível no ranking não seja o mesmo citado. Fique atento com isso!</p>
+              </div>
+            </div>
             <button
               type="submit"
               form="athlete-category-form"
