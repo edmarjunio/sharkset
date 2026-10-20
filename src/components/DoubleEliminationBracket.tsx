@@ -38,6 +38,7 @@ import { MatchHistoryModal } from './MatchHistoryModal';
 import { SharksetLogo } from './SharksetLogo';
 import { MostWatchedGamesMiniRail } from './MostWatchedGamesMiniRail';
 import { IntegrityReportModal } from './IntegrityReportModal';
+import { toast } from '../store/useToastStore';
 import {
   Trophy,
   MessageSquare,
@@ -412,6 +413,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         responsibleName: formResponsible.trim() || userProfile.name,
         responsiblePhone: userProfile.phone,
       });
+      toast.success(`Torneio "${created.name}" criado com sucesso!`);
       triggerToast(`Torneio "${created.name}" (${formModality.toUpperCase()}) criado com sucesso!`);
     } else if (showTournamentModal === 'edit' && activeTournament) {
       updateTournamentConfig(activeTournament.id, {
@@ -425,6 +427,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         specificRules: formRules.trim(),
         responsibleName: formResponsible.trim(),
       });
+      toast.success(`Torneio "${formName.trim()}" atualizado com sucesso!`);
       triggerToast(`Configurações e regras do torneio "${formName.trim()}" atualizadas!`);
     }
 
@@ -470,6 +473,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     setEnrollP1('');
     setEnrollP2('');
     setShowQuickEnrollModal(false);
+    toast.success(`Dupla cadastrada com sucesso no torneio!`);
     triggerToast(
       `Inscrição #${newEntry.seed} confirmada na chave e adicionada à Classificação do Torneio!`
     );

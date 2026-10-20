@@ -26,6 +26,7 @@ import {
   parseTimeToMinutes,
 } from '../services/smartAlertEngine';
 import { generateBookingWhatsAppLink, generateWaitlistWhatsAppLink } from '../services/whatsappAdapter';
+import { toast } from '../store/useToastStore';
 import {
   ATHLETE_LEVEL_LABELS,
   TOURNAMENT_CATEGORY_LABELS,
@@ -464,6 +465,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
 
     setTournName('');
     setShowCreateTournModal(false);
+    toast.success(`Torneio "${created.name}" criado com sucesso!`);
     triggerToast(`Campeonato "${created.name}" criado e liberado para inscrições!`);
   };
 
@@ -492,6 +494,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
 
     setRegPlayer2('');
     setRegisteringTournId(null);
+    toast.success(`Dupla (${newPair.player1} & ${newPair.player2}) inscrita com sucesso!`);
     triggerToast(
       `Pagamento confirmado e Dupla #${newPair.seed} (${newPair.player1} & ${newPair.player2}) inscrita com sucesso!`
     );

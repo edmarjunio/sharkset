@@ -45,7 +45,7 @@ export const TRANSLATIONS: Record<SupportedLocale, Record<string, string>> = {
     doubles_registration: 'Inscrição Duplas',
     reserve_now: 'Agendar Agora',
     profile: 'Perfil',
-    pricing_saas: 'R$ 20 Tabela / R$ 99 Arena',
+    pricing_saas: 'R$ 19,90 Campeonato / Arena a partir de R$ 99,90 por mês',
 
     // Tournament & Bracket
     start_bracket: 'INICIAR TABELA',
@@ -136,7 +136,7 @@ export const TRANSLATIONS: Record<SupportedLocale, Record<string, string>> = {
     doubles_registration: 'Team Registration',
     reserve_now: 'Book Now',
     profile: 'Profile',
-    pricing_saas: '$20 Bracket / $99 Arena',
+    pricing_saas: 'R$ 19.90 Tournament / Arena from R$ 99.90 per month',
 
     // Tournament & Bracket
     start_bracket: 'START BRACKET',

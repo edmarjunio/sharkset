@@ -10,6 +10,7 @@ import {
 import {
   collection,
   doc,
+  getDoc,
   getDocFromServer,
   getDocs,
   getFirestore,
@@ -50,20 +51,9 @@ export enum OperationType {
 }
 
 export interface FirestoreErrorInfo {
-  error: string;
   operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  };
+  collection: string | null;
+  errorCode: string;
 }
 
 export function handleFirestoreError(
@@ -71,25 +61,17 @@ export function handleFirestoreError(
   operationType: OperationType,
   path: string | null
 ): never {
+  const errorCode =
+    error && typeof error === 'object' && 'code' in error
+      ? String((error as { code?: unknown }).code || 'unknown')
+      : 'unknown';
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo:
-        auth.currentUser?.providerData.map((provider) => ({
-          providerId: provider.providerId,
-          email: provider.email,
-        })) || [],
-    },
     operationType,
-    path,
+    collection: path?.split('/')[0] || null,
+    errorCode,
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.error('Firestore operation failed:', JSON.stringify(errInfo));
+  throw new Error(`Firestore ${operationType} failed (${errorCode}).`);
 }
 
 /**
@@ -121,6 +103,110 @@ export async function getGoogleRedirectResult() {
 
 export async function signOutFirebase() {
   return signOut(auth);
+}
+
+export interface UserProfileDocument {
+  id: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  phone?: string;
+  level?: AthleteProfile['level'];
+  experienceCategory?: 'amador' | 'profissional';
+  role: 'athlete';
+  ownerId: string;
+}
+
+/**
+ * Loads the authenticated user's profile from the Firestore source of truth.
+ */
+export async function getUserProfileFromFirestore(uid: string): Promise<UserProfileDocument | null> {
+  const currentUser = auth.currentUser;
+  if (!currentUser || currentUser.uid !== uid) return null;
+
+  const profileRef = doc(db, 'user_profiles', uid);
+  try {
+    const profileSnapshot = await getDoc(profileRef);
+    if (!profileSnapshot.exists()) return null;
+
+    const data = profileSnapshot.data();
+    if (data.ownerId !== uid || data.id !== uid || data.role !== 'athlete') return null;
+    const allowedLevels: AthleteProfile['level'][] = [
+      'iniciante',
+      'serie_c',
+      'serie_b',
+      'serie_a',
+      'profissional',
+    ];
+    if (data.level !== undefined && !allowedLevels.includes(data.level as AthleteProfile['level'])) return null;
+
+    return {
+      id: uid,
+      displayName: String(data.displayName || currentUser.displayName || 'Atleta').slice(0, 120),
+      email: String(data.email || currentUser.email || '').slice(0, 160),
+      ...(typeof data.photoURL === 'string' ? { photoURL: data.photoURL.slice(0, 500) } : {}),
+      ...(typeof data.phone === 'string' ? { phone: data.phone.slice(0, 30) } : {}),
+      ...(data.level && allowedLevels.includes(data.level as AthleteProfile['level'])
+        ? { level: data.level as AthleteProfile['level'] }
+        : {}),
+      ...(data.experienceCategory === 'amador' || data.experienceCategory === 'profissional'
+        ? { experienceCategory: data.experienceCategory }
+        : {}),
+      role: 'athlete',
+      ownerId: uid,
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `user_profiles/${uid}`);
+  }
+}
+
+/**
+ * Creates or updates the authenticated user's own profile. Privileged roles are never client-writable.
+ */
+export async function persistUserProfileToFirestore(profile: {
+  displayName: string;
+  phone: string;
+  level: AthleteProfile['level'] | null;
+}): Promise<void> {
+  const currentUser = auth.currentUser;
+  if (!currentUser || !currentUser.emailVerified || !currentUser.email) return;
+
+  const cleanName = profile.displayName.trim().slice(0, 120);
+  if (!cleanName) throw new Error('O nome do perfil não pode ficar vazio.');
+  const allowedLevels: AthleteProfile['level'][] = [
+    'iniciante',
+    'serie_c',
+    'serie_b',
+    'serie_a',
+    'profissional',
+  ];
+  if (profile.level && !allowedLevels.includes(profile.level)) throw new Error('Nível de atleta inválido.');
+
+  const path = `user_profiles/${currentUser.uid}`;
+  try {
+    const profileRef = doc(db, 'user_profiles', currentUser.uid);
+    const existing = await getDoc(profileRef);
+    if (existing.exists() && existing.data().ownerId !== currentUser.uid) {
+      throw new Error('O perfil encontrado não pertence à conta autenticada.');
+    }
+
+    await setDoc(
+      profileRef,
+      {
+        id: currentUser.uid,
+        displayName: cleanName,
+        email: String(existing.exists() ? existing.data().email : currentUser.email).slice(0, 160),
+        ...(currentUser.photoURL ? { photoURL: currentUser.photoURL.slice(0, 500) } : {}),
+        ...(profile.phone.trim() ? { phone: profile.phone.trim().slice(0, 30) } : {}),
+        ...(profile.level ? { level: profile.level } : {}),
+        role: existing.exists() && existing.data().role === 'admin' ? 'admin' : 'athlete',
+        ownerId: currentUser.uid,
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
 }
 
 /**

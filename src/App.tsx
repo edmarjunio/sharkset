@@ -24,7 +24,7 @@ import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
 import { auth } from './lib/firebase';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import {
   Maximize2,
   Minimize2,
@@ -39,6 +39,7 @@ import {
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { FloatingBottomDock } from './components/FloatingBottomDock';
 import { TopBarSlotDetailsModal } from './components/TopBarSlotDetailsModal';
+import { GlobalToast } from './components/GlobalToast';
 import type { UpcomingSlotItem } from './hooks/useUpcomingFreeSlots';
 
 const MainContent: React.FC = () => {
@@ -59,39 +60,17 @@ const MainContent: React.FC = () => {
   const [floatingSlotModal, setFloatingSlotModal] = React.useState<UpcomingSlotItem | null>(null);
 
   // Onboarding state: triggers if user has not yet completed initial technical category setup
-  const [currentUser, setCurrentUser] = React.useState<FirebaseUser | null>(() => auth.currentUser);
   const [showOnboarding, setShowOnboarding] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      if (user) {
-        try {
-          const userKey = 'sharkset_onboarding_completed_' + user.uid;
-          const userLevelKey = 'sharkset_user_level_' + user.uid;
-          const done = localStorage.getItem(userKey) === 'true' || Boolean(localStorage.getItem(userLevelKey));
-          setShowOnboarding(!done);
-        } catch {
-          setShowOnboarding(!userProfile.level);
-        }
-      } else {
-        setShowOnboarding(false);
-      }
+      setShowOnboarding(Boolean(user && !userProfile.level));
     });
     return () => unsub();
   }, [userProfile.level]);
 
   const handleCompleteOnboarding = (level: typeof userProfile.level) => {
     setUserProfile({ ...userProfile, level });
-    try {
-      if (currentUser) {
-        localStorage.setItem('sharkset_onboarding_completed_' + currentUser.uid, 'true');
-        if (level) localStorage.setItem('sharkset_user_level_' + currentUser.uid, level);
-      }
-      localStorage.setItem('sharkset_onboarding_completed', 'true');
-    } catch {
-      // ignore
-    }
     setShowOnboarding(false);
   };
 
@@ -125,6 +104,7 @@ const MainContent: React.FC = () => {
       }
     >
       <AquariumBackground />
+      <GlobalToast />
 
       {/* Floating Focus Mode Bar when active */}
       {focusMode && (

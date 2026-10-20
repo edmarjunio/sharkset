@@ -78,7 +78,7 @@ import {
   evaluateMatchNearCompletion,
 } from '../services/smartAlertEngine';
 import { useSharkStore } from '../store/useSharkStore';
-import { auth } from '../lib/firebase';
+import { auth, getUserProfileFromFirestore, persistUserProfileToFirestore } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { checkPlayerInactivity } from '../services/inactivityClient';
 import { applyRankedActivity, resetInactiveProgress } from '../services/rankingActivity';
@@ -184,15 +184,6 @@ interface AppContextType {
   simulateStudentDueToday: (studentId: string) => ClassStudent | null;
   notifyStudentTuitionDue: (studentId: string) => void;
   removeStudentFromClass: (studentId: string) => void;
-  createNewArenaTenant: (data: {
-    name: string;
-    city: string;
-    state: string;
-    whatsapp: string;
-    courtsCount: number;
-    plan: 'arena_pro_99' | 'pay_per_table_20';
-    ownerName: string;
-  }) => TenantConfig;
   createTournament: (data: {
     name: string;
     sport: SportType;
@@ -353,7 +344,6 @@ const STORAGE_KEYS = {
   ATHLETES: 'sharkset_v2_athletes',
   RANKING_LOGS: 'sharkset_v1_ranking_logs',
   CLASS_STUDENTS: 'sharkset_v2_class_students',
-  USER_PROFILE: 'sharkset_prod_user_profile',
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -413,57 +403,90 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // User quick profile
   const [userProfile, setUserProfileState] = useState<{ name: string; phone: string; level: AthleteLevel | null }>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-      return stored ? JSON.parse(stored) : { name: '', phone: '', level: null };
-    } catch {
-      return { name: '', phone: '', level: null };
-    }
+    return { name: '', phone: '', level: null };
   });
 
   const setUserProfile = (profile: { name: string; phone: string; level: AthleteLevel | null }) => {
     setUserProfileState(profile);
-    try {
-      localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
-      if (auth.currentUser && profile.level) {
-        localStorage.setItem(`sharkset_user_level_${auth.currentUser.uid}`, profile.level);
-      }
-    } catch {
-      // ignore
-    }
+    if (!auth.currentUser) return;
+    void persistUserProfileToFirestore({
+      displayName: profile.name || auth.currentUser?.displayName || 'Atleta',
+      phone: profile.phone,
+      level: profile.level,
+    }).then(() => {
+      const uid = auth.currentUser?.uid;
+      if (uid) localStorage.removeItem(`sharkset_user_level_${uid}`);
+    }).catch(() => {
+      console.warn('Não foi possível sincronizar o perfil com o Firestore.');
+    });
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    let isCurrent = true;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       useSharkStore.getState().setFirebaseUserEmail(user?.email || null);
       if (user) {
-        const userLevelKey = `sharkset_user_level_${user.uid}`;
-        const savedLevel = localStorage.getItem(userLevelKey) as AthleteLevel | null;
-
-        setUserProfileState((prev) => {
-          const updated = {
-            name: user.displayName || prev.name || user.email?.split('@')[0] || 'Atleta',
-            phone: user.phoneNumber || prev.phone || '',
-            level: savedLevel || prev.level || null,
-          };
-          try {
-            localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(updated));
-          } catch {
-            // ignore
+        let savedLevel: AthleteLevel | null = null;
+        try {
+          const candidate = localStorage.getItem(`sharkset_user_level_${user.uid}`) as AthleteLevel | null;
+          if (candidate && ['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'].includes(candidate)) {
+            savedLevel = candidate;
           }
-          return updated;
-        });
+        } catch {
+          // The account profile remains available from Firestore when browser storage is unavailable.
+        }
+
+        try {
+          const cloudProfile = await getUserProfileFromFirestore(user.uid);
+          if (!isCurrent || auth.currentUser?.uid !== user.uid) return;
+
+          const profile = {
+            name: cloudProfile?.displayName || user.displayName || user.email?.split('@')[0] || 'Atleta',
+            phone: cloudProfile?.phone || user.phoneNumber || '',
+            level: cloudProfile?.level || savedLevel,
+          };
+          setUserProfileState(profile);
+          if (cloudProfile) {
+            try {
+              localStorage.removeItem(`sharkset_user_level_${user.uid}`);
+            } catch {
+              // The Firestore profile is already authoritative.
+            }
+          }
+
+          // Migrate only the account-bound level value; never import the old shared profile cache.
+          if (!cloudProfile && user.emailVerified && user.email) {
+            void persistUserProfileToFirestore({
+              displayName: profile.name,
+              phone: profile.phone,
+              level: profile.level,
+            }).then(() => {
+              try {
+                localStorage.removeItem(`sharkset_user_level_${user.uid}`);
+              } catch {
+                // The migration remains complete in Firestore.
+              }
+            }).catch(() => {
+              console.warn('Não foi possível migrar o perfil desta conta para o Firestore.');
+            });
+          }
+        } catch {
+          if (!isCurrent || auth.currentUser?.uid !== user.uid) return;
+          setUserProfileState({
+            name: user.displayName || user.email?.split('@')[0] || 'Atleta',
+            phone: user.phoneNumber || '',
+            level: savedLevel,
+          });
+        }
         void checkPlayerInactivity().catch((error) => console.warn(error.message));
       } else {
         setUserProfileState({ name: '', phone: '', level: null });
-        try {
-          localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
-        } catch {
-          // ignore
-        }
       }
     });
-    return () => unsubscribe();
+    return () => {
+      isCurrent = false;
+      unsubscribe();
+    };
   }, []);
 
 
@@ -1282,78 +1305,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const removeStudentFromClass = (studentId: string) => {
     setClassStudents((prev) => prev.filter((s) => s.id !== studentId));
-  };
-
-  const createNewArenaTenant = (data: {
-    name: string;
-    city: string;
-    state: string;
-    whatsapp: string;
-    courtsCount: number;
-    plan: 'arena_pro_99' | 'pay_per_table_20';
-    ownerName: string;
-  }): TenantConfig => {
-    const id = `arena-${Date.now()}`;
-    const count = Math.max(1, Math.min(12, data.courtsCount || 3));
-    const courts: Court[] = Array.from({ length: count }).map((_, idx) => ({
-      id: `${id}-q${idx + 1}`,
-      name: `Quadra ${idx + 1} - ${data.name}`,
-      description: 'Areia Quartzosa Tratada · Iluminação LED Pro',
-      sports: ['futevolei', 'beach_tennis', 'volei_praia'],
-      surface: 'Areia Quartzosa Premium',
-      isCovered: idx === 0,
-      hasLighting: true,
-      hourlyRate: 80,
-      peakHourlyRate: 110,
-      weekendNormalRate: 95,
-      weekendPeakRate: 120,
-      peakStartTime: '18:00',
-      peakEndTime: '22:00',
-      openTime: '06:00',
-      closeTime: '23:00',
-      classSchedules: [
-        {
-          id: `cls-${id}-${idx + 1}`,
-          startTime: '07:00',
-          endTime: '08:00',
-          title: `Turma Futevôlei Evolução Q${idx + 1}`,
-          coachName: `Prof. ${data.ownerName.split(' ')[0]}`,
-          sport: 'futevolei',
-          monthlyPrice: 220,
-          dailyPrice: 45,
-          maxStudents: 12,
-        },
-      ],
-    }));
-
-    const newTenant: TenantConfig = {
-      id,
-      name: data.name,
-      tagline: data.plan === 'arena_pro_99' ? 'Arena Oficial Plano Mensal R$ 99' : 'Arena Parceira SHARK SET',
-      city: data.city,
-      state: data.state.toUpperCase(),
-      address: `Centro Esportivo · ${data.city} - ${data.state.toUpperCase()}`,
-      distanceKm: 2.5,
-      rating: 5.0,
-      whatsapp: data.whatsapp,
-      primaryColor: '#0f172a',
-      accentColor: '#fbbf24',
-      sandBg: '#f8fafc',
-      amenities: ['Wi-Fi', 'Bar & Grill', 'Vestiários', 'Placar Ao Vivo SHARK SET'],
-      courts,
-      operatingHours: { open: '06:00', close: '23:00' },
-      subscriptionPlan: data.plan,
-      monthlyPlanPrice: data.plan === 'arena_pro_99' ? 99 : 20,
-      ownerName: data.ownerName,
-    };
-
-    setArenasMap((prev) => ({
-      ...prev,
-      [id]: newTenant,
-    }));
-    setTenantIdState(id);
-    localStorage.setItem(STORAGE_KEYS.TENANT, id);
-    return newTenant;
   };
 
   // Create Tournament (Supports Location, Modality Format Simples/Duplas, Specific Rules, Max Participants)
@@ -2198,7 +2149,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         simulateStudentDueToday,
         notifyStudentTuitionDue,
         removeStudentFromClass,
-        createNewArenaTenant,
         createTournament,
         updateTournamentConfig,
         registerDouble,

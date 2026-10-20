@@ -20,6 +20,7 @@ import {
   validatePairWithUnifiedPassport,
 } from '../services/rankingValidator';
 import { AthleteLevelBadge } from './AthleteLevelBadge';
+import { toast } from '../store/useToastStore';
 import {
   Plus,
   Search,
@@ -219,6 +220,7 @@ export const DoublesRegistration: React.FC = () => {
     setPlayer1('');
     setPlayer2('');
     setPhone('');
+    toast.success(`Inscrição da dupla realizada com sucesso!`);
     triggerToast(
       `Vaga #${newPair.seed} reservada como PENDENTE em ${activeTournament.name}! A vaga será confirmada assim que os 2 atletas confirmarem o pagamento.`
     );
@@ -250,6 +252,7 @@ export const DoublesRegistration: React.FC = () => {
     setNewAthName('');
     setNewAthPhone('');
     setIsAddAthleteModalOpen(false);
+    toast.success(`Atleta "${addedName}" cadastrado com sucesso!`);
     triggerToast(
       `Jogador ${addedName} homologado no Ranking (${newAthCountry} · ${newAthState} · ${newAthCity} · ${
         chosenArena?.name || tenant.name

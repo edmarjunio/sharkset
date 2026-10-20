@@ -60,17 +60,20 @@ service cloud.firestore {
     }
 
     function isValidUserProfile(data) {
-      return data.keys().hasAll(['id', 'displayName', 'email', 'level', 'experienceCategory', 'role', 'ownerId']) &&
+      return data.keys().hasAll(['id', 'displayName', 'email', 'role', 'ownerId']) &&
         data.keys().hasOnly([
           'id', 'displayName', 'email', 'photoURL', 'level',
-          'experienceCategory', 'role', 'managedArenaId', 'ownerId'
+          'phone', 'experienceCategory', 'role', 'managedArenaId', 'ownerId'
         ]) &&
         data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
         data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
         data.email is string && data.email.size() >= 1 && data.email.size() <= 160 &&
         (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
-        data.level is string && data.level in ['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'] &&
-        data.experienceCategory is string && data.experienceCategory in ['amador', 'profissional'] &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+        (!('level' in data) ||
+          (data.level is string && data.level in ['iniciante', 'serie_c', 'serie_b', 'serie_a', 'profissional'])) &&
+        (!('experienceCategory' in data) ||
+          (data.experienceCategory is string && data.experienceCategory in ['amador', 'profissional'])) &&
         data.role is string && data.role in ['athlete', 'admin'] &&
         (!('managedArenaId' in data) || isValidId(data.managedArenaId)) &&
         (
@@ -282,7 +285,7 @@ service cloud.firestore {
         incoming().id == existing().id &&
         incoming().email == existing().email &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'displayName', 'photoURL', 'level', 'experienceCategory', 'role', 'managedArenaId'
+          'displayName', 'photoURL', 'phone', 'level', 'experienceCategory', 'role', 'managedArenaId'
         ]);
       allow delete: if isVerifiedUser() && isValidId(userId) && isOwner(existing().ownerId);
     }
