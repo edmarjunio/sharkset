@@ -187,63 +187,6 @@ export const INITIAL_WAITLIST: WaitlistEntry[] = [];
 
 export const INITIAL_SMART_NOTIFICATIONS: SmartNotificationItem[] = [];
 
-export const HISTORICAL_LEGEND_VIDEOS: HistoricalLegendVideo[] = [
-  {
-    id: 'leg-belo-vinicius',
-    title: 'Belo & Vinícius — A Dupla Lendária e o Auge da Técnica no Futevôlei Mundial',
-    legends: ['Belo', 'Vinícius'],
-    era: 'Clássico Eterno · Era de Ouro',
-    location: 'Arena Copacabana / Circuito Nacional',
-    youtubeEmbedUrl: 'https://www.youtube.com/embed/videoseries?list=PL8fVUTBmJhHJmpP7s_9Jf7w0mG3K8c-0a',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=900&q=85',
-    viewsCount: '482 mil visualizações',
-    spectatorsWatchingNow: 318,
-    description:
-      'Ralis antológicos de Belo e Vinícius, leitura fria de quadra, levantamentos perfeitos de peito e bolas cravadas na linha.',
-    highlightTag: '👑 BELO & VINÍCIUS',
-  },
-  {
-    id: 'leg-eduardinho',
-    title: 'Eduardinho — O Mago das Diagonais Curtas, Pingo e Shark Attack',
-    legends: ['Eduardinho'],
-    era: 'Relíquia Histórica · Lendas da Areia',
-    location: 'Praia de Boa Viagem / Rio de Janeiro',
-    youtubeEmbedUrl: 'https://www.youtube.com/embed/5qap5aO4i9A',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1526676037777-05a232554f77?auto=format&fit=crop&w=900&q=85',
-    viewsCount: '395 mil visualizações',
-    spectatorsWatchingNow: 245,
-    description:
-      'Compilado de jogos históricos de Eduardinho mostrando controle absoluto no pingo atrás do bloqueio e ataques indefensáveis.',
-    highlightTag: '⚡ EDUARDINHO',
-  },
-  {
-    id: 'leg-cabecao',
-    title: 'Cabeção — Defesas Impossíveis, Cobertura de Quadra e Finais Históricas',
-    legends: ['Cabeção'],
-    era: 'Acervo Oficial · Clássicos do Futevôlei',
-    location: 'Circuito Brasileiro de Futevôlei',
-    youtubeEmbedUrl: 'https://www.youtube.com/embed/jfKfPfyJRdk',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=85',
-    viewsCount: '290 mil visualizações',
-    spectatorsWatchingNow: 189,
-    description:
-      'Partidas memoráveis de Cabeção enfrentando a elite nacional em sets decididos ponto a ponto após o 18x18.',
-    highlightTag: '🛡️ CABEÇÃO',
-  },
-  {
-    id: 'leg-romario-renato',
-    title: 'Romário & Renato Gaúcho — O Duelo dos Reis da Praia em Ipanema e Barra',
-    legends: ['Romário', 'Renato Gaúcho'],
-    era: 'Anos 90 / 2000 · Reis do Rio',
-    location: 'Praia de Ipanema · Posto 9 (RJ)',
-    youtubeEmbedUrl: 'https://www.youtube.com/embed/DWcJFNfaw9c',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=900&q=85',
-    viewsCount: '610 mil visualizações',
-    spectatorsWatchingNow: 412,
-    description:
-      'A rivalidade histórica na areia entre Romário (Baixinho) e Renato Gaúcho cercada por multidões nas praias cariocas.',
-    highlightTag: '⚽ ROMÁRIO & RENATO GAÚCHO',
-  },
-];
+export const HISTORICAL_LEGEND_VIDEOS: HistoricalLegendVideo[] = [];
 
 export const INITIAL_LIVE_CHAT: LiveChatMessage[] = [];

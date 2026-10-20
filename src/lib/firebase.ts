@@ -506,50 +506,19 @@ export async function seedAthletesToFirestore(athletes: AthleteProfile[]): Promi
 
 const LOCAL_MVP_VOTES_KEY = 'sharkset_v1_mvp_votes';
 
-const INITIAL_SEEDED_MVP_VOTES: MatchMvpVoteRecord[] = [
-  {
-    id: 'mvp-seed-1',
-    matchId: 't-futevolei-1-m-1',
-    tournamentId: 't-futevolei-1',
-    tournamentName: 'Copa Shark Set Futevôlei - Série C',
-    playerName: 'Lucas "Tubarão"',
-    pairNames: 'Lucas "Tubarão" & Gabriel "Pingo"',
-    voterName: 'Torcida Arena Conflora',
-    votedAt: '2026-10-18 14:20',
-  },
-  {
-    id: 'mvp-seed-2',
-    matchId: 't-futevolei-1-m-1',
-    tournamentId: 't-futevolei-1',
-    tournamentName: 'Copa Shark Set Futevôlei - Série C',
-    playerName: 'Lucas "Tubarão"',
-    pairNames: 'Lucas "Tubarão" & Gabriel "Pingo"',
-    voterName: 'Prof. Rodrigo',
-    votedAt: '2026-10-18 14:22',
-  },
-  {
-    id: 'mvp-seed-3',
-    matchId: 't-futevolei-1-m-1',
-    tournamentId: 't-futevolei-1',
-    tournamentName: 'Copa Shark Set Futevôlei - Série C',
-    playerName: 'Gabriel "Pingo"',
-    pairNames: 'Lucas "Tubarão" & Gabriel "Pingo"',
-    voterName: 'Matheus Areia',
-    votedAt: '2026-10-18 14:25',
-  },
-];
+const EMPTY_LOCAL_MVP_VOTES: MatchMvpVoteRecord[] = [];
 
 export function getLocalMvpVotes(): MatchMvpVoteRecord[] {
   try {
     const raw = localStorage.getItem(LOCAL_MVP_VOTES_KEY);
     if (!raw) {
-      localStorage.setItem(LOCAL_MVP_VOTES_KEY, JSON.stringify(INITIAL_SEEDED_MVP_VOTES));
-      return INITIAL_SEEDED_MVP_VOTES;
+      localStorage.setItem(LOCAL_MVP_VOTES_KEY, JSON.stringify(EMPTY_LOCAL_MVP_VOTES));
+      return EMPTY_LOCAL_MVP_VOTES;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : INITIAL_SEEDED_MVP_VOTES;
+    return Array.isArray(parsed) ? parsed : EMPTY_LOCAL_MVP_VOTES;
   } catch {
-    return INITIAL_SEEDED_MVP_VOTES;
+    return EMPTY_LOCAL_MVP_VOTES;
   }
 }
 
