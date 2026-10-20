@@ -1,4 +1,7 @@
+import { initializeApp } from 'firebase/app';
 import {
+  getAuth,
+  GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
@@ -9,6 +12,7 @@ import {
   doc,
   getDocFromServer,
   getDocs,
+  getFirestore,
   limit,
   onSnapshot,
   query,
@@ -16,9 +20,27 @@ import {
   where,
 } from 'firebase/firestore';
 import { AcademyPost, AthleteProfile, MatchMvpVoteRecord } from '../types';
-import { app, db, auth, googleProvider } from '../firebase-config';
-import { disableDevicePush } from '../services/pushNotifications';
-export { app, db, auth, googleProvider };
+import firebaseConfig from '../../firebase-applet-config.json';
+
+interface ExtendedFirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId: string;
+  measurementId?: string;
+  firestoreDatabaseId?: string;
+}
+
+const config = firebaseConfig as ExtendedFirebaseConfig;
+const app = initializeApp(config);
+export const db = config.firestoreDatabaseId
+  ? getFirestore(app, config.firestoreDatabaseId)
+  : getFirestore(app);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export enum OperationType {
   CREATE = 'create',
@@ -85,6 +107,7 @@ export async function testFirestoreConnection(): Promise<void> {
   }
 }
 
+testFirestoreConnection();
 
 export async function signInWithGooglePopup() {
   return signInWithPopup(auth, googleProvider);
@@ -99,7 +122,6 @@ export async function getGoogleRedirectResult() {
 }
 
 export async function signOutFirebase() {
-  await disableDevicePush();
   return signOut(auth);
 }
 
@@ -298,16 +320,7 @@ export async function fetchTopAthletesFromFirestore(
       items.push({
         id: data.id || docSnap.id,
         name: data.name || 'Atleta SHARK SET',
-        phone: '',
-        ownerId: data.ownerId,
-        photoUrl: data.photoUrl,
-        campaigns: data.campaigns,
-        podiumsCount: data.podiumsCount,
-        tournamentsPlayed: data.tournamentsPlayed,
-        courtSide: data.courtSide,
-        dominantFoot: data.dominantFoot,
-        stats: data.stats,
-        bio: data.bio,
+        phone: '(64) 99999-0000',
         level: data.level || 'serie_c',
         lastMatchAt: data.lastMatchAt,
         rankingInactive: data.rankingInactive,

@@ -1,11 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { BracketMatch, PointSkillType, RefereeCardEvent, RefereePointEvent, RefereeTimeoutEvent } from '../types';
-import { BroadcastOverlay } from './BroadcastOverlay';
-import { projectBroadcastMatch } from '../services/broadcastMatchProjection';
-import { matchScoreboard, scoreboardRules, scoreboardWinner, type ScoreboardState } from '../services/broadcastScoreboard';
-import { usePublishedScoreboard } from '../hooks/usePublishedScoreboard';
-import type { MatchRules, MatchSet } from '../types';
 import { buildDefaultRefereeState } from '../services/bracketEngine';
 import { buildServiceOrder, pairAthletes, teamAtServiceIndex } from '../services/serviceOrder';
 import { auth, db } from '../lib/firebase';
@@ -33,7 +28,7 @@ interface RefereeConsoleModalProps {
   tournamentMatches?: BracketMatch[];
   onClose: () => void;
   onUpdateLiveMatch: (matchId: string, updater: (prev: BracketMatch) => BracketMatch) => void;
-  onConfirmFinalResult: (matchId: string, winningTeam: 1 | 2, score1: number, score2: number, sets?: MatchSet[], rules?: MatchRules) => void;
+  onConfirmFinalResult: (matchId: string, winningTeam: 1 | 2, score1: number, score2: number) => void;
   onNotify10PointsRemaining: (matchId: string, score1: number, score2: number) => void;
 }
 
@@ -68,14 +63,12 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
   const [broadcastsByArena, setBroadcastsByArena] = useState<LinkableBroadcast[]>([]);
   const [broadcastsByOwner, setBroadcastsByOwner] = useState<LinkableBroadcast[]>([]);
   const [syncNotice, setSyncNotice] = useState<string>('');
-  const remoteScore = usePublishedScoreboard(match.linkedBroadcastId || '');
-  const board = remoteScore.broadcast || matchScoreboard(match);
-  const finalWinner = scoreboardWinner(board);
+  const revisionRef = useRef(0);
 
   const refState = match.liveReferee || buildDefaultRefereeState(match);
   const cardsHistory = refState.cardsHistory || [];
-  const score1 = board.score1;
-  const score2 = board.score2;
+  const score1 = match.score1 ?? 0;
+  const score2 = match.score2 ?? 0;
   const totalPoints = score1 + score2;
   const targetPoints = refState.targetPoints || 18;
   const shouldSwapCourt = totalPoints > 0 && totalPoints % 6 === 0;
@@ -127,25 +120,55 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
   );
   const linkedBroadcast = availableBroadcasts.find((b) => b.id === match.linkedBroadcastId);
   const canDriveLinkedScore = Boolean(linkedBroadcast && ownerUid && linkedBroadcast.ownerId === ownerUid);
+  if (linkedBroadcast) revisionRef.current = Math.max(revisionRef.current, linkedBroadcast.revision);
 
+  const syncScoreToBroadcast = async (s1: number, s2: number, broadcastIdOverride?: string) => {
+    const targetBroadcastId = broadcastIdOverride || match.linkedBroadcastId;
+    if (!targetBroadcastId) return;
+    const b = availableBroadcasts.find((item) => item.id === targetBroadcastId);
+    if (!b || !ownerUid || b.ownerId !== ownerUid) return;
 
-  const handleSelectBroadcast = async (broadcastId: string) => {
-    if (!broadcastId) { onUpdateLiveMatch(match.id, previous => ({ ...previous, linkedBroadcastId: undefined })); return; }
-    const broadcast = availableBroadcasts.find(item => item.id === broadcastId);
-    if (!broadcast || broadcast.ownerId !== ownerUid) { setSyncNotice('Somente o dono da transmissão pode vincular e operar o placar.'); return; }
-    if (tournamentMatches.some(item => item.id !== match.id && item.linkedBroadcastId === broadcastId && item.status !== 'completed')) { setSyncNotice('Esta transmissão está vinculada a outro jogo em andamento.'); return; }
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return;
+
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/broadcasts/' + broadcastId, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ revision: broadcast.revision || 0, team1: team1Label.slice(0,80), team2: team2Label.slice(0,80), stage: match.stage, stageName: match.stageName, matchId: match.id, ...scoreboardRules(matchScoreboard(match)) }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Não foi possível vincular a transmissão.');
-      onUpdateLiveMatch(match.id, previous => ({ ...previous, linkedBroadcastId: broadcastId }));
-      setSyncNotice('Transmissão vinculada. O placar publicado é a fonte de verdade; pontos locais não foram copiados.');
-    } catch (failure) { setSyncNotice(failure instanceof Error ? failure.message : 'Não foi possível vincular.'); }
+      const res = await fetch(`/api/broadcasts/${targetBroadcastId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          score1: s1,
+          score2: s2,
+          revision: revisionRef.current,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.revision === 'number') {
+          revisionRef.current = data.revision;
+        }
+        setSyncNotice('✓ Placar sincronizado com a transmissão oficial!');
+        setTimeout(() => setSyncNotice(''), 3000);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setSyncNotice(err.error || 'Não foi possível sincronizar com a transmissão.');
+        setTimeout(() => setSyncNotice(''), 4000);
+      }
+    } catch {
+      // Offline / network failure
+    }
   };
-  const applyLocalBoard = (next: ScoreboardState) => {
-    onUpdateLiveMatch(match.id, previous => projectBroadcastMatch(previous, next, selectedSkill));
+
+  const handleSelectBroadcast = (broadcastId: string) => {
+    onUpdateLiveMatch(match.id, (prev) => ({
+      ...prev,
+      linkedBroadcastId: broadcastId || undefined,
+    }));
+    if (broadcastId) {
+      syncScoreToBroadcast(score1, score2, broadcastId);
+    }
   };
 
   const handleConfigureService = (firstTeam: 1 | 2, op1: 0 | 1, op2: 0 | 1) => {
@@ -164,6 +187,88 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
         },
       };
     });
+  };
+
+  const handleScorePoint = (scoringTeam: 1 | 2) => {
+    const nextScore1 = scoringTeam === 1 ? score1 + 1 : score1;
+    const nextScore2 = scoringTeam === 2 ? score2 + 1 : score2;
+    const nextTotal = nextScore1 + nextScore2;
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    onUpdateLiveMatch(match.id, (prev) => {
+      const currentRef = prev.liveReferee || buildDefaultRefereeState(prev);
+      const wasServingTeam = currentRef.servingTeam;
+
+      // Official Futevôlei Service Rotation Rule:
+      // If the receiving team wins the point (side-out / virada de bola), advance to the next server in the 4-player rotation!
+      let nextRotationIdx = currentRef.serverRotationIndex;
+      if (scoringTeam !== wasServingTeam) {
+        nextRotationIdx = ((currentRef.serverRotationIndex + 1) % 4) as 0 | 1 | 2 | 3;
+      }
+
+      const nextServingTeam = teamAtServiceIndex(currentRef, nextRotationIdx);
+      const autoSwap = nextTotal > 0 && nextTotal % 6 === 0;
+
+      const scorerName = scoringTeam === 1 ? team1Label : team2Label;
+      const pointEv: RefereePointEvent = {
+        id: `pt-${Date.now()}`,
+        timestamp: nowTime,
+        scoringTeam,
+        scorerName,
+        serverName: currentRef.serviceOrderLabels[currentRef.serverRotationIndex],
+        skill: selectedSkill,
+        scoreAfter: `${nextScore1} x ${nextScore2}`,
+      };
+
+      return {
+        ...prev,
+        status: 'in_progress',
+        score1: nextScore1,
+        score2: nextScore2,
+        liveReferee: {
+          ...currentRef,
+          servingTeam: nextServingTeam,
+          serverRotationIndex: nextRotationIdx,
+          courtSwapsCount: autoSwap ? currentRef.courtSwapsCount + 1 : currentRef.courtSwapsCount,
+          currentSidesSwapped: autoSwap ? !currentRef.currentSidesSwapped : currentRef.currentSidesSwapped,
+          activeTimeout: null,
+          updatedAt: nowTime,
+          pointHistory: [pointEv, ...currentRef.pointHistory].slice(0, 30),
+        },
+      };
+    });
+
+    syncScoreToBroadcast(nextScore1, nextScore2);
+
+    // If match reaches 8 points (10 points left to 18), automatically trigger the 10-points-remaining notification
+    const maxScore = Math.max(nextScore1, nextScore2);
+    if (targetPoints - maxScore === 10 || targetPoints - maxScore === 5) {
+      onNotify10PointsRemaining(match.id, nextScore1, nextScore2);
+    }
+
+    setSelectedSkill('normal');
+  };
+
+  const handleDecrementPoint = (team: 1 | 2) => {
+    const nextScore1 = team === 1 ? Math.max(0, score1 - 1) : score1;
+    const nextScore2 = team === 2 ? Math.max(0, score2 - 1) : score2;
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    onUpdateLiveMatch(match.id, (prev) => {
+      const currentRef = prev.liveReferee || buildDefaultRefereeState(prev);
+      return {
+        ...prev,
+        score1: nextScore1,
+        score2: nextScore2,
+        liveReferee: {
+          ...currentRef,
+          updatedAt: nowTime,
+          pointHistory: currentRef.pointHistory.slice(1),
+        },
+      };
+    });
+
+    syncScoreToBroadcast(nextScore1, nextScore2);
   };
 
   const handleSelectServerRotation = (idx: 0 | 1 | 2 | 3) => {
@@ -293,9 +398,10 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
   };
 
   const handleFinishMatch = () => {
-    if (!finalWinner) return;
-    const sets = (board.setHistory || []).map(([score1, score2]) => ({ score1, score2 }));
-    onConfirmFinalResult(match.id, finalWinner, score1, score2, sets, scoreboardRules(board));
+    if (score1 === score2) return;
+    const winningTeam: 1 | 2 = score1 > score2 ? 1 : 2;
+    onConfirmFinalResult(match.id, winningTeam, score1, score2);
+    onClose();
   };
 
   const matchPlayers: { team: 1 | 2; name: string }[] = [
@@ -342,13 +448,171 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
             GIANT SCOREBOARD: FIXED POSITION SO BUTTONS NEVER MOVE UNDER ARBITRATION
             Placed at top of the modal body so dynamic alerts below do not push it.
            ========================================================================= */}
-        <BroadcastOverlay key={match.id} state={board} team1={team1Label} team2={team2Label}
-          disabled={match.status === 'completed' || !match.team1 || !match.team2 || (!!match.linkedBroadcastId && (!canDriveLinkedScore || !remoteScore.broadcast))}
-          canUndo={remoteScore.broadcast?.undoAvailable}
-          onCommand={match.linkedBroadcastId && canDriveLinkedScore ? action => remoteScore.command(action).then(next => applyLocalBoard(next)) : undefined}
-          onChange={match.linkedBroadcastId ? undefined : patch => applyLocalBoard({ ...matchScoreboard(match), ...patch })} />
-        {remoteScore.error && <p role="alert" className="text-sm text-rose-300">{remoteScore.error}</p>}
-        <div className="grid grid-cols-2 gap-3">{(['team1','team2'] as const).map((team, index) => <button key={team} type="button" onClick={() => handleRequestTimeout(team)} className="watch-control"><Timer size={16} />Tempo Dupla {index === 0 ? 'A' : 'B'}</button>)}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Team 1 Score Card */}
+          <div
+            className={`rounded-2xl p-4 sm:p-5 border-2 transition-all flex flex-col justify-between gap-3 min-h-[220px] ${
+              refState.servingTeam === 1
+                ? 'bg-slate-900 border-amber-400 shadow-lg'
+                : 'bg-slate-900/70 border-slate-800'
+            }`}
+          >
+            {/* Stable Header Row (Fixed Height) */}
+            <div className="h-7 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] font-bold">
+                  DUPLA 1 #{match.team1?.seed || 1}
+                </span>
+                {refState.servingTeam === 1 ? (
+                  <span className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[10px] uppercase">
+                    🏐 COM O SAQUE
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold text-[10px] uppercase">
+                    RECEPÇÃO
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-mono text-slate-400">
+                Tempos: {refState.team1TimeoutsUsed}/{refState.maxTimeoutsPerTeam}
+              </span>
+            </div>
+
+            {/* Stable Team Name (Fixed Height) */}
+            <div className="h-7 flex items-center">
+              <h3 className="text-base sm:text-lg font-black text-white truncate" title={team1Label}>
+                {team1Label}
+              </h3>
+            </div>
+
+            {/* Stable Scoring Buttons Row (Fixed Height) */}
+            <div className="h-20 flex items-center justify-between gap-3 my-1">
+              <button
+                type="button"
+                aria-label="Diminuir 1 ponto da dupla 1"
+                title="Diminuir 1 ponto da dupla 1"
+                onClick={() => handleDecrementPoint(1)}
+                className="score-control score-control-subtract w-14 h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center cursor-pointer transition-colors shrink-0"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+
+              <div className="text-center min-w-[80px]">
+                <span className="text-5xl sm:text-6xl font-mono font-black tracking-tighter text-white tabular-nums">
+                  {score1}
+                </span>
+                <span className="block text-[9.5px] uppercase font-bold text-slate-400">
+                  Set até {targetPoints}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Adicionar 1 ponto da dupla 1"
+                title="Adicionar 1 ponto da dupla 1"
+                onClick={() => handleScorePoint(1)}
+                className="score-control score-control-add w-24 sm:w-28 h-16 rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-sm flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all shrink-0"
+              >
+                <Plus className="w-6 h-6 stroke-[3]" />
+                <span className="text-xs uppercase font-black">+1 Ponto</span>
+              </button>
+            </div>
+
+            {/* Timeout Button (Fixed Height) */}
+            <div className="h-10 flex items-center pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => handleRequestTimeout('team1')}
+                className="w-full py-1.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-200 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Timer className="w-3.5 h-3.5 text-amber-400" />
+                Pedir Tempo ({refState.team1TimeoutsUsed}/{refState.maxTimeoutsPerTeam})
+              </button>
+            </div>
+          </div>
+
+          {/* Team 2 Score Card */}
+          <div
+            className={`rounded-2xl p-4 sm:p-5 border-2 transition-all flex flex-col justify-between gap-3 min-h-[220px] ${
+              refState.servingTeam === 2
+                ? 'bg-slate-900 border-amber-400 shadow-lg'
+                : 'bg-slate-900/70 border-slate-800'
+            }`}
+          >
+            {/* Stable Header Row (Fixed Height) */}
+            <div className="h-7 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] font-bold">
+                  DUPLA 2 #{match.team2?.seed || 2}
+                </span>
+                {refState.servingTeam === 2 ? (
+                  <span className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[10px] uppercase">
+                    🏐 COM O SAQUE
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold text-[10px] uppercase">
+                    RECEPÇÃO
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-mono text-slate-400">
+                Tempos: {refState.team2TimeoutsUsed}/{refState.maxTimeoutsPerTeam}
+              </span>
+            </div>
+
+            {/* Stable Team Name (Fixed Height) */}
+            <div className="h-7 flex items-center">
+              <h3 className="text-base sm:text-lg font-black text-white truncate" title={team2Label}>
+                {team2Label}
+              </h3>
+            </div>
+
+            {/* Stable Scoring Buttons Row (Fixed Height) */}
+            <div className="h-20 flex items-center justify-between gap-3 my-1">
+              <button
+                type="button"
+                aria-label="Diminuir 1 ponto da dupla 2"
+                title="Diminuir 1 ponto da dupla 2"
+                onClick={() => handleDecrementPoint(2)}
+                className="score-control score-control-subtract w-14 h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center cursor-pointer transition-colors shrink-0"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+
+              <div className="text-center min-w-[80px]">
+                <span className="text-5xl sm:text-6xl font-mono font-black tracking-tighter text-white tabular-nums">
+                  {score2}
+                </span>
+                <span className="block text-[9.5px] uppercase font-bold text-slate-400">
+                  Set até {targetPoints}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Adicionar 1 ponto da dupla 2"
+                title="Adicionar 1 ponto da dupla 2"
+                onClick={() => handleScorePoint(2)}
+                className="score-control score-control-add w-24 sm:w-28 h-16 rounded-2xl bg-emerald-400 hover:bg-emerald-300 active:scale-95 text-slate-950 font-black text-sm flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all shrink-0"
+              >
+                <Plus className="w-6 h-6 stroke-[3]" />
+                <span className="text-xs uppercase font-black">+1 Ponto</span>
+              </button>
+            </div>
+
+            {/* Timeout Button (Fixed Height) */}
+            <div className="h-10 flex items-center pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => handleRequestTimeout('team2')}
+                className="w-full py-1.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-200 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Timer className="w-3.5 h-3.5 text-emerald-400" />
+                Pedir Tempo ({refState.team2TimeoutsUsed}/{refState.maxTimeoutsPerTeam})
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* =========================================================================
             STATUS & ALERT RIBBON (Below Scoreboard so it never pushes score buttons)
@@ -446,7 +710,16 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
               </p>
             </div>
 
-
+            {canDriveLinkedScore && (
+              <button
+                type="button"
+                onClick={() => syncScoreToBroadcast(score1, score2)}
+                className="px-3 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Sincronizar Placar Agora
+              </button>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -841,10 +1114,10 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
 
             <button
               type="button"
-              disabled={!finalWinner || remoteScore.pending > 0}
+              disabled={score1 === score2}
               onClick={handleFinishMatch}
               className={`px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all ${
-                finalWinner
+                score1 !== score2
                   ? 'bg-emerald-400 hover:bg-emerald-300 text-slate-950 cursor-pointer shadow-md'
                   : 'bg-slate-800 text-slate-500 cursor-not-allowed'
               }`}

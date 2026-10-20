@@ -1,10 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { BracketMatch, PointSkillType, RefereePointEvent, TeamPair } from '../types';
-import { BroadcastOverlay } from './BroadcastOverlay';
-import { projectBroadcastMatch } from '../services/broadcastMatchProjection';
-import { matchScoreboard } from '../services/broadcastScoreboard';
-import { usePublishedScoreboard } from '../hooks/usePublishedScoreboard';
-import { auth } from '../lib/firebase';
 import { buildDefaultRefereeState } from '../services/bracketEngine';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
 import {
@@ -80,9 +75,6 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
   onOpenMvpAndHistory,
   onOpenShareMatch,
 }) => {
-  const remoteScore = usePublishedScoreboard(match.linkedBroadcastId || '');
-  const broadcastState = remoteScore.broadcast || matchScoreboard(match);
-  const remoteOperator = !!remoteScore.broadcast && remoteScore.broadcast.ownerId === auth.currentUser?.uid;
   const refState = match.liveReferee || buildDefaultRefereeState(match);
   const score1 = match.score1 ?? 0;
   const score2 = match.score2 ?? 0;
@@ -473,15 +465,175 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             {/* LEFT 7 COLUMNS: Scoreboard, Service Rotation, Technical Stats & Point-by-Point History */}
             <div className="lg:col-span-7 space-y-5">
-              <BroadcastOverlay key={match.id} state={broadcastState} team1={team1Label} team2={team2Label}
-                team1Category={match.team1 ? ATHLETE_LEVEL_LABELS[match.team1.player1Level] : undefined}
-                team2Category={match.team2 ? ATHLETE_LEVEL_LABELS[match.team2.player1Level] : undefined}
-                disabled={!isReady || isCompleted || (!!match.linkedBroadcastId && !remoteOperator)}
-                canUndo={remoteScore.broadcast?.undoAvailable}
-                onCommand={remoteOperator ? action => remoteScore.command(action).then(next => onUpdateLiveMatch(match.id, previous => projectBroadcastMatch(previous, next, selectedSkill))) : undefined}
-                onChange={remoteOperator ? undefined : patch => onUpdateLiveMatch(match.id, previous => projectBroadcastMatch(previous, { ...matchScoreboard(previous), ...patch }, selectedSkill))} />
-              {remoteScore.error && <p role="alert" className="text-sm text-rose-300">{remoteScore.error}</p>}
-              <button type="button" onClick={() => onOpenFullRefereeConsole(match.id)} className="watch-control">Abrir súmula e vincular transmissão</button>
+              {/* REAL-TIME SCOREBOARD CARD */}
+              <div className="bg-gradient-to-b from-[#071D3D] to-[#041126] border-2 border-[#0987CE] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs border-b border-[#145A9B]/60 pb-3">
+                  <span className="font-black text-[#5BC3FA] uppercase tracking-wider">
+                    {tournamentName} · {match.stageName}
+                  </span>
+                  <span className="font-mono text-slate-300">
+                    Soma: {totalPoints} pts {totalPoints > 0 && totalPoints % 6 === 0 ? '· 🔄 Troca de Quadra!' : ''}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-7 items-center gap-4">
+                  {/* Team 1 */}
+                  <div
+                    className={`sm:col-span-3 p-4 rounded-2xl border-2 transition-all ${
+                      refState.servingTeam === 1
+                        ? 'bg-[#030B17] border-[#12C7BB] shadow-md'
+                        : 'bg-[#030B17]/70 border-[#145A9B]'
+                    }`}
+                  >
+                    <div className="h-6 flex items-center justify-between gap-1 mb-1">
+                      <span className="text-[10px] font-mono font-bold text-[#0987CE]">
+                        DUPLA 1 #{match.team1?.seed || 1}
+                      </span>
+                      {refState.servingTeam === 1 ? (
+                        <span className="px-2 py-0.5 rounded bg-[#12C7BB] text-slate-950 font-black text-[9px] uppercase">
+                          🏐 Sacando
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-[#071D3D] text-slate-400 font-bold text-[9px] uppercase">
+                          Recepção
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base sm:text-lg font-black text-white leading-snug">
+                      {team1Label}
+                    </h3>
+                    {match.team1 && (
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {ATHLETE_LEVEL_LABELS[match.team1.player1Level]}
+                        {!isSingles ? ` + ${ATHLETE_LEVEL_LABELS[match.team1.player2Level]}` : ''}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-[#145A9B]/50">
+                      <button aria-label="Diminuir 1 ponto da dupla 1" title="Diminuir 1 ponto da dupla 1"
+                        type="button"
+                        disabled={!isReady}
+                        onClick={() => handleQuickSubtractPoint(1)}
+                        className="score-control score-control-subtract w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="text-4xl sm:text-5xl font-mono font-black text-white tabular-nums">
+                        {score1}
+                      </span>
+                      <button aria-label="Adicionar 1 ponto da dupla 1" title="Adicionar 1 ponto da dupla 1"
+                        type="button"
+                        disabled={!isReady}
+                        onClick={() => handleQuickAddPoint(1)}
+                        className="score-control score-control-add px-3.5 h-10 rounded-xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* VS Divider */}
+                  <div className="sm:col-span-1 flex flex-col items-center justify-center py-1">
+                    <span className="text-xs font-black text-[#12C7BB] uppercase">VS</span>
+                  </div>
+
+                  {/* Team 2 */}
+                  <div
+                    className={`sm:col-span-3 p-4 rounded-2xl border-2 transition-all ${
+                      refState.servingTeam === 2
+                        ? 'bg-[#030B17] border-[#12C7BB] shadow-md'
+                        : 'bg-[#030B17]/70 border-[#145A9B]'
+                    }`}
+                  >
+                    <div className="h-6 flex items-center justify-between gap-1 mb-1">
+                      <span className="text-[10px] font-mono font-bold text-[#0987CE]">
+                        DUPLA 2 #{match.team2?.seed || 2}
+                      </span>
+                      {refState.servingTeam === 2 ? (
+                        <span className="px-2 py-0.5 rounded bg-[#12C7BB] text-slate-950 font-black text-[9px] uppercase">
+                          🏐 Sacando
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-[#071D3D] text-slate-400 font-bold text-[9px] uppercase">
+                          Recepção
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base sm:text-lg font-black text-white leading-snug">
+                      {team2Label}
+                    </h3>
+                    {match.team2 && (
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {ATHLETE_LEVEL_LABELS[match.team2.player1Level]}
+                        {!isSingles ? ` + ${ATHLETE_LEVEL_LABELS[match.team2.player2Level]}` : ''}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-[#145A9B]/50">
+                      <button aria-label="Diminuir 1 ponto da dupla 2" title="Diminuir 1 ponto da dupla 2"
+                        type="button"
+                        disabled={!isReady}
+                        onClick={() => handleQuickSubtractPoint(2)}
+                        className="score-control score-control-subtract w-9 h-9 rounded-xl bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] text-white flex items-center justify-center cursor-pointer disabled:opacity-40"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="text-4xl sm:text-5xl font-mono font-black text-white tabular-nums">
+                        {score2}
+                      </span>
+                      <button aria-label="Adicionar 1 ponto da dupla 2" title="Adicionar 1 ponto da dupla 2"
+                        type="button"
+                        disabled={!isReady}
+                        onClick={() => handleQuickAddPoint(2)}
+                        className="score-control score-control-add px-3.5 h-10 rounded-xl bg-[#12C7BB] hover:bg-[#0ea89e] text-slate-950 font-black text-xs flex items-center gap-1 cursor-pointer shadow-sm disabled:opacity-40"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fundamento Selector + Finish Match Action */}
+                {isReady && (
+                  <div className="pt-3 border-t border-[#145A9B]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1 mr-1">
+                        <Zap className="w-3.5 h-3.5 text-[#12C7BB]" />
+                        Fundamento do ponto:
+                      </span>
+                      {(Object.keys(SKILL_BADGES) as PointSkillType[]).map((sk) => (
+                        <button
+                          key={sk}
+                          type="button"
+                          onClick={() => setSelectedSkill(sk)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            selectedSkill === sk
+                              ? 'bg-[#0987CE] text-white border-[#0987CE]'
+                              : 'bg-[#030B17] text-slate-300 border-[#145A9B] hover:text-white'
+                          }`}
+                        >
+                          {SKILL_BADGES[sk].badge}
+                        </button>
+                      ))}
+                    </div>
+
+                    {score1 !== score2 && (score1 > 0 || score2 > 0) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const winTeam: 1 | 2 = score1 > score2 ? 1 : 2;
+                          onConfirmFinalResult(match.id, winTeam, score1, score2);
+                          onClose();
+                        }}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0987CE] to-[#12C7BB] text-slate-950 font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md shrink-0"
+                      >
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        Encerrar Jogo e Avançar Vencedor ({score1}x{score2})
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* ORDEM DE SAQUE DOS 4 ATLETAS */}
               <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-3">

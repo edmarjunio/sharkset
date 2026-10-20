@@ -190,7 +190,7 @@ export const SharkCardsShowcase: React.FC<SharkCardsShowcaseProps> = ({
             <SharkCard3D
               athlete={
                 myAthlete || {
-                  id: 'my-card', phone: '', preferredSport: 'futevolei',
+                  id: 'my-card',
                   name: currentUser.displayName || userProfile.name || 'Atleta SHARK SET',
                   level: userProfile.level || 'iniciante',
                   points: 0,

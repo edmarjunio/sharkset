@@ -447,26 +447,24 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
   };
 
   // Owner: Create Tournament
-  const handleCreateTournamentSubmit = async (e: React.FormEvent) => {
+  const handleCreateTournamentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!tournName.trim()) return;
 
-    try {
-      const created = await createTournament({
-        name: tournName.trim(),
-        sport: tournSport,
-        category: tournCategory,
-        semiFormat: tournSemiFormat,
-        date: tournDate,
-        registrationFee: tournFee,
-        responsibleName: tournResponsible.trim() || 'Organizador',
-        responsiblePhone: tournResponsiblePhone.trim() || tenant.whatsapp,
-      });
+    const created = createTournament({
+      name: tournName.trim(),
+      sport: tournSport,
+      category: tournCategory,
+      semiFormat: tournSemiFormat,
+      date: tournDate,
+      registrationFee: tournFee,
+      responsibleName: tournResponsible.trim() || 'Organizador',
+      responsiblePhone: tournResponsiblePhone.trim() || tenant.whatsapp,
+    });
 
-      setTournName('');
-      setShowCreateTournModal(false);
-      triggerToast(`Campeonato "${created.name}" criado e liberado para inscrições!`);
-    } catch (error) { triggerToast(error instanceof Error ? error.message : 'Não foi possível publicar o torneio.'); }
+    setTournName('');
+    setShowCreateTournModal(false);
+    triggerToast(`Campeonato "${created.name}" criado e liberado para inscrições!`);
   };
 
   // Client: Register & Pay for Tournament inside Arena
