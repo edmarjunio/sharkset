@@ -10,6 +10,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function initialMmr(level) {
+      return level == 'profissional' ? 1500 : level == 'serie_a' ? 950 :
+        level == 'serie_b' ? 550 : level == 'serie_c' ? 250 : 0;
+    }
+
     // Only redacted server projections are public. Authoritative arena/booking records stay private.
     match /arenas_public/{arenaId} {
       allow read: if true;
@@ -97,7 +102,7 @@ service cloud.firestore {
       return data.keys().hasAll(['id', 'displayName', 'email', 'level', 'experienceCategory', 'role', 'ownerId']) &&
         data.keys().hasOnly([
           'id', 'displayName', 'email', 'photoURL', 'level',
-          'experienceCategory', 'role', 'managedArenaId', 'ownerId'
+          'experienceCategory', 'role', 'managedArenaId', 'ownerId', 'initialLevel', 'categoryLockedAt'
         ]) &&
         data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
         data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
@@ -307,34 +312,41 @@ service cloud.firestore {
     }
 
     match /user_profiles/{userId} {
-      allow get: if isValidId(userId) && isOwner(existing().ownerId);
+      allow get: if isSignedIn() && userId == request.auth.uid;
       allow list: if isOwner(existing().ownerId);
-      allow create: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid && isValidUserProfile(incoming());
+      allow create: if isVerifiedUser() && userId == request.auth.uid && isValidUserProfile(incoming()) &&
+        incoming().role == 'athlete' && !('managedArenaId' in incoming()) &&
+        incoming().email == request.auth.token.email && incoming().initialLevel == incoming().level &&
+        incoming().categoryLockedAt == request.time &&
+        getAfter(/databases/$(database)/documents/athletes_public/$(userId)).data.level == incoming().level &&
+        getAfter(/databases/$(database)/documents/athletes_public/$(userId)).data.points == initialMmr(incoming().level);
       allow update: if isVerifiedUser() && isValidId(userId) && isValidUserProfile(incoming()) &&
         isOwner(existing().ownerId) &&
         incoming().ownerId == existing().ownerId &&
         incoming().id == existing().id &&
         incoming().email == existing().email &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'displayName', 'photoURL', 'level', 'experienceCategory', 'role', 'managedArenaId'
+          'displayName', 'photoURL', 'experienceCategory'
         ]);
-      allow delete: if isVerifiedUser() && isValidId(userId) && isOwner(existing().ownerId);
+      allow delete: if false;
     }
 
     match /athletes_public/{athleteId} {
-      allow get: if isValidId(athleteId) && isOwner(existing().ownerId);
+      allow get: if isSignedIn() && (athleteId == request.auth.uid || isOwner(existing().ownerId));
       allow list: if isOwner(existing().ownerId);
-      allow create: if isVerifiedUser() && isValidId(athleteId) && isValidAthletePublic(incoming());
+      allow create: if isVerifiedUser() && athleteId == request.auth.uid && isValidAthletePublic(incoming()) &&
+        !exists(/databases/$(database)/documents/user_profiles/$(request.auth.uid)) &&
+        getAfter(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data.initialLevel == incoming().level &&
+        incoming().points == initialMmr(incoming().level) && incoming().wins == 0 && incoming().matchesPlayed == 0 &&
+        incoming().titlesCount == 0 && incoming().levelMatches == 0 && incoming().levelWins == 0 && incoming().levelPoints == 0 &&
+        incoming().highestHistoricalLevel == incoming().level && !('lastMatchAt' in incoming());
       allow update: if isVerifiedUser() && isValidId(athleteId) && isValidAthletePublic(incoming()) &&
         isOwner(existing().ownerId) &&
         incoming().ownerId == existing().ownerId &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'name', 'level', 'experienceCategory', 'points', 'wins', 'matchesPlayed',
-          'titlesCount', 'country', 'state', 'city', 'arenaId', 'arenaName',
-          'lastMatchAt', 'rankingInactive', 'highestHistoricalLevel',
-          'levelMatches', 'levelWins', 'levelPoints'
+          'name', 'experienceCategory', 'country', 'state', 'city', 'arenaId', 'arenaName'
         ]);
-      allow delete: if isVerifiedUser() && isValidId(athleteId) && isOwner(existing().ownerId);
+      allow delete: if false;
     }
 
     match /bookings/{bookingId} {

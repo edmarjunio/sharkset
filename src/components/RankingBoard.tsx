@@ -662,7 +662,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         <div className="font-extrabold text-white text-sm flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => openAthleteDialog(athlete.id)}
+                            onClick={() => openAthleteDialog(athlete)}
                             className="hover:text-[#12C7BB] hover:underline transition-colors cursor-pointer text-left"
                             title="Abrir ficha técnica, pódios e MMR do atleta"
                           >
@@ -817,7 +817,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            onClick={() => openAthleteDialog(athlete.id)}
+                            onClick={() => openAthleteDialog(athlete)}
                             className="px-2.5 py-1.5 rounded-lg bg-[#030B17] hover:bg-[#0B254E] text-[#12C7BB] border border-[#145A9B] font-bold text-[11px] transition-colors cursor-pointer whitespace-nowrap"
                             title={`Ver ficha completa, pódios e MMR de ${athlete.name}`}
                           >

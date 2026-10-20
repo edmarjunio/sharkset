@@ -8,13 +8,15 @@ import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { watchSessionReducer } from '../services/watchSession';
 import { ImmersiveSurface } from './ImmersiveSurface';
 import { FutevoleiVisualBracketCanvas } from './FutevoleiVisualBracketCanvas';
-import { BroadcastOverlay, isSemiOrFinalStage } from './BroadcastOverlay';
+import { BroadcastOverlay } from './BroadcastOverlay';
+import { matchScoreboard, type ScoreboardState } from '../services/broadcastScoreboard';
+import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
 import { isYouTubeUrl, getYouTubeEmbedUrl } from '../utils/videoUtils';
 import type { TeamPair } from '../types';
 
 const LivekitViewer = lazy(() => import('./LivekitViewer').then(module => ({ default: module.LivekitViewer })));
 
-interface PublishedVideo { provider?: 'livekit'; arenaId?: string; liveExpiresAt?: number; title?: string; videoUrl?: string; isLive?: boolean; team1?: string; team2?: string; score1?: number; score2?: number }
+interface PublishedVideo extends Partial<ScoreboardState> { provider?: 'livekit'; arenaId?: string; liveExpiresAt?: number; title?: string; videoUrl?: string; isLive?: boolean; team1?: string; team2?: string; score1?: number; score2?: number }
 const noop = () => {};
 const pairName = (pair?: TeamPair) => pair ? [pair.player1, pair.player2 === 'Individual (1x1)' ? '' : pair.player2].filter(Boolean).join(' / ') : 'A definir';
 
@@ -26,7 +28,7 @@ export function BroadcastWatchScreen() {
 function WatchScreen({ source }: { source: WatchSource }) {
   const { tournaments, matchesByTournament, bookings } = useApp();
   const { active: fullscreen, setFullscreen } = useImmersiveMode();
-  const match = source.kind === 'match' ? (matchesByTournament[source.tournamentId || ''] || []).find(item => item.id === source.id) : undefined;
+  const match = source.kind === 'match' ? (matchesByTournament[source.tournamentId || ''] || []).find(item => item.id === source.id) : source.kind === 'published' ? Object.values(matchesByTournament).flat().find(item => item.linkedBroadcastId === source.id) : undefined;
   const booking = source.kind === 'booking' ? bookings.find(item => item.id === source.id) : undefined;
   const publishedId = source.kind === 'published' ? source.id : match?.linkedBroadcastId;
   const linkedTournament = source.tournamentId || Object.entries(matchesByTournament).find(([, matches]) => publishedId && matches.some(item => item.linkedBroadcastId === publishedId))?.[0] || '';
@@ -148,24 +150,13 @@ function WatchScreen({ source }: { source: WatchSource }) {
 
         {/* Placar Oficial SHARKSET no Topo Central da Tela (Visão Limpa do Espectador) */}
         {(match || published || booking?.liveBroadcast) && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl z-30 pointer-events-none">
+          <div className="broadcast-score-anchor">
             <BroadcastOverlay
-              state={{
-                score1: (match ? match.score1 : published ? published.score1 : booking?.liveBroadcast?.score1) ?? 0,
-                score2: (match ? match.score2 : published ? published.score2 : booking?.liveBroadcast?.score2) ?? 0,
-                sets1:
-                  (match?.sets ? match.sets.filter(s => s.score1 > s.score2).length : undefined) ??
-                  booking?.liveBroadcast?.sets1 ??
-                  0,
-                sets2:
-                  (match?.sets ? match.sets.filter(s => s.score2 > s.score1).length : undefined) ??
-                  booking?.liveBroadcast?.sets2 ??
-                  0,
-                bestOf: (match?.stageName && isSemiOrFinalStage(match.stageName)) ? 3 : (booking?.liveBroadcast?.bestOf || 1),
-                stageName: match?.stageName || 'Ao Vivo',
-              }}
+              state={match?.status === 'completed' ? matchScoreboard(match) : published ? { score1: 0, score2: 0, ...published } : match ? matchScoreboard(match) : { score1: 0, score2: 0, ...booking?.liveBroadcast }}
               team1={match ? pairName(match.team1) : published?.team1 || booking?.customerName || 'Dupla 1'}
               team2={match ? pairName(match.team2) : published?.team2 || 'Dupla 2'}
+              team1Category={match?.team1 ? ATHLETE_LEVEL_LABELS[match.team1.player1Level] : undefined}
+              team2Category={match?.team2 ? ATHLETE_LEVEL_LABELS[match.team2.player1Level] : undefined}
               compact
             />
           </div>

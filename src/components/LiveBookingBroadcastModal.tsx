@@ -474,7 +474,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-slate-950/60 pointer-events-none" />
 
               {/* Top Overlay: Live Status + Spectators Count + Arena/Court */}
-              <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-black uppercase flex items-center gap-1.5 shadow-md ${
@@ -507,7 +507,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
               </div>
 
               {/* Placar de Transmissão SHARKSET (Fixo no Topo Central da Tela da Transmissão) */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-xl z-20 pointer-events-none">
+              <div className="broadcast-score-anchor">
                 <BroadcastOverlay state={liveState} team1={team1Names} team2={team2Names} compact />
               </div>
             </div>
@@ -694,7 +694,6 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
           {/* RIGHT 5 COLUMNS: Referee Scoreboard Console + Ranking Proof Validation + Highlighted Live Chat */}
           <div className="lg:col-span-5 flex flex-col gap-5">
             <BroadcastOverlay state={liveState} team1={team1Names} team2={team2Names}
-              onPoint={handleScorePoint}
               onChange={patch => updateBookingMatchSetup(activeBooking.id, previous => ({
                 ...previous, liveBroadcast: { ...(previous.liveBroadcast || liveState), ...patch },
               }))} />
@@ -738,55 +737,6 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
                       {SKILL_LABELS[sk].badge}
                     </button>
                   ))}
-                </div>
-              </div>
-
-              {/* Score Buttons */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-2">
-                  <div className="text-xs font-black text-emerald-950 truncate">{team1Names}</div>
-                  <div className="text-3xl font-black text-emerald-700 tabular-nums">
-                    {liveState.score1}
-                  </div>
-                  <div className="flex items-center justify-center gap-2">
-                    <button aria-label="Diminuir 1 ponto da dupla 1" title="Diminuir 1 ponto da dupla 1"
-                      type="button"
-                      onClick={() => handleScorePoint(1, -1)}
-                      className="score-control score-control-subtract p-2 rounded-xl bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 cursor-pointer"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <button aria-label="Adicionar 1 ponto da dupla 1" title="Adicionar 1 ponto da dupla 1"
-                      type="button"
-                      onClick={() => handleScorePoint(1, 1)}
-                      className="score-control score-control-add flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 text-center space-y-2">
-                  <div className="text-xs font-black text-sky-950 truncate">{team2Names}</div>
-                  <div className="text-3xl font-black text-sky-700 tabular-nums">
-                    {liveState.score2}
-                  </div>
-                  <div className="flex items-center justify-center gap-2">
-                    <button aria-label="Diminuir 1 ponto da dupla 2" title="Diminuir 1 ponto da dupla 2"
-                      type="button"
-                      onClick={() => handleScorePoint(2, -1)}
-                      className="score-control score-control-subtract p-2 rounded-xl bg-white border border-sky-200 text-sky-800 hover:bg-sky-100 cursor-pointer"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <button aria-label="Adicionar 1 ponto da dupla 2" title="Adicionar 1 ponto da dupla 2"
-                      type="button"
-                      onClick={() => handleScorePoint(2, 1)}
-                      className="score-control score-control-add flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
                 </div>
               </div>
 

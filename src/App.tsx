@@ -25,6 +25,7 @@ import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
+import { AthleteProfileDialog } from './components/AthleteProfileDialog';
 import {
   Maximize2,
   Minimize2,
@@ -39,29 +40,13 @@ const MainContent: React.FC = () => {
     activeLiveBroadcastBookingId,
     setActiveLiveBroadcastBookingId,
     userProfile,
-    setUserProfile,
+    chooseInitialCategory,
+    profileStatus,
     focusMode,
     toggleFocusMode,
   } = useApp();
 
-  // Onboarding state: triggers if user has not yet completed initial technical category setup
-  const [showOnboarding, setShowOnboarding] = React.useState<boolean>(() => {
-    try {
-      return !localStorage.getItem('sharkset_onboarding_completed');
-    } catch {
-      return false;
-    }
-  });
-
-  const handleCompleteOnboarding = (level: typeof userProfile.level) => {
-    setUserProfile({ ...userProfile, level });
-    try {
-      localStorage.setItem('sharkset_onboarding_completed', 'true');
-    } catch {
-      // ignore
-    }
-    setShowOnboarding(false);
-  };
+  const showOnboarding = profileStatus === 'ready' && !userProfile.level;
 
   const isArenaWhiteLabel =
     Boolean(tenant.whiteLabelEnabled && tenant.logoUrl && tenant.brandPalette) &&
@@ -219,10 +204,11 @@ const MainContent: React.FC = () => {
       <AthleteOnboardingModal
         isOpen={showOnboarding}
         playerName={userProfile.name}
-        onComplete={handleCompleteOnboarding}
+        onComplete={chooseInitialCategory}
       />
 
       <CommandPalette />
+      <AthleteProfileDialog />
       <TenantSelectorModal />
     </div>
   );

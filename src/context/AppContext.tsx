@@ -1,5 +1,6 @@
 import { BOOKING_DEMO } from '../services/bookingMode';
 import { getArenas, getTournaments, publishTournament } from '../services/db';
+import { registerInitialCategory, watchAccountProfile, type AccountProfile } from '../services/athleteAccount';
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import {
   ArenaBrandPalette,
@@ -108,6 +109,13 @@ export type ArenaSubTab =
   | 'config_dono';
 
 interface AppContextType {
+  accountAthlete: AthleteProfile | null;
+  profileStatus: 'signed_out' | 'loading' | 'ready' | 'error';
+  profileError: string;
+  chooseInitialCategory: (level: AthleteLevel) => Promise<void>;
+  selectedAthlete: AthleteProfile | null;
+  openAthleteDialog: (athlete: AthleteProfile | string) => void;
+  closeAthleteDialog: () => void;
   resetAllDataToCleanSlate: () => void;
   applyTournamentEdit: (tournamentId: string, matches: BracketMatch[], teams?: TeamPair[]) => void;
   checkPlayerInactivity: () => Promise<void>;
@@ -136,7 +144,7 @@ interface AppContextType {
   athletes: AthleteProfile[];
   rankingLogs: RankingMatchLog[];
   classStudents: ClassStudent[];
-  userProfile: { name: string; phone: string; level: AthleteLevel | null };
+  userProfile: AccountProfile;
   setUserProfile: (profile: { name: string; phone: string; level: AthleteLevel | null }) => void;
   focusMode: boolean;
   setFocusMode: (mode: boolean | ((prev: boolean) => boolean)) => void;
@@ -408,61 +416,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [tenantModalOpen, setTenantModalOpen] = useState(false);
   const [activeLiveBroadcastBookingId, setActiveLiveBroadcastBookingId] = useState<string | null>(null);
 
-  // User quick profile
-  const [userProfile, setUserProfileState] = useState<{ name: string; phone: string; level: AthleteLevel | null }>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-      return stored ? JSON.parse(stored) : { name: '', phone: '', level: null };
-    } catch {
-      return { name: '', phone: '', level: null };
-    }
-  });
-
-  const setUserProfile = (profile: { name: string; phone: string; level: AthleteLevel | null }) => {
-    setUserProfileState(profile);
-    try {
-      localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
-      if (auth.currentUser && profile.level) {
-        localStorage.setItem(`sharkset_user_level_${auth.currentUser.uid}`, profile.level);
-      }
-    } catch {
-      // ignore
-    }
+  // The account record, rather than localStorage, owns the permanent category.
+  const [userProfile, setUserProfileState] = useState<AccountProfile>({ name: '', phone: '', level: null });
+  const [accountAthlete, setAccountAthlete] = useState<AthleteProfile | null>(null);
+  const [profileStatus, setProfileStatus] = useState<AppContextType['profileStatus']>('loading');
+  const [profileError, setProfileError] = useState('');
+  const [selectedAthlete, setSelectedAthlete] = useState<AthleteProfile | null>(null);
+  const openAthleteDialog = (athlete: AthleteProfile | string) => {
+    const record = typeof athlete === 'string' ? athletes.find(item => item.id === athlete) : athlete;
+    if (record) setSelectedAthlete(record);
   };
-
+  const closeAthleteDialog = () => setSelectedAthlete(null);
+  const setUserProfile = (profile: AccountProfile) => {
+    if (profile.level !== userProfile.level) throw new Error('Categoria fixada no cadastro. Alterações ocorrem exclusivamente por MMR.');
+    setUserProfileState(previous => ({ ...previous, name: profile.name, phone: profile.phone }));
+  };
+  const chooseInitialCategory = async (level: AthleteLevel) => {
+    if (profileStatus !== 'ready') throw new Error('Aguarde a verificação da sua conta antes de escolher a categoria.');
+    if (userProfile.level && userProfile.initialLevel !== level) throw new Error('Sua categoria inicial já está fixada.');
+    await registerInitialCategory(level);
+  };
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    let stopProfile = () => {};
+    let generation = 0;
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      const current = ++generation;
+      stopProfile();
+      setAccountAthlete(null); setSelectedAthlete(null); setProfileError('');
       useSharkStore.getState().setFirebaseUserEmail(user?.email || null);
-      if (user) {
-        const userLevelKey = `sharkset_user_level_${user.uid}`;
-        const savedLevel = localStorage.getItem(userLevelKey) as AthleteLevel | null;
-
-        setUserProfileState((prev) => {
-          const updated = {
-            name: user.displayName || prev.name || user.email?.split('@')[0] || 'Atleta',
-            phone: user.phoneNumber || prev.phone || '',
-            level: savedLevel || prev.level || null,
-          };
-          try {
-            localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(updated));
-          } catch {
-            // ignore
-          }
-          return updated;
-        });
-        void checkPlayerInactivity().catch((error) => console.warn(error.message));
-      } else {
-        setUserProfileState({ name: '', phone: '', level: null });
-        try {
-          localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
-        } catch {
-          // ignore
-        }
-      }
+      setUserProfileState({ name: user?.displayName || '', phone: user?.phoneNumber || '', level: null });
+      if (!user) { setProfileStatus('signed_out'); return; }
+      setProfileStatus('loading');
+      stopProfile = watchAccountProfile(user.uid, (profile, athlete) => {
+        if (current !== generation) return;
+        setUserProfileState(profile); setAccountAthlete(athlete); setProfileStatus('ready');
+      }, () => {
+        if (current !== generation) return;
+        setProfileError('Não foi possível verificar sua categoria. Reconecte e tente novamente.'); setProfileStatus('error');
+      });
+      void checkPlayerInactivity().catch(() => {});
     });
-    return () => unsubscribe();
+    return () => { generation++; unsubscribe(); stopProfile(); };
   }, []);
-
 
   const resetAllDataToCleanSlate = () => {
     if (!window.confirm('Atenção: Isso irá apagar todo o histórico de teste em cache e iniciar o Sharkset completamente do zero. Deseja continuar?')) {
@@ -685,6 +680,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       score2: number;
       status: BracketMatch['status'];
       liveReferee?: BracketMatch['liveReferee'];
+      broadcastScoreboard?: BracketMatch['broadcastScoreboard'];
       fullMatches?: BracketMatch[];
     }) => {
       if (payload.fullMatches && Array.isArray(payload.fullMatches)) {
@@ -701,6 +697,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 score2: payload.score2 ?? m.score2,
                 status: payload.status === 'in_progress' ? 'in_progress' : m.status,
                 liveReferee: payload.liveReferee ?? m.liveReferee,
+                broadcastScoreboard: payload.broadcastScoreboard ?? m.broadcastScoreboard,
               }
             : m
         )
@@ -1597,12 +1594,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           score2: target.score2 ?? 0,
           status: target.status,
           liveReferee: target.liveReferee,
+            broadcastScoreboard: target.broadcastScoreboard,
         };
 
         fetch('/api/live-matches/broadcast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+            body: JSON.stringify({ ...payload, broadcastScoreboard: undefined }),
         }).catch(() => {});
 
         if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -1647,11 +1645,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       matchesPlayed: 0,
       wins: 0,
       stats: {
-        aces: 5,
-        errors: 2,
-        sharkAttacks: 2,
-        pingoPoints: 8,
-        defenses: 14,
+        aces: 0,
+        errors: 0,
+        sharkAttacks: 0,
+        pingoPoints: 0,
+        defenses: 0,
       },
       mediaGallery: [],
       achievements: [],
@@ -1687,6 +1685,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       >
     >
   ) => {
+    if (updates.level !== undefined) throw new Error('Categoria fixada no cadastro. Evolução exclusiva por MMR.');
     setAthletes((prev) =>
       prev.map((a) => {
         if (a.id !== athleteId) return a;
@@ -1704,6 +1703,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateAthleteGameStats = (athleteId: string, stats: AthleteGameStats) => {
+    if (!BOOKING_DEMO) throw new Error('Fundamentos oficiais são registrados nos resultados das partidas.');
     setAthletes((prev) => prev.map((a) => (a.id === athleteId ? { ...a, stats } : a)));
   };
 
@@ -1740,7 +1740,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         a.id === athleteId
           ? {
               ...a,
-              titlesCount: achievement.placement === '1º Lugar' ? a.titlesCount + 1 : a.titlesCount,
               achievements: [newAch, ...(a.achievements || [])],
             }
           : a
@@ -1759,22 +1758,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const changeAthleteLevel = (athleteId: string, newLevel: AthleteLevel) => {
-    setAthletes((prev) =>
-      prev.map((a) => {
-        if (a.id !== athleteId) return a;
-        if (a.name.toLowerCase() === userProfile.name.toLowerCase()) {
-          setUserProfile({ ...userProfile, level: newLevel });
-        }
-        return {
-          ...a,
-          level: newLevel,
-          experienceCategory: newLevel === 'profissional' ? 'profissional' : a.experienceCategory || 'amador',
-        };
-      })
-    );
+    throw new Error('Categoria fixada no cadastro. Evolução exclusiva por MMR.');
+
   };
 
   const awardAthletePoints = (athleteId: string, pointsToAdd: number, addTitle = false) => {
+    if (!BOOKING_DEMO) throw new Error('MMR só pode ser creditado por resultados oficiais validados no servidor.');
     setAthletes((prev) =>
       prev.map((a) => {
         if (a.id !== athleteId) return a;
@@ -1966,6 +1955,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         rankingLogs,
         classStudents,
         userProfile,
+        accountAthlete, profileStatus, profileError, chooseInitialCategory, selectedAthlete, openAthleteDialog, closeAthleteDialog,
         setUserProfile,
         resetAllDataToCleanSlate,
         focusMode,

@@ -5,6 +5,8 @@ import { Radio, Square, LogIn } from 'lucide-react';
 import { auth, signInWithGooglePopup } from '../lib/firebase';
 import { livekitRequest, publicLivekitUrl } from '../services/livekitApi';
 import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
+import { usePublishedScoreboard } from '../hooks/usePublishedScoreboard';
+import { BroadcastOverlay } from './BroadcastOverlay';
 
 interface Ticket { id: string; sessionId: string; token: string }
 export function ArenaLivePublisher({ arenaId }: { arenaId: string }) {
@@ -12,6 +14,7 @@ export function ArenaLivePublisher({ arenaId }: { arenaId: string }) {
   const [state, setState] = useState<'idle' | 'starting' | 'live' | 'reconnecting' | 'ending'>('idle');
   const [error, setError] = useState('');
   const [broadcastId, setBroadcastId] = useState('');
+  const scoreboard = usePublishedScoreboard(broadcastId);
   const preview = useRef<HTMLVideoElement>(null);
   const room = useRef<Room | null>(null);
   const tracks = useRef<LocalTrack[]>([]);
@@ -99,7 +102,12 @@ export function ArenaLivePublisher({ arenaId }: { arenaId: string }) {
   return <section className="rounded-2xl border border-slate-700 bg-[#071D3D] p-4 text-white space-y-3" aria-label="Transmissão pela câmera da arena">
     <h3 className="font-bold">Transmissão da arena</h3>
     <p className="text-sm text-slate-300">Transmita pela câmera deste dispositivo. A live aparece no site após a confirmação da publicação.</p>
-    <video ref={preview} autoPlay muted playsInline hidden={!active} className="w-full aspect-video object-contain rounded-xl bg-black" />
+    <div className="relative" hidden={!active}>
+      <video ref={preview} autoPlay muted playsInline className="w-full aspect-video object-contain rounded-xl bg-black" />
+      {scoreboard.broadcast && <div className="broadcast-score-anchor"><BroadcastOverlay state={scoreboard.broadcast} team1={scoreboard.broadcast.team1} team2={scoreboard.broadcast.team2} compact /></div>}
+    </div>
+    {active && scoreboard.broadcast && <BroadcastOverlay key={broadcastId} state={scoreboard.broadcast} team1={scoreboard.broadcast.team1} team2={scoreboard.broadcast.team2} controlsOnly onCommand={scoreboard.command} canUndo={scoreboard.broadcast.undoAvailable} />}
+    {scoreboard.error && <p role="alert" className="text-sm text-rose-300">{scoreboard.error}</p>}
     <div className="flex flex-wrap items-center gap-2">
       {!user ? <button className="site-secondary-action aquarium-glass" onClick={() => void signInWithGooglePopup().catch(() => setError('Não foi possível entrar. Tente novamente.'))}><LogIn size={16} />Entrar para transmitir</button> : <button disabled={!configured || active || !!session.current} onClick={() => void start()} className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-3 font-bold text-white disabled:opacity-50 inline-flex items-center gap-2"><Radio size={16} />{state === 'starting' ? 'Conectando câmera…' : 'Iniciar transmissão'}</button>}
       {(active || session.current) && <button disabled={state === 'ending'} onClick={() => void stop()} className="site-secondary-action aquarium-glass"><Square size={16} />{state === 'ending' ? 'Encerrando…' : 'Encerrar transmissão'}</button>}

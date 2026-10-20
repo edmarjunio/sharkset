@@ -16,7 +16,7 @@ import {
   TournamentModalityFormat,
 } from '../types';
 import { generateMatchCallWhatsAppLink } from '../services/whatsappAdapter';
-import { computeTournamentStandings, getPodium, officializeMatch } from '../services/bracketEngine';
+import { computeTournamentStandings, getPodium, officializeMatch, changeMatchRules } from '../services/bracketEngine';
 import {
   ATHLETE_LEVEL_LABELS,
   TOURNAMENT_CATEGORY_LABELS,
@@ -2813,10 +2813,14 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           onUpdateLiveMatch={(matchId, updater) => {
             updateLiveRefereeMatch(matchId, updater);
           }}
-          onConfirmFinalResult={(matchId, winningTeam, s1, s2) => {
+          onConfirmFinalResult={(matchId, winningTeam, s1, s2, sets, rules) => {
             const winPair =
               winningTeam === 1 ? activeRefereeMatch.team1 : activeRefereeMatch.team2;
-            try { handleAdvanceMatch(matchId, winningTeam, s1, s2); }
+            try {
+              if (!sets?.length || !rules) throw new Error('Feche todos os sets antes de confirmar.');
+              const withRules = changeMatchRules(currentMatches, matchId, rules, { reason: 'Formato utilizado no placar de transmissão' });
+              applyTournamentEdit(activeTournament.id, officializeMatch(withRules, matchId, sets, { reason: 'Parciais confirmadas na mesa de transmissão' }));
+            }
             catch (error) { triggerToast(error instanceof Error ? error.message : 'Confira os sets em Administrar tabela.'); return; }
             setRefereeModalMatchId(null);
             if (winPair) {

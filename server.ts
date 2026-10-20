@@ -20,7 +20,7 @@ interface LiveMatchPayload {
 
 async function startServer() {
   const app = express();
-  const port = Number(process.env.PORT || 3000);
+  const port = Number(process.env.PORT || 369);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT deve ser um número inteiro entre 1 e 65535.');
   }
@@ -138,8 +138,13 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+      },
+    }));
     app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
@@ -150,6 +155,9 @@ async function startServer() {
       httpServer.listen(port, '0.0.0.0', resolve);
     });
     console.log(`SHARKSET disponível em http://localhost:${port}`);
+    console.log(process.env.NODE_ENV === 'production'
+      ? 'Modo produção: servindo o build da pasta dist. Execute npm run build para atualizar.'
+      : 'Modo desenvolvimento: servindo o código atual pelo Vite.');
   } catch (error) {
     await vite?.close();
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {

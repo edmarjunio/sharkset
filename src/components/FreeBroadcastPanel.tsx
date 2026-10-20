@@ -1,30 +1,18 @@
 import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
-import React, { lazy, Suspense, useEffect, useState } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
-import { BroadcastOverlay, elapsedTime, type ScoreboardState } from './BroadcastOverlay';
+import React, { lazy, Suspense, useState } from 'react';
+import { auth } from '../lib/firebase';
+import { BroadcastOverlay } from './BroadcastOverlay';
+import { usePublishedScoreboard, type PublishedBroadcast as Broadcast } from '../hooks/usePublishedScoreboard';
 import { isYouTubeUrl, getYouTubeEmbedUrl } from '../utils/videoUtils';
 
 const ArenaLivePublisher = lazy(() => import('./ArenaLivePublisher').then(module => ({ default: module.ArenaLivePublisher })));
 
-interface Broadcast extends ScoreboardState {
-  id: string; ownerId: string; title: string; team1: string; team2: string;
-  videoUrl: string; isLive: boolean; revision: number;
-}
-
 export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string; broadcastId?: string }) {
   const [id, setId] = useState(broadcastId || '');
-  const [broadcast, setBroadcast] = useState<Broadcast | null>(null);
+  const { broadcast, command, error: scoreError, pending } = usePublishedScoreboard(id);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
-  useEffect(() => {
-    if (!id) return;
-    return onSnapshot(doc(db, 'broadcasts', id), snapshot => {
-      setBroadcast(snapshot.exists() ? snapshot.data() as Broadcast : null);
-      if (!snapshot.exists()) setError('Transmissão não encontrada.');
-    }, () => setError('Não foi possível carregar o placar.'));
-  }, [id]);
 
   async function save(patch?: Partial<Broadcast>) {
     if (busy) return;
@@ -60,24 +48,27 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
               title="Prévia do vídeo"
             />
           ) : (
-            <video src={broadcast.videoUrl} controls autoPlay muted playsInline className="w-full h-full object-contain" />
+            <video src={broadcast.videoUrl} autoPlay muted playsInline className="w-full h-full object-contain" />
           )
         ) : (
           <p className="text-center text-white p-6">{canEdit ? 'Conecte o vídeo para publicar.' : 'A transmissão ainda não começou.'}</p>
         )}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl z-20 pointer-events-none">
+        <div className="broadcast-score-anchor">
           <BroadcastOverlay state={broadcast} team1={broadcast.team1} team2={broadcast.team2} compact />
         </div>
       </div>
       <button onClick={() => useBroadcastNavigation.getState().open({ kind: 'published', id })} className="rounded-xl bg-cyan-700 text-white px-4 py-2 font-bold">Assistir / tela cheia</button>
       {canEdit && <fieldset disabled={busy} className="space-y-3">
-        <BroadcastOverlay state={broadcast} team1={broadcast.team1} team2={broadcast.team2} onChange={save} />
+        <BroadcastOverlay key={id} state={broadcast} team1={broadcast.team1} team2={broadcast.team2} controlsOnly onCommand={command} canUndo={broadcast.undoAvailable} disabled={busy} />
+        <p role="status" className="text-xs text-slate-500">{pending ? `${pending} comando(s) sendo sincronizado(s).` : 'Placar sincronizado.'}</p>
+        {scoreError && <p role="alert" className="text-red-700 text-sm">{scoreError}</p>}
+        <div className="grid grid-cols-2 gap-3">{([1, 2] as const).map(team => <label key={team} className="text-xs font-bold">Dupla {team === 1 ? 'A' : 'B'}<input maxLength={80} defaultValue={team === 1 ? broadcast.team1 : broadcast.team2} disabled={busy || pending > 0} onBlur={event => { const key = team === 1 ? 'team1' : 'team2'; if (event.target.value.trim() && event.target.value !== broadcast[key]) void save({ [key]: event.target.value.trim() }); }} className="block w-full p-3 border rounded-xl mt-1 text-slate-800" /></label>)}</div>
         <label className="block text-sm font-semibold">Endereço do vídeo ou Live (YouTube ou HTTPS direto)
           <input type="url" value={videoUrl} onChange={event => setVideoUrl(event.target.value)} placeholder="https://www.youtube.com/watch?v=... ou https://..." className="w-full p-3 border rounded-xl mt-1 text-slate-800" />
         </label>
         <p className="text-xs text-slate-600">Suporta transmissões ao vivo do YouTube (ex: mega torneios, Mikasa, Team Águia) ou stream HTTPS. O placar e a tabela ficarão sincronizados sobre o vídeo!</p>
         <div className="flex gap-3 flex-wrap">
-          <button className="bg-[#0987CE] text-white p-3 rounded-xl font-bold" disabled={!videoUrl && !broadcast.isLive} onClick={() => save(broadcast.isLive ? { isLive: false, elapsedSeconds: elapsedTime(broadcast), clockStartedAt: null } : { videoUrl, isLive: true })}>{broadcast.isLive ? 'Encerrar transmissão' : 'Publicar vídeo'}</button>
+          <button className="bg-[#0987CE] text-white p-3 rounded-xl font-bold" disabled={pending > 0 || (!videoUrl && !broadcast.isLive)} onClick={() => save(broadcast.isLive ? { isLive: false } : { videoUrl, isLive: true })}>{broadcast.isLive ? 'Encerrar transmissão' : 'Publicar vídeo'}</button>
           <a className="text-[#0987CE] p-3 underline font-medium" target="_blank" rel="noreferrer" href={`?broadcast=${id}`}>Abrir tela do público</a>
         </div>
       </fieldset>}

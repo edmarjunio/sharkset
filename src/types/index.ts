@@ -61,6 +61,11 @@ export interface AthleteAchievement {
 }
 
 export interface AthleteProfile {
+  ownerId?: string;
+  initialLevel?: AthleteLevel;
+  photoUrl?: string;
+  podiumsCount?: number;
+  campaigns?: AthleteCampaign[];
   lastMatchAt?: string;
   rankingInactive?: boolean;
   levelMatches?: number;
@@ -94,6 +99,19 @@ export interface AthleteProfile {
   autoPromotedFrom?: AthleteLevel;       // Registro de subida automática por excesso de títulos/pontos
   tournamentsPlayed?: number;            // Total de torneios oficiais disputados
   createdAt?: string;                    // Data de entrada no SHARK SET
+}
+
+export interface AthleteCampaign {
+  tournamentId: string;
+  tournamentName: string;
+  date: string;
+  partner: string;
+  placement?: number;
+  matches: number;
+  wins: number;
+  losses: number;
+  mmrGained: number;
+  verified: boolean;
 }
 
 export interface RankingMatchLog {
@@ -236,6 +254,10 @@ export interface BookingLiveChatMessage {
 }
 
 export interface BookingLiveBroadcast {
+  setHistory?: Array<[number, number]>;
+  stageName?: string;
+  decidingPoints?: number;
+  winBy?: number;
   sets1?: number;
   sets2?: number;
   bestOf?: 1 | 3 | 5;
@@ -371,6 +393,7 @@ export interface RefereeMatchState {
 }
 
 export interface BracketMatch {
+  broadcastScoreboard?: import('../services/broadcastScoreboard').ScoreboardState;
   bracketStructure?: { version: number; drawMode?: 'seeded' | 'random' | 'manual'; randomSeed?: number; seededTeamIds: (string | null)[]; contractedNodes: { id: string; stage: BracketStage; round: number; source1?: BracketSource; source2?: BracketSource }[] };
   source1?: BracketSource;
   source2?: BracketSource;

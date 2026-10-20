@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { AthleteAchievement, AthleteGameStats, AthleteLevel, ExperienceCategory } from '../types';
+import { AthleteAchievement, AthleteGameStats, AthleteLevel, AthleteProfile, ExperienceCategory } from '../types';
 import { generateBookingWhatsAppLink, generateWaitlistWhatsAppLink } from '../services/whatsappAdapter';
 import {
   ATHLETE_LEVEL_LABELS,
@@ -50,6 +50,7 @@ export const MyBookings: React.FC = () => {
     setActiveTab,
     setArenaSubTab,
     userProfile,
+    accountAthlete, profileStatus, chooseInitialCategory,
     setUserProfile,
     classStudents,
     registeredPairs,
@@ -88,43 +89,8 @@ export const MyBookings: React.FC = () => {
     volei_praia: '🏐 Vôlei de Praia',
   };
 
-  // Client's athlete ranking record (Only accessible for authenticated users with defined level)
-  const myAthleteProfile: AthleteProfile | null = useMemo(() => {
-    if (!currentUser) return null;
-
-    const uName = (currentUser.displayName || userProfile.name || '').trim().toLowerCase();
-    const found = athletes.find((a) => a.name.toLowerCase() === uName);
-    if (found) return found;
-
-    if (!userProfile.level) return null;
-
-    return {
-      id: `ath-${currentUser.uid.slice(0, 12)}`,
-      name: currentUser.displayName || userProfile.name || 'Atleta SHARK SET',
-      phone: userProfile.phone || currentUser.phoneNumber || '',
-      level: userProfile.level,
-      points: 0,
-      wins: 0,
-      matchesPlayed: 0,
-      titlesCount: 0,
-      experienceCategory: 'amador',
-      country: 'Brasil',
-      state: 'GO',
-      city: 'Mineiros',
-      arenaId: tenant?.id || '',
-      arenaName: tenant?.name || '',
-      bio: '',
-      achievements: [],
-      mediaGallery: [],
-      stats: {
-        aces: 0,
-        errors: 0,
-        sharkAttacks: 0,
-        pingoPoints: 0,
-        defenses: 0,
-      },
-    };
-  }, [athletes, userProfile, tenant, currentUser]);
+  // Match the authenticated account by its immutable ownership link, never by display name.
+  const myAthleteProfile = accountAthlete;
 
   const [bioInput, setBioInput] = useState(myAthleteProfile?.bio || '');
 
@@ -227,41 +193,13 @@ export const MyBookings: React.FC = () => {
     }
   };
 
-  const handleLevelSwitch = (newLevel: AthleteLevel) => {
-    setUserProfile({ ...userProfile, level: newLevel });
-    if (myAthleteProfile) {
-      changeAthleteLevel(myAthleteProfile.id, newLevel);
-      persistAthleteToFirestore({ ...myAthleteProfile, level: newLevel }).catch(() => {});
-    } else if (currentUser) {
-      const newAth: AthleteProfile = {
-        id: `ath-${currentUser.uid.slice(0, 12)}`,
-        name: currentUser.displayName || userProfile.name || 'Atleta SHARK SET',
-        phone: userProfile.phone || '',
-        level: newLevel,
-        points: 0,
-        wins: 0,
-        matchesPlayed: 0,
-        titlesCount: 0,
-        experienceCategory: 'amador',
-        country: 'Brasil',
-        state: 'GO',
-        city: 'Mineiros',
-        arenaId: tenant?.id || '',
-        arenaName: tenant?.name || '',
-        stats: { aces: 0, errors: 0, sharkAttacks: 0, pingoPoints: 0, defenses: 0 },
-      };
-      persistAthleteToFirestore(newAth).catch(() => {});
-    }
-    triggerToast(`Categoria oficial definida para ${ATHLETE_LEVEL_LABELS[newLevel]}!`);
+  const handleLevelSwitch = async (newLevel: AthleteLevel) => {
+    try { await chooseInitialCategory(newLevel); triggerToast('Categoria inicial confirmada e fixada na conta.'); }
+    catch (error) { triggerToast(error instanceof Error ? error.message : 'Não foi possível confirmar a categoria.'); }
   };
 
-  const handleAdjustStat = (field: keyof AthleteGameStats, delta: number) => {
-    if (!myAthleteProfile) return;
-    const updated: AthleteGameStats = {
-      ...gameStats,
-      [field]: Math.max(0, gameStats[field] + delta),
-    };
-    updateAthleteGameStats(myAthleteProfile.id, updated);
+  const handleAdjustStat = (_field: keyof AthleteGameStats, _delta: number) => {
+    triggerToast('Fundamentos oficiais são registrados pelos resultados das partidas.');
   };
 
   // Handle local file upload (Photos & Videos)
@@ -319,6 +257,7 @@ export const MyBookings: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <button type="button" onClick={() => setLoginModalOpen(true)} className="site-secondary-action aquarium-glass mb-4"><Trophy size={18} />Cartão & Pódios do Atleta</button>
       {/* Automatic Waitlist Notification Banner */}
       {waitlistNotifications.length > 0 && (
         <div className="space-y-2.5">
@@ -427,7 +366,7 @@ export const MyBookings: React.FC = () => {
             <span>Entrar com Google</span>
           </button>
         </div>
-      ) : !userProfile.level ? (
+      ) : !userProfile.level || !myAthleteProfile ? (
         <div className="aquarium-glass bg-[#071D3D] border-2 border-[#12C7BB]/60 rounded-3xl p-6 sm:p-8 text-white space-y-6 max-w-3xl mx-auto shadow-2xl">
           <div className="text-center space-y-2 border-b border-white/10 pb-5">
             <span className="px-3 py-1 rounded-full bg-[#12C7BB]/20 text-[#12C7BB] text-xs font-black uppercase tracking-wider border border-[#12C7BB]/30">
@@ -446,7 +385,8 @@ export const MyBookings: React.FC = () => {
               <button
                 key={tier.level}
                 type="button"
-                onClick={() => handleLevelSwitch(tier.level)}
+                disabled={Boolean(userProfile.level) || profileStatus !== 'ready'}
+                onClick={() => void handleLevelSwitch(tier.level)}
                 className="p-4 rounded-2xl bg-slate-900/80 hover:bg-[#07244a] border border-slate-700 hover:border-[#12C7BB] text-left transition-all cursor-pointer space-y-2 group shadow-md"
               >
                 <div className="flex items-center justify-between">
@@ -811,7 +751,7 @@ export const MyBookings: React.FC = () => {
             <div className="pt-2 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-800">Série / Categoria no Ranking:</span>
-                <span className="text-slate-500 font-mono text-[11px]">{promoStatus.explanation}</span>
+                <span className="text-slate-500 font-mono text-[11px]">{promoStatus?.explanation}</span>
               </div>
               <div className="grid grid-cols-5 gap-1.5">
                 {ATHLETE_TIERS.map((tier) => {
@@ -820,7 +760,8 @@ export const MyBookings: React.FC = () => {
                     <button
                       key={tier.level}
                       type="button"
-                      onClick={() => handleLevelSwitch(tier.level)}
+                      disabled={Boolean(userProfile.level) || profileStatus !== 'ready'}
+                onClick={() => void handleLevelSwitch(tier.level)}
                       className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
                         isCurrent
                           ? 'border-slate-900 bg-slate-900 text-white font-bold'
