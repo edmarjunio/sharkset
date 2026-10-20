@@ -62,8 +62,12 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
     addOrUpdateAthlete,
     awardAthletePoints,
     rankingLogs,
-    openAthleteDialog,
   } = useApp();
+
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null);
+  const openAthleteDialog = (id: string) => {
+    setSelectedAthleteId(id);
+  };
 
   const { sourceAthletes, isLoading, refresh: loadAthletesFromFirestore } = useRankingAthletes();
   const [isSyncing, setIsSyncing] = useState<boolean>(false);

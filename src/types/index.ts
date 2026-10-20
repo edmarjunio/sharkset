@@ -69,6 +69,8 @@ export interface AthleteProfile {
   id: string;
   name: string;
   phone: string;
+  photoUrl?: string;
+  photoURL?: string;
   birthDate?: string; // YYYY-MM-DD
   experienceCategory?: ExperienceCategory; // 'amador' | 'profissional'
   courtSide?: 'Direita' | 'Esquerda' | 'Ambos';

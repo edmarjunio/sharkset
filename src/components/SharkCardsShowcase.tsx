@@ -202,6 +202,8 @@ export const SharkCardsShowcase: React.FC<SharkCardsShowcaseProps> = ({
                   state: 'GO',
                   country: 'Brasil',
                   arenaName: tenant?.name || 'Arena Credenciada',
+                  phone: userProfile.phone || '',
+                  preferredSport: 'futevolei',
                 }
               }
               isLocked
