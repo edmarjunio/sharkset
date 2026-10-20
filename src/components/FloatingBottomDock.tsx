@@ -18,6 +18,7 @@ interface Props {
 export function FloatingBottomDock({ onSelectSlot }: Props) {
   const { activeTab, setActiveTab } = useApp();
   const [isVisible, setIsVisible] = useState(false);
+  const dockRef = React.useRef<HTMLDivElement | null>(null);
 
   // Detecta quando o usuário rolou a página para baixo (> 90px)
   useEffect(() => {
@@ -27,6 +28,28 @@ export function FloatingBottomDock({ onSelectSlot }: Props) {
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Ajusta dinamicamente a margem/offset do rodapé conforme a altura real da barra flutuante
+  useEffect(() => {
+    const el = dockRef.current;
+    if (!el || typeof window === 'undefined') return;
+
+    const updateOffset = () => {
+      const rect = el.getBoundingClientRect();
+      const totalOffset = Math.max(112, Math.ceil(rect.height + 24));
+      document.documentElement.style.setProperty('--floating-dock-offset', `${totalOffset}px`);
+    };
+
+    updateOffset();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateOffset) : null;
+    observer?.observe(el);
+    window.addEventListener('resize', updateOffset, { passive: true });
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateOffset);
+    };
   }, []);
 
   const goHome = () => {
@@ -53,6 +76,7 @@ export function FloatingBottomDock({ onSelectSlot }: Props) {
 
   return (
     <div
+      ref={dockRef}
       className={`fixed bottom-2 sm:bottom-4 inset-x-0 z-50 flex flex-col items-center pointer-events-none px-2 sm:px-4 transition-all duration-300 ${
         isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0 pointer-events-none'
       }`}

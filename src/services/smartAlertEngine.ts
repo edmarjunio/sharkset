@@ -197,10 +197,8 @@ export async function dispatchPushNotificationChannel(item: SmartNotificationIte
   return pushSent;
 }
 
-/**
- * Clean Factory for all 4 Smart Notification types (Zero Duplication / DRY).
- */
 export function buildSmartNotification(params: {
+  id?: string;
   type: SmartAlertType;
   title: string;
   body: string;
@@ -212,12 +210,13 @@ export function buildSmartNotification(params: {
   actionTargetTab?: 'scheduler' | 'tournaments' | 'my_bookings';
   slotId?: string;
   matchId?: string;
+  tournamentId?: string;
 }): SmartNotificationItem {
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   return {
-    id: `notif-${params.type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: params.id || `notif-${params.type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     type: params.type,
     title: params.title,
     body: params.body,
@@ -229,10 +228,97 @@ export function buildSmartNotification(params: {
     actionTargetTab: params.actionTargetTab,
     slotId: params.slotId,
     matchId: params.matchId,
+    tournamentId: params.tournamentId,
     createdAt: timeStr,
     read: false,
     pushDelivered: typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted',
   };
+}
+
+export function buildTournamentStartedNotification(params: {
+  tournamentId: string;
+  tournamentName: string;
+  arenaName: string;
+  pairsCount: number;
+  isUserEnrolled: boolean;
+  userPairLabel?: string;
+  recipientPhone?: string;
+}): SmartNotificationItem {
+  const pairHighlight = params.isUserEnrolled && params.userPairLabel
+    ? `Sua inscrição (${params.userPairLabel}) está confirmada na chave!`
+    : `${params.pairsCount} duplas confirmadas na tabela oficial.`;
+
+  const waMessage = [
+    `🏆 *TORNEIO INICIADO · CHAVEAMENTO OFICIAL LIBERADO!*`,
+    `🏟️ *Torneio:* ${params.tournamentName} (${params.arenaName})`,
+    `🏐 ${pairHighlight}`,
+    `_Acompanhe os confrontos e horários ao vivo no SHARK SET!_`,
+  ].join('\n');
+
+  const cleanPhone = (params.recipientPhone || '').replace(/\D/g, '');
+  const fullPhone = cleanPhone ? (cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`) : '';
+  const whatsappUrl = fullPhone
+    ? `https://wa.me/${fullPhone}?text=${encodeURIComponent(waMessage)}`
+    : `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
+
+  return buildSmartNotification({
+    id: `notif-tournament-started-${params.tournamentId}-${params.pairsCount}`,
+    type: 'tournament_started',
+    badgeLabel: params.isUserEnrolled ? 'SEU TORNEIO COMEÇOU' : 'TORNEIO INICIADO · CHAVE LIBERADA',
+    title: params.isUserEnrolled
+      ? `🏆 Seu torneio "${params.tournamentName}" começou!`
+      : `🏆 Torneio "${params.tournamentName}" iniciado!`,
+    body: `${pairHighlight} Veja agora os confrontos da 1ª rodada e acompanhe a tabela ao vivo.`,
+    recipientName: params.userPairLabel || 'Atletas Inscritos',
+    recipientPhone: params.recipientPhone,
+    whatsappUrl,
+    actionLabel: 'Abrir Chave do Torneio',
+    actionTargetTab: 'tournaments',
+    tournamentId: params.tournamentId,
+  });
+}
+
+export function buildBracketResultPublishedNotification(params: {
+  tournamentId: string;
+  tournamentName: string;
+  match: BracketMatch;
+  winnerName: string;
+  loserName: string;
+  scoreSummary: string;
+  isUserEnvolved?: boolean;
+  recipientPhone?: string;
+}): SmartNotificationItem {
+  const { match } = params;
+  const waMessage = [
+    `⚡ *NOVO RESULTADO PUBLICADO NA CHAVE · ${params.tournamentName.toUpperCase()}*`,
+    `🏐 *Jogo #${match.matchNumber} (${match.stageName}):*`,
+    `🥇 *Vencedor:* ${params.winnerName} (${params.scoreSummary})`,
+    `🆚 *Adversário:* ${params.loserName}`,
+    `_Confira a atualização do chaveamento em tempo real no SHARK SET!_`,
+  ].join('\n');
+
+  const cleanPhone = (params.recipientPhone || '').replace(/\D/g, '');
+  const fullPhone = cleanPhone ? (cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`) : '';
+  const whatsappUrl = fullPhone
+    ? `https://wa.me/${fullPhone}?text=${encodeURIComponent(waMessage)}`
+    : `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
+
+  return buildSmartNotification({
+    id: `notif-bracket-result-${match.id}-${match.winnerId || 'w'}-${params.scoreSummary}`,
+    type: 'bracket_result_published',
+    badgeLabel: params.isUserEnvolved
+      ? 'SEU JOGO · RESULTADO OFICIAL'
+      : `NOVO RESULTADO · JOGO #${match.matchNumber}`,
+    title: `⚡ Jogo #${match.matchNumber} (${match.stageName}): ${params.winnerName} venceu por ${params.scoreSummary}!`,
+    body: `Novo resultado homologado em "${params.tournamentName}": ${params.winnerName} superou ${params.loserName} (${params.scoreSummary}) e avançou na chave.`,
+    recipientName: params.winnerName,
+    recipientPhone: params.recipientPhone,
+    whatsappUrl,
+    actionLabel: 'Ver Atualização na Chave',
+    actionTargetTab: 'tournaments',
+    matchId: match.id,
+    tournamentId: params.tournamentId,
+  });
 }
 
 export function buildWaitlistFreedPushNotification(entry: WaitlistEntry): SmartNotificationItem {

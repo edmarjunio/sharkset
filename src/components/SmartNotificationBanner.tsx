@@ -5,7 +5,9 @@ import { generateWeeklySlots } from '../services/courtSlotPricing';
 import type { Court, TenantConfig, TimeSlot } from '../types';
 import {
   buildBooking15MinReminderNotification,
+  buildBracketResultPublishedNotification,
   buildMatch10PointsRemainingNotification,
+  buildTournamentStartedNotification,
   buildTuitionDueTodayNotification,
   buildVacantSlot2hNotification,
   buildWaitlistFreedPushNotification,
@@ -24,12 +26,9 @@ import {
   Trophy,
   Users,
   X,
-  Zap,
   CheckCheck,
   Cloud,
-  MapPin,
-  ChevronLeft,
-  ChevronRight,
+  Swords,
 } from 'lucide-react';
 import { signInWithGooglePopup, signOutFirebase } from '../lib/firebase';
 
@@ -49,12 +48,20 @@ export const SmartNotificationBanner: React.FC = () => {
     slots,
     bookings,
     waitlist,
+    tournaments,
+    activeTournamentId,
+    setActiveTournamentId,
     tournamentMatches,
     classStudents,
     setActiveTab,
     setArenaSubTab,
     userProfile,
   } = useApp();
+
+  const activeTournament = useMemo(
+    () => tournaments.find((t) => t.id === activeTournamentId) || tournaments[0],
+    [tournaments, activeTournamentId]
+  );
 
   const {
     smartNotifications,
@@ -63,16 +70,16 @@ export const SmartNotificationBanner: React.FC = () => {
     pushPermission,
     enablePushNotifications,
     pushSmartNotification,
+    markNotificationAsRead,
     markAllNotificationsAsRead,
     dismissSmartNotification,
     referenceClockTime,
-    setReferenceClockTime,
     firebaseUserEmail,
   } = useSharkStore();
 
-  const [selectedArenaFilter, setSelectedArenaFilter] = useState<string>('all');
+  const [selectedArenaFilter] = useState<string>('all');
   const [rotatingIndex, setRotatingIndex] = useState<number>(0);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [isPaused] = useState<boolean>(false);
 
   const vacantSlotsNext2h = React.useMemo(
     () => findVacantSlotsInNext2Hours(slots, tenant.courts, referenceClockTime),
@@ -96,7 +103,6 @@ export const SmartNotificationBanner: React.FC = () => {
 
       for (const s of rawArenaSlots) {
         if (s.slotType === 'class') continue;
-        // Check if booked in active bookings
         const isBooked = bookings.some(
           (b) =>
             b.status === 'confirmed' &&
@@ -139,7 +145,6 @@ export const SmartNotificationBanner: React.FC = () => {
       }
     }
 
-    // Interleave arenas so the ticker rotates across different nearby arenas and times
     const sourceList = nextHoursItems.length > 0 ? nextHoursItems : fallbackItems;
     sourceList.sort((a, b) => a.minutesUntilStart - b.minutesUntilStart || a.arena.distanceKm - b.arena.distanceKm);
     return {
@@ -155,12 +160,6 @@ export const SmartNotificationBanner: React.FC = () => {
   }, [nearbyArenaSlots.allItems, selectedArenaFilter]);
 
   const carouselRef = useRef<HTMLDivElement>(null);
-
-  const scrollCarousel = (direction: 'left' | 'right') => {
-    if (!carouselRef.current) return;
-    const amount = direction === 'left' ? -280 : 280;
-    carouselRef.current.scrollBy({ left: amount, behavior: 'smooth' });
-  };
 
   // Group available slots by arena for clean horizontal carousel without expanding downwards
   const slotsGroupedByArena = useMemo(() => {
@@ -197,7 +196,6 @@ export const SmartNotificationBanner: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [isPaused, filteredRotatingItems.length]);
 
-  // Smooth carousel auto-rotation from right to left every 4 seconds
   useEffect(() => {
     if (isPaused || slotsGroupedByArena.length <= 1) return;
     const interval = window.setInterval(() => {
@@ -212,10 +210,6 @@ export const SmartNotificationBanner: React.FC = () => {
     return () => window.clearInterval(interval);
   }, [isPaused, slotsGroupedByArena.length]);
 
-  const activeRotatingSlot =
-    filteredRotatingItems[rotatingIndex % Math.max(1, filteredRotatingItems.length)] ||
-    nearbyArenaSlots.allItems[0];
-
   const bookingsStartingIn15m = React.useMemo(
     () => findBookingsStartingSoon(bookings, referenceClockTime),
     [bookings, referenceClockTime]
@@ -226,22 +220,31 @@ export const SmartNotificationBanner: React.FC = () => {
     [classStudents]
   );
 
-  const unreadCount = smartNotifications.filter((n) => !n.read).length;
   const primaryVacant = vacantSlotsNext2h[0];
 
-  const handleBookArenaSlot = (targetArenaId: string) => {
-    setTenantId(targetArenaId);
-    setArenaSubTab('agenda');
-    setActiveTab('scheduler');
-  };
+  // Unread tournament / bracket alerts that should appear as an automatic top banner
+  const activeTournamentBannerAlerts = useMemo(
+    () =>
+      smartNotifications.filter(
+        (n) =>
+          !n.read &&
+          (n.type === 'tournament_started' || n.type === 'bracket_result_published')
+      ),
+    [smartNotifications]
+  );
 
-  const handleQuickFillVacantSlot = () => {
-    if (activeRotatingSlot) {
-      handleBookArenaSlot(activeRotatingSlot.arena.id);
-    } else {
-      setArenaSubTab('agenda');
-      setActiveTab('scheduler');
+  const handleOpenNotificationTarget = (item: (typeof smartNotifications)[number]) => {
+    markNotificationAsRead(item.id);
+    if (item.tournamentId) {
+      setActiveTournamentId(item.tournamentId);
     }
+    if (item.actionTargetTab) {
+      if (item.actionTargetTab === 'scheduler') setArenaSubTab('agenda');
+      setActiveTab(item.actionTargetTab);
+    } else if (item.tournamentId) {
+      setActiveTab('tournaments');
+    }
+    setNotificationDrawerOpen(false);
   };
 
   const handleTriggerVacant2hPush = () => {
@@ -338,8 +341,65 @@ export const SmartNotificationBanner: React.FC = () => {
     pushSmartNotification(notif);
   };
 
+  const handleTriggerTournamentStartedPush = () => {
+    const targetTournament = activeTournament || tournaments[0];
+    const notif = buildTournamentStartedNotification({
+      tournamentId: targetTournament?.id || 'trn-live',
+      tournamentName: targetTournament?.name || 'Copa Shark Set Futevôlei',
+      arenaName: tenant.name,
+      pairsCount: 8,
+      isUserEnrolled: true,
+      userPairLabel: userProfile?.name || 'Atleta Inscrito',
+      recipientPhone: userProfile?.phone,
+    });
+    pushSmartNotification(notif);
+  };
+
+  const handleTriggerBracketResultPush = () => {
+    const targetTournament = activeTournament || tournaments[0];
+    const completedMatch =
+      tournamentMatches.find((m) => m.status === 'completed' && m.winnerId) ||
+      tournamentMatches[0] || {
+        id: `m-${Date.now()}`,
+        tournamentId: targetTournament?.id || 'trn-live',
+        matchNumber: 1,
+        round: 1,
+        stage: 'winners' as const,
+        stageName: 'Chave dos Vencedores · Rodada 1',
+        status: 'completed' as const,
+        score1: 18,
+        score2: 15,
+      };
+    const formatPair = (p?: { player1: string; player2: string }) =>
+      p ? `${p.player1} & ${p.player2}` : undefined;
+    const winnerName =
+      completedMatch?.winnerId && completedMatch?.winnerId === completedMatch?.team2?.id
+        ? formatPair(completedMatch?.team2)
+        : formatPair(completedMatch?.team1);
+    const loserName =
+      completedMatch?.winnerId && completedMatch?.winnerId === completedMatch?.team2?.id
+        ? formatPair(completedMatch?.team1)
+        : formatPair(completedMatch?.team2);
+
+    const notif = buildBracketResultPublishedNotification({
+      tournamentId: targetTournament?.id || 'trn-live',
+      tournamentName: targetTournament?.name || 'Copa Shark Set Futevôlei',
+      match: completedMatch,
+      winnerName: winnerName || 'Dupla Vencedora',
+      loserName: loserName || 'Dupla Adversária',
+      scoreSummary: `${completedMatch?.score1 ?? 18}x${completedMatch?.score2 ?? 15}`,
+      isUserEnvolved: true,
+      recipientPhone: userProfile?.phone,
+    });
+    pushSmartNotification(notif);
+  };
+
   const getBadgeStyle = (type: string) => {
     switch (type) {
+      case 'tournament_started':
+        return 'bg-amber-400 text-slate-950';
+      case 'bracket_result_published':
+        return 'bg-emerald-400 text-slate-950';
       case 'vacant_2h':
         return 'bg-[#0987CE] text-white';
       case 'waitlist_freed':
@@ -354,11 +414,93 @@ export const SmartNotificationBanner: React.FC = () => {
     }
   };
 
-  if (!notificationDrawerOpen) return null;
+  if (!notificationDrawerOpen && activeTournamentBannerAlerts.length === 0) return null;
 
   return (
-    <section className="aquarium-glass bg-[#041529] border-b border-[#145A9B]/40 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-2.5">
+    <section
+      className="aquarium-glass bg-[#041529] border-b border-[#145A9B]/40 text-white relative z-30"
+      data-testid="smart-notification-banner-section"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 space-y-2.5">
+        {/* AUTOMATIC BANNER FOR TOURNAMENT START & BRACKET RESULTS */}
+        {activeTournamentBannerAlerts.length > 0 && (
+          <div className="space-y-2" data-testid="tournament-live-alert-banners">
+            {activeTournamentBannerAlerts.slice(0, 2).map((alertItem) => {
+              const isStart = alertItem.type === 'tournament_started';
+              return (
+                <div
+                  key={alertItem.id}
+                  role="status"
+                  aria-live="polite"
+                  data-testid={`alert-banner-${alertItem.type}`}
+                  className={`rounded-2xl border px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all shadow-lg ${
+                    isStart
+                      ? 'bg-gradient-to-r from-amber-500/20 via-[#071D3D] to-[#041529] border-amber-400/50'
+                      : 'bg-gradient-to-r from-emerald-500/20 via-[#071D3D] to-[#041529] border-emerald-400/50'
+                  }`}
+                >
+                  <div className="flex items-start sm:items-center gap-3 min-w-0">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        isStart
+                          ? 'bg-amber-400/20 border border-amber-400/40 text-amber-300'
+                          : 'bg-emerald-400/20 border border-emerald-400/40 text-emerald-300'
+                      }`}
+                    >
+                      {isStart ? (
+                        <Trophy className="w-4 h-4 animate-bounce" />
+                      ) : (
+                        <Swords className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${getBadgeStyle(
+                            alertItem.type
+                          )}`}
+                        >
+                          {alertItem.badgeLabel}
+                        </span>
+                        <span className="text-xs font-extrabold text-white truncate">
+                          {alertItem.title}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-200 mt-0.5 line-clamp-2">
+                        {alertItem.body}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenNotificationTarget(alertItem)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all flex items-center gap-1.5 ${
+                        isStart
+                          ? 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+                          : 'bg-emerald-400 hover:bg-emerald-300 text-slate-950'
+                      }`}
+                    >
+                      <Trophy className="w-3.5 h-3.5" />
+                      {alertItem.actionLabel || 'Ver Chaveamento'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => markNotificationAsRead(alertItem.id)}
+                      className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"
+                      title="Dispensar alerta"
+                      aria-label="Dispensar alerta"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* EXPANDABLE SMART PUSH NOTIFICATION DRAWER */}
         {notificationDrawerOpen && (
           <div className="aquarium-glass bg-[#071D3D] border border-[#145A9B] rounded-2xl p-4 space-y-4 animate-in fade-in">
@@ -369,11 +511,11 @@ export const SmartNotificationBanner: React.FC = () => {
                     SHARK SET SMART PUSH ENGINE
                   </span>
                   <span className="text-xs font-bold text-white">
-                    Notificações em Tempo Real (Quadra Vaga 2h · Fila de Espera · Jogo Faltando 10 Pts · Partida em 15 Min)
+                    Notificações em Tempo Real (Torneios · Chaveamento · Quadra Vaga · Fila · Aula)
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-300">
-                  Disparo integrado via Push Notification do navegador, Cloud Firestore e WhatsApp 1-clique.
+                  Alertas automáticos de início de torneio inscrito, novos resultados publicados na tabela e lembretes de quadra.
                 </p>
               </div>
 
@@ -429,13 +571,41 @@ export const SmartNotificationBanner: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
+              <button
+                onClick={handleTriggerTournamentStartedPush}
+                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-amber-400/50 text-left transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between text-[10px] font-black text-amber-400 uppercase mb-1">
+                  <span>Torneio Iniciado</span>
+                  <Trophy className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                </div>
+                <p className="text-xs font-bold text-white">Início do Sorteio</p>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  Alerta inscritos
+                </span>
+              </button>
+
+              <button
+                onClick={handleTriggerBracketResultPush}
+                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-emerald-400/50 text-left transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between text-[10px] font-black text-emerald-400 uppercase mb-1">
+                  <span>Novo Resultado</span>
+                  <Swords className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                </div>
+                <p className="text-xs font-bold text-white">Placar na Chave</p>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  Atualização de jogo
+                </span>
+              </button>
+
               <button
                 onClick={handleTriggerVacant2hPush}
                 className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#0987CE]/50 text-left transition-all cursor-pointer group"
               >
                 <div className="flex items-center justify-between text-[10px] font-black text-[#0987CE] uppercase mb-1">
-                  <span>1. Horário Vago (2h)</span>
+                  <span>Horário Vago (2h)</span>
                   <Flame className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
                 <p className="text-xs font-bold text-white">Alerta de Agenda</p>
@@ -449,7 +619,7 @@ export const SmartNotificationBanner: React.FC = () => {
                 className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#12C7BB]/50 text-left transition-all cursor-pointer group"
               >
                 <div className="flex items-center justify-between text-[10px] font-black text-[#12C7BB] uppercase mb-1">
-                  <span>2. Push Fila Espera</span>
+                  <span>Push Fila Espera</span>
                   <Users className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
                 <p className="text-xs font-bold text-white">Avisar Vaga Livre</p>
@@ -463,8 +633,8 @@ export const SmartNotificationBanner: React.FC = () => {
                 className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-rose-500/50 text-left transition-all cursor-pointer group"
               >
                 <div className="flex items-center justify-between text-[10px] font-black text-rose-400 uppercase mb-1">
-                  <span>3. Jogo Ao Vivo (10 Pts)</span>
-                  <Trophy className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                  <span>Jogo Ao Vivo (10 Pts)</span>
+                  <BellRing className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
                 <p className="text-xs font-bold text-white">Chamar Próxima Dupla</p>
                 <span className="text-[10px] text-slate-400 block mt-0.5">
@@ -477,7 +647,7 @@ export const SmartNotificationBanner: React.FC = () => {
                 className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#5BC3FA]/50 text-left transition-all cursor-pointer group"
               >
                 <div className="flex items-center justify-between text-[10px] font-black text-[#5BC3FA] uppercase mb-1">
-                  <span>4. Partida em 15 Min</span>
+                  <span>Partida em 15 Min</span>
                   <Clock className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
                 <p className="text-xs font-bold text-white">Lembrete 15m Antes</p>
@@ -491,12 +661,12 @@ export const SmartNotificationBanner: React.FC = () => {
                 className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-left transition-all cursor-pointer group"
               >
                 <div className="flex items-center justify-between text-[10px] font-black text-[#0987CE] uppercase mb-1">
-                  <span>5. Vencimento Aula</span>
+                  <span>Vencimento Aula</span>
                   <Bell className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
-                <p className="text-xs font-bold text-white">Mensalidade Vence Hoje</p>
+                <p className="text-xs font-bold text-white">Mensalidade Hoje</p>
                 <span className="text-[10px] text-slate-400 block mt-0.5">
-                  Notifica aluno no vencimento
+                  Notifica no vencimento
                 </span>
               </button>
             </div>
@@ -537,13 +707,9 @@ export const SmartNotificationBanner: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#145A9B]/40">
-                    {item.actionTargetTab && (
+                    {(item.actionTargetTab || item.tournamentId) && (
                       <button
-                        onClick={() => {
-                          if (item.actionTargetTab === 'scheduler') setArenaSubTab('agenda');
-                          setActiveTab(item.actionTargetTab!);
-                          setNotificationDrawerOpen(false);
-                        }}
+                        onClick={() => handleOpenNotificationTarget(item)}
                         className="px-2.5 py-1 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-[11px] cursor-pointer flex items-center gap-1"
                       >
                         <Sparkles className="w-3 h-3" />
@@ -572,3 +738,4 @@ export const SmartNotificationBanner: React.FC = () => {
     </section>
   );
 };
+

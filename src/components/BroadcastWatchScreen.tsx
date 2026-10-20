@@ -26,12 +26,12 @@ export function BroadcastWatchScreen() {
 }
 
 function WatchScreen({ source }: { source: WatchSource }) {
-  const { tournaments, matchesByTournament, bookings } = useApp();
+  const { tournaments, matchesByTournament, bookings, setActiveTab, setActiveTournamentId } = useApp();
   const { active: fullscreen, setFullscreen } = useImmersiveMode();
   const match = source.kind === 'match' ? (matchesByTournament[source.tournamentId || ''] || []).find(item => item.id === source.id) : undefined;
   const booking = source.kind === 'booking' ? bookings.find(item => item.id === source.id) : undefined;
   const publishedId = source.kind === 'published' ? source.id : match?.linkedBroadcastId;
-  const linkedTournament = source.tournamentId || Object.entries(matchesByTournament).find(([, matches]) => publishedId && matches.some(item => item.linkedBroadcastId === publishedId))?.[0] || '';
+  const linkedTournament = source.kind === 'match' && source.tournamentId ? source.tournamentId : source.tournamentId || Object.entries(matchesByTournament).find(([, matches]) => publishedId && matches.some(item => item.linkedBroadcastId === publishedId))?.[0] || '';
   const [session, dispatch] = useReducer(watchSessionReducer, { view: 'video', tournamentId: linkedTournament });
   const [tableOpened, setTableOpened] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -95,6 +95,11 @@ function WatchScreen({ source }: { source: WatchSource }) {
   function openTable() {
     setTableOpened(true); dispatch({ type: 'table' });
     if (!fullscreen) setFullscreen(true);
+  }
+  function goToTournamentScreen() {
+    if (tournament) setActiveTournamentId(tournament.id);
+    setActiveTab('tournaments');
+    close();
   }
   async function togglePlay() {
     if (!video.current) return;
@@ -192,13 +197,46 @@ function WatchScreen({ source }: { source: WatchSource }) {
           </div>
         </div>
       </div>
-      {tableOpened && <div className="watch-table" hidden={session.view !== 'table'}>
+      {tableOpened && <div className="watch-table relative" hidden={session.view !== 'table'}>
         <header className="watch-table-heading">
           <button autoFocus onClick={() => { dispatch({ type: 'video' }); reveal(); }} className="watch-control watch-table-shortcut"><ArrowLeft size={18} />Voltar à transmissão</button>
           <label className="text-xs flex items-center gap-2">Campeonato<select value={session.tournamentId} onChange={event => dispatch({ type: 'select', tournamentId: event.target.value })} className="bg-slate-800 rounded-lg px-3 py-2 max-w-[40vw]"><option value="">Selecione</option>{tournaments.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <button onClick={() => setFullscreen(value => !value)} className="watch-control" aria-label={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>{fullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}</button>
         </header>
-        {tournament ? <FutevoleiVisualBracketCanvas key={tournament.id} readOnly matches={matchesByTournament[tournament.id] || []} semiFormat={tournament.semiFormat} isSingles={tournament.modalityFormat === 'simples'} formatParticipantName={pairName} getInlineScore={(item, side) => String((side === 's1' ? item.score1 : item.score2) ?? '')} onInlineScoreChange={noop} onInlineSubmit={noop} onOpenRefereeModal={noop} onOpenMatchEditor={noop} /> : <p className="p-6 text-slate-300">{tournaments.length ? 'Selecione um campeonato para acompanhar a tabela.' : 'Nenhum campeonato disponível.'}</p>}
+        {tournament ? <FutevoleiVisualBracketCanvas key={tournament.id} readOnly matches={matchesByTournament[tournament.id] || []} semiFormat={tournament.semiFormat} isSingles={tournament.modalityFormat === 'simples'} formatParticipantName={pairName} getInlineScore={(item, side) => String((side === 's1' ? item.score1 : item.score2) ?? '')} onInlineScoreChange={noop} onInlineSubmit={noop} onOpenRefereeModal={noop} onOpenMatchEditor={noop} onToggleFullscreen={() => setFullscreen(true)} /> : <p className="p-6 text-slate-300">{tournaments.length ? 'Selecione um campeonato para acompanhar a tabela.' : 'Nenhum campeonato disponível.'}</p>}
+        {session.view === 'table' && (
+          <div className="fixed bottom-6 right-6 z-[120] flex flex-col sm:flex-row items-end sm:items-center gap-2.5 pointer-events-auto" data-testid="watch-table-fab-dock">
+            <button
+              type="button"
+              data-testid="watch-fab-go-tournament"
+              onClick={goToTournamentScreen}
+              className="px-4 py-3 rounded-full bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_12px_32px_rgba(9,135,206,0.6)] border border-white/30 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+            >
+              <Trophy size={16} />
+              <span>Ir p/ Tela do Torneio</span>
+            </button>
+            <button
+              type="button"
+              data-testid="watch-fab-back-broadcast"
+              onClick={() => { dispatch({ type: 'video' }); reveal(); }}
+              className="px-4 py-3 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_12px_32px_rgba(251,191,36,0.55)] border border-white/30 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+            >
+              <Play size={16} />
+              <span>Ir p/ Transmissão</span>
+            </button>
+            {fullscreen && (
+              <button
+                type="button"
+                data-testid="watch-fab-exit-fullscreen"
+                onClick={() => setFullscreen(false)}
+                className="px-4 py-3 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-black text-xs uppercase tracking-wider shadow-[0_12px_32px_rgba(225,29,72,0.65)] border border-white/25 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+              >
+                <Minimize2 size={16} />
+                <span>Fechar Tela Cheia</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>}
     </div>
   </ImmersiveSurface>;

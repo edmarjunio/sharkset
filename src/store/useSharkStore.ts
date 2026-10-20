@@ -18,6 +18,7 @@ interface SharkStoreState {
   setFirebaseUserEmail: (email: string | null) => void;
   enablePushNotifications: () => Promise<NotificationPermission>;
   pushSmartNotification: (notif: SmartNotificationItem) => void;
+  markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: () => void;
   dismissSmartNotification: (id: string) => void;
 }
@@ -62,8 +63,21 @@ export const useSharkStore = create<SharkStoreState>((set, get) => ({
   },
 
   pushSmartNotification: (notif) => {
+    const existing = get().smartNotifications;
+    if (existing.some((n) => n.id === notif.id)) {
+      const refreshed = existing.map((n) => (n.id === notif.id ? { ...notif, read: false } : n));
+      saveNotifications(refreshed);
+      set({ smartNotifications: refreshed });
+      return;
+    }
     dispatchPushNotificationChannel(notif);
-    const updated = [notif, ...get().smartNotifications].slice(0, 30);
+    const updated = [notif, ...existing].slice(0, 30);
+    saveNotifications(updated);
+    set({ smartNotifications: updated });
+  },
+
+  markNotificationAsRead: (id) => {
+    const updated = get().smartNotifications.map((n) => (n.id === id ? { ...n, read: true } : n));
     saveNotifications(updated);
     set({ smartNotifications: updated });
   },

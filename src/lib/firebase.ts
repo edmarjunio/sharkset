@@ -176,7 +176,9 @@ export async function persistNotificationToFirestore(notif: {
     | 'tuition_due_today'
     | 'tuition_due_2days'
     | 'match_starting'
-    | 'match_modified';
+    | 'match_modified'
+    | 'tournament_started'
+    | 'bracket_result_published';
   title: string;
   body: string;
   recipientName?: string;

@@ -2,6 +2,7 @@ import { LocationScopeFilter } from './LocationScopeFilter';
 import { PodiumCardStudio } from './PodiumCardStudio';
 import { useScopedCatalog } from '../hooks/useScopedCatalog';
 import { useImmersiveMode } from '../hooks/useImmersiveMode';
+import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
 import { matchPhaseLabel } from '../services/bracketPresentation';
 import { TournamentOperationsPanel } from './TournamentOperationsPanel';
 import React, { useState, useMemo, useEffect } from 'react';
@@ -375,6 +376,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   };
 
   const openEditModal = () => {
+    if (!activeTournament) return;
     setFormName(activeTournament.name);
     setFormDate(activeTournament.date);
     setFormLocation(activeTournament.location || `${tenant.name} - ${tenant.city}/${tenant.state}`);
@@ -411,7 +413,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         responsiblePhone: userProfile.phone,
       });
       triggerToast(`Torneio "${created.name}" (${formModality.toUpperCase()}) criado com sucesso!`);
-    } else if (showTournamentModal === 'edit') {
+    } else if (showTournamentModal === 'edit' && activeTournament) {
       updateTournamentConfig(activeTournament.id, {
         name: formName.trim(),
         date: formDate,
@@ -429,7 +431,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     setShowTournamentModal(null);
   };
 
-  // Validate Quick Enroll
+  // Validate Quick Enroll (Safe even when activeTournament is undefined)
+  const activeTournamentCategory = activeTournament?.category || 'iniciante_serie_c';
   const enrollValidation = useMemo(() => {
     if (isSingles) {
       return {
@@ -438,11 +441,12 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         ruleSummary: 'Formato Simples 1x1.',
       };
     }
-    return validatePairCategory(activeTournament.category, enrollLvl1, enrollLvl2);
-  }, [isSingles, activeTournament.category, enrollLvl1, enrollLvl2]);
+    return validatePairCategory(activeTournamentCategory, enrollLvl1, enrollLvl2);
+  }, [isSingles, activeTournamentCategory, enrollLvl1, enrollLvl2]);
 
   const handleQuickEnrollSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeTournament) return;
     if (pairsInTourn.length >= activeTournament.maxPairs) {
       triggerToast(`Limite máximo de ${activeTournament.maxPairs} participantes atingido!`);
       return;
@@ -1810,6 +1814,20 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           onQuickOfficialize={handleQuickOfficialize}
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => setIsFullscreen((f) => !f)}
+          onNavigateToTournamentOrBroadcast={() => {
+            setIsFullscreen(false);
+            const targetMatch = liveMatches[0] || currentMatches.find((m) => m.linkedBroadcastId) || currentMatches[0];
+            if (targetMatch && (targetMatch.status === 'in_progress' || targetMatch.linkedBroadcastId)) {
+              useBroadcastNavigation.getState().open({
+                kind: 'match',
+                id: targetMatch.id,
+                tournamentId: activeTournament.id,
+              });
+            } else {
+              setActiveTab('live');
+            }
+          }}
+          navigateActionLabel="Ir p/ Torneio / Transmissão"
           knockoutOnlyMode={knockoutOnlyMode}
           onToggleKnockoutOnlyMode={() =>
             setManualKnockoutToggle((prev) =>

@@ -158,7 +158,7 @@ const MainContent: React.FC = () => {
       {/* Uninterrupted Live Broadcast Hub (Full on Home, Picture-in-Picture Floating Dock on other tabs) */}
       {!focusMode && activeTab !== 'home' && <PersistentLiveStreamDock />}
 
-      <main className={`site-content flex-1 min-w-0 ${focusMode ? 'pt-4 px-2 sm:px-4' : ''}`}>
+      <main className={`site-content relative flex-1 min-w-0 w-full ${focusMode ? 'pt-4 px-2 sm:px-4' : 'pb-6 sm:pb-10'}`}>
         {activeTab === 'arena_admin' && <ArenaAdmin />}
         {activeTab === 'home' && <HomeHighlights />}
         {activeTab === 'live' && <LiveDirectory />}
@@ -174,7 +174,7 @@ const MainContent: React.FC = () => {
 
       {!focusMode && (
         <footer
-          className="w-full mt-auto border-t border-cyan-500/20 bg-[#020B17]/95 backdrop-blur-xl text-slate-300 transition-colors pb-36 sm:pb-40"
+          className="relative z-10 w-full mt-auto border-t border-b border-cyan-500/20 bg-[#020B17]/95 backdrop-blur-xl text-slate-300 transition-all mb-[var(--floating-dock-offset,9.5rem)] sm:mb-[var(--floating-dock-offset,8.75rem)]"
           style={
             isArenaWhiteLabel && arenaPalette
               ? {
@@ -184,7 +184,7 @@ const MainContent: React.FC = () => {
               : undefined
           }
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
             {/* Top Row: Brand & Sports & Badges */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-white/10">
               {/* Brand Info */}
@@ -222,7 +222,7 @@ const MainContent: React.FC = () => {
             </div>
 
             {/* Bottom Row: Legal Copyright & Badges */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 text-[11px] text-slate-400 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 text-[11px] text-slate-400 text-center sm:text-left">
               <p>
                 &copy; {new Date().getFullYear()} SHARK SET — Todos os direitos reservados. Orgulhosamente desenvolvido para o esporte de areia.
               </p>

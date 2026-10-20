@@ -41,6 +41,8 @@ interface FutevoleiVisualBracketCanvasProps {
   onQuickOfficialize?: (match: BracketMatch, sets: MatchSet[]) => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  onNavigateToTournamentOrBroadcast?: () => void;
+  navigateActionLabel?: string;
   knockoutOnlyMode?: boolean;
   onToggleKnockoutOnlyMode?: () => void;
 }
@@ -66,6 +68,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
   const [quickError, setQuickError] = useState<string | null>(null);
 
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const pointerMoved = useRef(false);
   const touches = useRef(new Map<number, { x: number; y: number }>());
   const pinchDistance = useRef(0);
   const viewport = useRef({ left: 0, top: 0 });
@@ -499,19 +502,47 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
       aria-modal={props.isFullscreen || undefined}
       aria-label="Tabela do campeonato"
     >
-      {/* FLOATING CLOSE BUTTON WHEN IN FULLSCREEN */}
+      {/* FLOATING CLOSE BUTTON & FLOATING ACTION BUTTONS (FAB) WHEN IN FULLSCREEN */}
       {props.isFullscreen && (
-        <button
-          autoFocus
-          type="button"
-          className="bracket-close"
-          onClick={props.onToggleFullscreen}
-          aria-label="Fechar tabela em tela cheia"
-        >
-          <X className="w-4 h-4" aria-hidden="true" />
-          <span className="bracket-close-label">Fechar Tabela (Sair da Tela Cheia)</span>
-          <span className="bracket-close-shortcut text-xs opacity-80 ml-1 px-1.5 py-0.5 rounded bg-black/25">Esc</span>
-        </button>
+        <>
+          <button
+            autoFocus
+            type="button"
+            className="bracket-close"
+            onClick={props.onToggleFullscreen}
+            aria-label="Fechar tabela em tela cheia"
+          >
+            <X className="w-4 h-4" />
+            Fechar Tabela (Sair da Tela Cheia)
+            <span className="text-xs opacity-80 ml-1 px-1.5 py-0.5 rounded bg-black/25">Esc</span>
+          </button>
+
+          <div
+            className="fixed bottom-6 right-6 z-[120] flex flex-col sm:flex-row items-end sm:items-center gap-2.5 pointer-events-auto"
+            data-testid="bracket-fullscreen-fab-dock"
+          >
+            {props.onNavigateToTournamentOrBroadcast && (
+              <button
+                type="button"
+                data-testid="bracket-fab-go-tournament-broadcast"
+                onClick={props.onNavigateToTournamentOrBroadcast}
+                className="px-4 py-3 rounded-full bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_12px_32px_rgba(9,135,206,0.6)] border border-white/30 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+              >
+                <Radio className="w-4 h-4" />
+                <span>{props.navigateActionLabel || 'Ir p/ Torneio / Transmissão'}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              data-testid="bracket-fab-close-fullscreen"
+              onClick={props.onToggleFullscreen}
+              className="px-4 py-3 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-black text-xs uppercase tracking-wider shadow-[0_12px_32px_rgba(225,29,72,0.65)] border border-white/25 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+            >
+              <Minimize2 className="w-4 h-4" />
+              <span>Fechar Tela Cheia</span>
+            </button>
+          </div>
+        </>
       )}
 
       {/* TOP TOOLBAR: EASY NAVIGATION, ZOOM & FULLSCREEN */}
@@ -655,14 +686,23 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
             Ao Vivo ({liveCount})
           </span>
           <span className="text-slate-300 hidden sm:inline">
-            Arraste para mover · Role para ampliar ({completedCount}/{matches.length} concluídos)
+            {!props.isFullscreen && props.onToggleFullscreen
+              ? '👆 Clique na tabela para Tela Cheia · Arraste para mover · Role para ampliar'
+              : `Arraste para mover · Role para ampliar (${completedCount}/${matches.length} concluídos)`}
           </span>
         </div>
       </div>
 
       {/* BRACKET CONTENT: COLUMNS OR INFINITY SCROLL PANORAMA */}
       {view === 'columns' ? (
-        <div className="flex items-start gap-4 overflow-auto pb-6">
+        <div
+          className="flex items-start gap-4 overflow-auto pb-6 cursor-pointer"
+          onClick={(event) => {
+            if (!props.isFullscreen && props.onToggleFullscreen && !(event.target as HTMLElement).closest('button,input,a,select')) {
+              props.onToggleFullscreen();
+            }
+          }}
+        >
           {rounds.map((key) => {
             const roundMatches = matches.filter((match) => `${match.stage}:${match.round}` === key);
             const first = roundMatches[0];
@@ -691,6 +731,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
       ) : (
         <div
           ref={container}
+          data-testid="bracket-interactive-viewport"
           className="bracket-viewport overflow-auto rounded-2xl border border-cyan-300/40 cursor-grab active:cursor-grabbing"
           style={{ height: props.isFullscreen ? undefined : '70vh', touchAction: 'none' }}
           onScroll={(event) => {
@@ -700,8 +741,19 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
             if (!(event.target as HTMLElement).closest('button,input'))
               zoomAt(zoom * 1.4, event.clientX, event.clientY);
           }}
+          onClick={(event) => {
+            if (
+              !props.isFullscreen &&
+              props.onToggleFullscreen &&
+              !pointerMoved.current &&
+              !(event.target as HTMLElement).closest('button,input,a,select')
+            ) {
+              props.onToggleFullscreen();
+            }
+          }}
           onPointerDown={(event) => {
             if ((event.target as HTMLElement).closest('button,input')) return;
+            pointerMoved.current = false;
             touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
             if (touches.current.size === 2) {
               const [a, b] = [...touches.current.values()];
@@ -722,6 +774,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
             if (!touches.current.has(event.pointerId)) return;
             touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
             if (touches.current.size === 2) {
+              pointerMoved.current = true;
               const [a, b] = [...touches.current.values()],
                 distance = Math.hypot(a.x - b.x, a.y - b.y);
               if (pinchDistance.current > 0)
@@ -730,6 +783,9 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
               return;
             }
             if (!drag.current || !container.current) return;
+            if (Math.hypot(event.clientX - drag.current.x, event.clientY - drag.current.y) > 6) {
+              pointerMoved.current = true;
+            }
             container.current.scrollTo(
               drag.current.left - event.clientX + drag.current.x,
               drag.current.top - event.clientY + drag.current.y

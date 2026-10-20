@@ -1126,3 +1126,9 @@ body {
     0 3px 8px rgba(255, 107, 0, 0.3);
 }
 
+/* Ensure all modal overlays sit above footer, navbar, and floating bottom dock */
+.fixed.inset-0 {
+  z-index: 9999 !important;
+}
+
+

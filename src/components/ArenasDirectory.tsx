@@ -11,6 +11,13 @@ import { FreeSlotsDateTimeFilter } from './FreeSlotsDateTimeFilter';
 import { ARENA_BRAND_PRESETS } from '../services/logoPaletteExtractor';
 import { calculateHaversineDistance, GeoCoordinates, DEFAULT_BASE_COORDINATES } from '../utils/geoUtils';
 import {
+  clearRecentSearches,
+  getPopularArenaSuggestions,
+  getRecentSearches,
+  removeRecentSearch,
+  saveRecentSearch,
+} from '../services/searchSuggestions';
+import {
   MapPin,
   Navigation,
   ArrowRight,
@@ -24,6 +31,8 @@ import {
   RotateCw,
   CheckCircle2,
   AlertCircle,
+  Flame,
+  Star,
 } from 'lucide-react';
 
 export const ArenasDirectory: React.FC = () => {
@@ -40,7 +49,14 @@ export const ArenasDirectory: React.FC = () => {
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => getRecentSearches());
   const [activeFinderSection, setActiveFinderSection] = useState<'free_slots' | 'classes' | 'none'>('free_slots');
+
+  const popularArenas = useMemo(
+    () => getPopularArenaSuggestions(availableTenants, tenant),
+    [availableTenants, tenant]
+  );
 
   const { filter: locationFilter, setFilter: setLocationFilter } = useDirectoryScope();
   const { coords: userCoords, status: geoStatus, request: requestUserLocation } = useBookingLocation();
@@ -106,202 +122,225 @@ export const ArenasDirectory: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* High-Impact Minimalist Hero & Filter Bar */}
-      <div className="aquarium-glass bg-slate-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 border border-slate-800">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="space-y-2">
-            {/* Geolocation status pill */}
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <div
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-black uppercase tracking-wider border ${
-                  geoStatus === 'granted'
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                    : geoStatus === 'locating'
-                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 animate-pulse'
-                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                }`}
-              >
-                <Compass className="w-3.5 h-3.5" />
-                <span>
-                  {geoStatus === 'granted'
-                    ? 'GPS DO NAVEGADOR ATIVO'
-                    : geoStatus === 'locating'
-                    ? 'LOCALIZANDO...'
-                    : 'LOCALIZAÇÃO NÃO INFORMADA'}
-                </span>
-              </div>
-
-              <span className="text-slate-400">·</span>
-
-              <span className="text-amber-400 font-extrabold">
-                {locationFilter.mode === 'nearby'
-                  ? `ATÉ ${locationFilter.radiusKm ?? 50} KM`
-                  : locationFilter.mode === 'city'
-                  ? locationFilter.city
-                  : 'TODAS NO SITE'}
-              </span>
-
-              {/* Refresh GPS Button */}
-              <button
-                type="button"
-                onClick={requestUserLocation}
-                disabled={geoStatus === 'locating'}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-300 hover:text-white px-2 py-0.5 rounded-lg bg-cyan-950/60 border border-cyan-500/30 cursor-pointer transition-colors"
-                title="Recalcular distâncias usando GPS atual"
-              >
-                <RotateCw className={`w-3 h-3 ${geoStatus === 'locating' ? 'animate-spin' : ''}`} />
-                <span>Atualizar GPS</span>
-              </button>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
-              Arenas Mais Próximas de Você — Agende em 2 Cliques
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-4">
+      {/* Compact Top Filter Bar */}
+      <div className="aquarium-glass bg-slate-950/95 text-white rounded-2xl p-3.5 sm:p-4 shadow-lg border border-slate-800 space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-amber-400" />
+              <span>Arenas</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Busque por localização, cidade ou veja todas as arenas do site.
-            </p>
+            <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-[11px] font-bold text-amber-300">
+              {filteredArenas.length} {filteredArenas.length === 1 ? 'arena' : 'arenas'}
+            </span>
+            <button
+              type="button"
+              onClick={requestUserLocation}
+              disabled={geoStatus === 'locating'}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-300 hover:text-white px-2 py-1 rounded-lg bg-cyan-950/60 border border-cyan-500/30 cursor-pointer transition-colors"
+              title="Recalcular distâncias usando GPS atual"
+            >
+              <RotateCw className={`w-3 h-3 ${geoStatus === 'locating' ? 'animate-spin' : ''}`} />
+              <span>{geoStatus === 'granted' ? 'GPS Ativo' : 'Usar GPS'}</span>
+            </button>
           </div>
 
-          {/* Quick Filter Section Switchers */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
-            <div className="flex rounded-2xl bg-slate-900 p-1 border border-slate-700/80">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Sport Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
               <button
-                type="button"
-                onClick={() =>
-                  setActiveFinderSection((v) => (v === 'free_slots' ? 'none' : 'free_slots'))
-                }
-                className={`px-3.5 py-2.5 rounded-xl font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
-                  activeFinderSection === 'free_slots'
-                    ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                onClick={() => setSelectedSport('all')}
+                className={`px-2.5 py-1.5 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
+                  selectedSport === 'all'
+                    ? 'bg-white text-slate-950 shadow-xs font-black'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <Clock className="w-4 h-4" />
-                <span>Filtrar Horários Livres</span>
+                Todos
               </button>
-
               <button
-                type="button"
-                onClick={() =>
-                  setActiveFinderSection((v) => (v === 'classes' ? 'none' : 'classes'))
-                }
-                className={`px-3.5 py-2.5 rounded-xl font-black text-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
-                  activeFinderSection === 'classes'
-                    ? 'bg-amber-400 text-slate-950 shadow-md font-black'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                onClick={() => setSelectedSport('futevolei')}
+                className={`px-2.5 py-1.5 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
+                  selectedSport === 'futevolei'
+                    ? 'bg-white text-slate-950 shadow-xs font-black'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <GraduationCap className="w-4 h-4" />
-                <span>Buscar Aulas</span>
+                ⚽ Futevôlei
+              </button>
+              <button
+                onClick={() => setSelectedSport('beach_tennis')}
+                className={`px-2.5 py-1.5 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
+                  selectedSport === 'beach_tennis'
+                    ? 'bg-white text-slate-950 shadow-xs font-black'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                🎾 Beach Tennis
+              </button>
+              <button
+                onClick={() => setSelectedSport('volei_praia')}
+                className={`px-2.5 py-1.5 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
+                  selectedSport === 'volei_praia'
+                    ? 'bg-white text-slate-950 shadow-xs font-black'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                🏐 Vôlei
               </button>
             </div>
 
-            {/* Search Input */}
-            <div className="relative w-full sm:w-60">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+            {/* Search Input with Recent Searches & Popular Arenas Dropdown */}
+            <div className="relative w-full sm:w-64" data-testid="arenas-search-container">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  setRecentSearches(getRecentSearches());
+                  setSearchDropdownOpen(true);
+                }}
+                onBlur={() => {
+                  window.setTimeout(() => setSearchDropdownOpen(false), 180);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    setRecentSearches(saveRecentSearch(searchQuery.trim()));
+                    setSearchDropdownOpen(false);
+                  } else if (e.key === 'Escape') {
+                    setSearchDropdownOpen(false);
+                  }
+                }}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSearchDropdownOpen(true);
+                }}
                 placeholder="Buscar arena ou cidade..."
-                className="w-full pl-10 pr-4 py-2.5 text-xs font-medium bg-slate-900 border border-slate-700 text-white placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400"
+                data-testid="arenas-search-input"
+                className="w-full pl-9 pr-7 py-2 text-xs font-medium bg-slate-900 border border-slate-700 text-white placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-2 px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+
+              {searchDropdownOpen && (
+                <div
+                  onMouseDown={(e) => e.preventDefault()}
+                  data-testid="arenas-search-dropdown"
+                  className="absolute right-0 left-0 sm:left-auto sm:w-80 top-full mt-2 z-50 rounded-2xl bg-[#071D3D] border border-[#145A9B] shadow-2xl p-3 space-y-3 text-white animate-in fade-in duration-150"
+                >
+                  {recentSearches.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#5BC3FA]" />
+                          Pesquisas Recentes
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setRecentSearches(clearRecentSearches())}
+                          className="text-[10px] font-bold text-slate-400 hover:text-rose-300 cursor-pointer"
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {recentSearches.map((term) => (
+                          <div
+                            key={term}
+                            className="inline-flex items-center gap-1 rounded-lg bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] px-2 py-1 text-[11px] text-slate-200"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchQuery(term);
+                                setRecentSearches(saveRecentSearch(term));
+                                setSearchDropdownOpen(false);
+                              }}
+                              className="font-semibold hover:text-[#12C7BB] cursor-pointer"
+                            >
+                              {term}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRecentSearches(removeRecentSearch(term))}
+                              className="text-slate-500 hover:text-white cursor-pointer"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5 pt-1 border-t border-[#145A9B]/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+                        <Flame className="w-3 h-3 text-amber-400" />
+                        Arenas Populares
+                      </span>
+                      <span className="text-[10px] text-slate-400">Acesso rápido</span>
+                    </div>
+                    <div className="space-y-1">
+                      {popularArenas.slice(0, 3).map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setRecentSearches(saveRecentSearch(item.name));
+                            setSearchDropdownOpen(false);
+                            if (item.isCatalogArena) {
+                              setTenantId(item.id);
+                              setArenaSubTab('agenda');
+                              setActiveTab('scheduler');
+                            } else {
+                              setSearchQuery(item.city);
+                            }
+                          }}
+                          className="w-full px-2.5 py-2 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B]/70 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer group"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-extrabold text-white truncate group-hover:text-[#12C7BB]">
+                              {item.name}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">
+                              {item.city}/{item.state} · {item.courtsCount} quadras
+                            </p>
+                          </div>
+                          <span className="px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 text-[10px] font-bold flex items-center gap-0.5 shrink-0">
+                            <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                            {item.rating.toFixed(1)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* High-Visibility Radius Selector + Sport Filter */}
-        <div className="pt-4 border-t border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <LocationScopeFilter />
-
-          {/* Sport Filter */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800 w-fit">
-            <button
-              onClick={() => setSelectedSport('all')}
-              className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                selectedSport === 'all'
-                  ? 'bg-white text-slate-950 shadow-xs font-black'
-                  : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              Todos Esportes
-            </button>
-            <button
-              onClick={() => setSelectedSport('futevolei')}
-              className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                selectedSport === 'futevolei'
-                  ? 'bg-white text-slate-950 shadow-xs font-black'
-                  : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              ⚽ Futevôlei
-            </button>
-            <button
-              onClick={() => setSelectedSport('beach_tennis')}
-              className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                selectedSport === 'beach_tennis'
-                  ? 'bg-white text-slate-950 shadow-xs font-black'
-                  : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              🎾 Beach Tennis
-            </button>
-            <button
-              onClick={() => setSelectedSport('volei_praia')}
-              className={`px-3.5 py-2 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                selectedSport === 'volei_praia'
-                  ? 'bg-white text-slate-950 shadow-xs font-black'
-                  : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              🏐 Vôlei
-            </button>
-          </div>
+        <div className="pt-2 border-t border-slate-800/80">
+          <LocationScopeFilter compact />
         </div>
       </div>
 
-      {/* COMPONENT: Filtro de Data e Hora na Seção de Horários Livres */}
-      {activeFinderSection === 'free_slots' && (
-        <FreeSlotsDateTimeFilter
-          userCoords={userCoords}
-        />
-      )}
-
-      {/* Regional Class & Court Availability Finder */}
-      {activeFinderSection === 'classes' && <RegionalAvailabilityFinder />}
-
-      {/* Results Count & Ordering */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-semibold text-slate-600 px-1 gap-2">
-        <span className="flex items-center gap-1.5">
-          <span>
-            Exibindo <strong className="text-slate-950 font-black tabular-nums">{filteredArenas.length}</strong>{' '}
-            {filteredArenas.length === 1 ? 'arena mais próxima' : 'arenas mais próximas'} dentro de{' '}
-            {locationFilter.mode === 'nearby'
-              ? `${locationFilter.radiusKm ?? 50} km`
-              : locationFilter.mode === 'city'
-              ? locationFilter.city
-              : 'todo o site'}
-          </span>
-          {geoStatus === 'granted' && (
-            <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              ● GPS Conectado
-            </span>
-          )}
-        </span>
-        <span className="text-slate-700 font-bold flex items-center gap-1">
-          <Navigation className="w-3.5 h-3.5 text-cyan-600" />
-          Ordenado por menor distância calculada
-        </span>
-      </div>
-
-      {/* Arenas Grid — High-Contrast Cards with Arena Photo & 1-Click Direct Booking */}
+      {/* Arenas Grid — Focus exclusively on Arenas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredArenas.map((arena) => {
           const isCurrent = arena.id === tenant.id;
           const uniqueSports = Array.from(new Set(arena.courts.flatMap((c) => c.sports)));
           const minPrice = Math.min(...arena.courts.map((c) => c.hourlyRate));
-          const totalClasses = arena.courts.reduce((acc, c) => acc + (c.classSchedules?.length || 0), 0);
           const arenaTournaments = tournaments.filter((t) => t.tenantId === arena.id);
           const coverImg =
             arena.imageUrl ||
@@ -316,7 +355,6 @@ export const ArenasDirectory: React.FC = () => {
               }`}
             >
               <div>
-                {/* Arena Cover Image Header */}
                 <div className="relative h-48 w-full overflow-hidden bg-slate-900">
                   <img
                     src={coverImg}
@@ -326,7 +364,6 @@ export const ArenasDirectory: React.FC = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
 
-                  {/* Top Distance & Active Status over Image */}
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-xs">
                     <span className="px-2.5 py-1 rounded-lg bg-slate-950/85 backdrop-blur-xs text-white font-mono font-black tabular-nums border border-white/15 flex items-center gap-1 shadow-sm">
                       <MapPin className="w-3.5 h-3.5 text-amber-400" />
@@ -345,7 +382,6 @@ export const ArenasDirectory: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Arena Title at Bottom of Image */}
                   <div className="absolute bottom-3 left-4 right-4 text-white">
                     <h2 className="text-xl font-black tracking-tight group-hover:text-amber-300 transition-colors">
                       {arena.name}
@@ -355,7 +391,6 @@ export const ArenasDirectory: React.FC = () => {
                 </div>
 
                 <div className="p-5 space-y-4">
-                  {/* Key Specs Highlight Box */}
                   <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-3 gap-2 text-xs">
                     <div>
                       <span className="text-slate-500 font-semibold block text-[10px] uppercase">Quadras</span>
@@ -373,7 +408,6 @@ export const ArenasDirectory: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Sports & Amenities Clean Typography */}
                   <div className="space-y-1 text-xs">
                     <div className="text-slate-800">
                       <span className="text-slate-400 font-semibold">Modalidades: </span>
@@ -389,7 +423,6 @@ export const ArenasDirectory: React.FC = () => {
                 </div>
               </div>
 
-              {/* Unmistakable Direct Entry Buttons */}
               <div
                 className="px-5 pb-5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2"
                 onClick={(e) => e.stopPropagation()}
@@ -426,7 +459,6 @@ export const ArenasDirectory: React.FC = () => {
                       handleSelectArena(arena, 'agendamentos');
                     }}
                     className="px-3 py-2 text-xs font-extrabold text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-                    title="Abrir página da Arena toda na paleta da logo da Arena com DESENVOLVIDO POR SHARKSET"
                   >
                     <Palette className="w-3.5 h-3.5 text-orange-600" />
                     Página Oficial
@@ -457,7 +489,7 @@ export const ArenasDirectory: React.FC = () => {
             </h3>
             <p className="text-xs text-slate-300 max-w-md mx-auto">
               {availableTenants.length === 0
-                ? 'Você está em modo de produção 100% limpo! Cadastre a sua primeira arena oficial para liberar agendamentos, quadras e transmissões.'
+                ? 'Cadastre a sua primeira arena oficial para liberar agendamentos, quadras e transmissões.'
                 : 'Altere a cidade no filtro acima ou veja todas as arenas cadastradas.'}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -481,51 +513,6 @@ export const ArenasDirectory: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Seção Educativa: Como Funciona o Ecossistema de Arenas SHARKSET */}
-      <section className="rounded-3xl border border-cyan-800/40 bg-[#041529]/90 p-6 sm:p-8 text-white space-y-6 shadow-xl">
-        <div className="flex items-center gap-3 border-b border-cyan-800/50 pb-4">
-          <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
-            <Compass className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-black text-white">Como Funciona a Gestão e Reservas nas Arenas</h3>
-            <p className="text-xs text-slate-400">Dicas essenciais para atletas e proprietários de quadras de areia.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
-          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
-            <div className="flex items-center gap-2 text-amber-400 font-black">
-              <Clock className="w-4 h-4" />
-              <span>Reserva e Horários Livres</span>
-            </div>
-            <p className="text-slate-300 leading-relaxed">
-              Consulte a disponibilidade em tempo real das quadras com iluminação e areia tratada. Quando um horário é desocupado por desistência, o sistema alerta automaticamente os atletas da região.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
-            <div className="flex items-center gap-2 text-[#12C7BB] font-black">
-              <Zap className="w-4 h-4" />
-              <span>Transmissão Oficial de Jogos</span>
-            </div>
-            <p className="text-slate-300 leading-relaxed">
-              As arenas credenciadas possuem suporte a transmissão ao vivo via câmera fixa. Os jogos transmitidos contam com placar esportivo estilo TV e pontuação válida para a subida oficial no Ranking Sharkset.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-[#030E1F] border border-cyan-900/50 space-y-2">
-            <div className="flex items-center gap-2 text-[#0987CE] font-black">
-              <GraduationCap className="w-4 h-4" />
-              <span>Aulas e Mensalidades</span>
-            </div>
-            <p className="text-slate-300 leading-relaxed">
-              Professores de Futevôlei e Beach Tennis gerenciam turmas por nível técnico (Iniciante, Série C, B e A). O vencimento mensal é automatizado com lembretes via WhatsApp para evitar atrasos.
-            </p>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };

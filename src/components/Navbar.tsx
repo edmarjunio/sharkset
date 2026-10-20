@@ -27,6 +27,7 @@ import {
 import { FreeSlotsNewsTicker } from './FreeSlotsNewsTicker';
 import { TopBarSlotDetailsModal } from './TopBarSlotDetailsModal';
 import { QuickBookingPaymentModal, type QuickBookingSlotData } from './QuickBookingPaymentModal';
+import { TopBarSearchBox } from './TopBarSearchBox';
 import {
   NavIconHome,
   NavIconTrophy,
@@ -451,18 +452,9 @@ export const Navbar: React.FC = () => {
               </div>
             </div>
 
-            {/* Linha 3: Campo de Busca Desktop */}
+            {/* Linha 3: Campo de Busca Desktop com Dropdown de Pesquisas Recentes & Arenas Populares */}
             <div className="w-full pb-1">
-              <button
-                type="button"
-                onClick={() => setCommandPaletteOpen(true)}
-                className="flex items-center gap-2.5 w-full px-4 py-2 rounded-2xl border border-cyan-500/30 bg-[#071526]/90 hover:bg-[#071526] text-cyan-200 text-xs sm:text-sm text-left shadow-inner transition-colors cursor-pointer"
-                title="Buscar atletas, arenas ou torneios (Ctrl+K)"
-              >
-                <Search className="w-4 h-4 shrink-0 text-cyan-400" />
-                <span className="truncate text-slate-300">Buscar atletas, arenas ou torneios...</span>
-                <span className="ml-auto text-[11px] opacity-60 font-mono">Ctrl + K</span>
-              </button>
+              <TopBarSearchBox />
             </div>
 
           </div>
@@ -670,18 +662,9 @@ export const Navbar: React.FC = () => {
           </nav>
         </div>
 
-        {/* LINHA 3: CAMPO DE BUSCA CENTRALIZADO */}
+        {/* LINHA 3: CAMPO DE BUSCA CENTRALIZADO COM DROPDOWN DE PESQUISAS RECENTES & ARENAS POPULARES */}
         <div className="w-full">
-          <button
-            type="button"
-            onClick={() => setCommandPaletteOpen(true)}
-            className="flex items-center gap-2 w-full px-3.5 py-2 rounded-xl border border-cyan-500/30 bg-[#071526]/90 hover:bg-[#071526] text-cyan-200 text-xs text-left shadow-inner transition-colors cursor-pointer"
-            title="Buscar atletas, arenas ou torneios (Ctrl+K)"
-          >
-            <Search className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
-            <span className="truncate text-slate-300">Buscar atletas, arenas ou torneios...</span>
-            <span className="ml-auto text-[10px] opacity-60 font-mono">Buscar</span>
-          </button>
+          <TopBarSearchBox compact />
         </div>
 
       </div>

@@ -14,7 +14,9 @@ export type SmartAlertType =
   | 'match_10pts_left'
   | 'booking_15min'
   | 'tuition_due_today'
-  | 'tuition_due_2days';
+  | 'tuition_due_2days'
+  | 'tournament_started'
+  | 'bracket_result_published';
 
 export type ClassEnrollmentAuthorRole = 'aluno' | 'professor' | 'dono';
 
@@ -68,6 +70,7 @@ export interface AthleteProfile {
   levelPoints?: number;
   id: string;
   name: string;
+  email?: string;
   phone: string;
   photoUrl?: string;
   photoURL?: string;
@@ -287,6 +290,10 @@ export interface Booking {
 export interface TeamPair {
   player1Id?: string;
   player2Id?: string;
+  player1Email?: string;
+  player2Email?: string;
+  player1Phone?: string;
+  player2Phone?: string;
   id: string;
   tournamentId: string;
   player1: string;
@@ -566,6 +573,7 @@ export interface SmartNotificationItem {
   actionTargetTab?: 'scheduler' | 'tournaments' | 'my_bookings';
   slotId?: string;
   matchId?: string;
+  tournamentId?: string;
   createdAt: string;
   read: boolean;
   pushDelivered: boolean;
