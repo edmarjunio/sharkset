@@ -1,5 +1,5 @@
 import { BOOKING_DEMO } from '../services/bookingMode';
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
 import {
   ArenaBrandPalette,
   AthleteAchievement,
@@ -13,6 +13,7 @@ import {
   ClassScheduleConfig,
   ClassStudent,
   Court,
+  DiscountCoupon,
   ExperienceCategory,
   RankingMatchLog,
   SemiFormat,
@@ -78,7 +79,23 @@ import {
   evaluateMatchNearCompletion,
 } from '../services/smartAlertEngine';
 import { useSharkStore } from '../store/useSharkStore';
-import { auth, getUserProfileFromFirestore, persistUserProfileToFirestore } from '../lib/firebase';
+import {
+  auth,
+  getUserProfileFromFirestore,
+  persistUserProfileToFirestore,
+  persistFullAthleteProfileToFirestore,
+  addTournamentTokensInFirestore,
+  spendTournamentTokenInFirestore,
+  persistArenaToFirestore,
+  fetchArenasFromFirestore,
+  addManagerToArenaInFirestore,
+  removeManagerFromArenaInFirestore,
+  persistTournamentToFirestore,
+  fetchTournamentsFromFirestore,
+  persistCouponToFirestore,
+  fetchCouponsFromFirestore,
+  validateAndApplyCouponInFirestore,
+} from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { checkPlayerInactivity } from '../services/inactivityClient';
 import { applyRankedActivity, resetInactiveProgress } from '../services/rankingActivity';
@@ -142,8 +159,39 @@ interface AppContextType {
   athletes: AthleteProfile[];
   rankingLogs: RankingMatchLog[];
   classStudents: ClassStudent[];
-  userProfile: { name: string; phone: string; level: AthleteLevel | null };
-  setUserProfile: (profile: { name: string; phone: string; level: AthleteLevel | null }) => void;
+  userProfile: {
+    name: string;
+    phone: string;
+    level: AthleteLevel | null;
+    photoURL?: string;
+    tournamentTokens: number;
+    points: number;
+    wins: number;
+    titlesCount: number;
+    matchesPlayed: number;
+    tournamentsPlayed: number;
+  };
+  setUserProfile: (
+    profile: Partial<Omit<AthleteProfile, 'level'>> & {
+      name: string;
+      phone: string;
+      level: AthleteLevel | null;
+    }
+  ) => void;
+  buyTournamentTokens: (quantity: number) => Promise<void>;
+  spendTournamentToken: () => Promise<boolean>;
+  coupons: DiscountCoupon[];
+  createCoupon: (coupon: Omit<DiscountCoupon, 'id' | 'createdAt' | 'usedCount'>) => Promise<DiscountCoupon>;
+  toggleCouponStatus: (couponId: string) => Promise<void>;
+  applyCouponToBooking: (params: { code: string; arenaId: string; originalPrice: number }) => Promise<{
+    valid: boolean;
+    coupon?: DiscountCoupon;
+    discountAmount: number;
+    finalPrice: number;
+    message: string;
+  }>;
+  addArenaManager: (arenaId: string, emailOrUid: string) => Promise<void>;
+  removeArenaManager: (arenaId: string, emailOrUid: string) => Promise<void>;
   focusMode: boolean;
   setFocusMode: (mode: boolean | ((prev: boolean) => boolean)) => void;
   toggleFocusMode: () => void;
@@ -202,6 +250,8 @@ interface AppContextType {
     registrationFee: number;
     responsibleName: string;
     responsiblePhone: string;
+    tenantId?: string;
+    createdScope?: 'arena' | 'user';
   }) => Tournament;
   updateTournamentConfig: (
     tournamentId: string,
@@ -253,7 +303,7 @@ interface AppContextType {
   liveSpectatorsCount: number;
   addOrUpdateAthlete: (data: {
     name: string;
-    email?: string;
+    email: string;
     phone: string;
     birthDate?: string;
     experienceCategory?: ExperienceCategory;
@@ -396,6 +446,80 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...prev,
       [arena.id]: arena,
     }));
+    void persistArenaToFirestore(arena).catch((err) =>
+      console.warn('Erro ao salvar arena no Firestore:', err)
+    );
+  };
+
+  const addArenaManager = async (arenaId: string, emailOrUid: string) => {
+    const updatedManagers = await addManagerToArenaInFirestore(arenaId, emailOrUid);
+    setArenasMap((prev) => {
+      const target = prev[arenaId];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [arenaId]: { ...target, managers: updatedManagers },
+      };
+    });
+  };
+
+  const removeArenaManager = async (arenaId: string, emailOrUid: string) => {
+    const updatedManagers = await removeManagerFromArenaInFirestore(arenaId, emailOrUid);
+    setArenasMap((prev) => {
+      const target = prev[arenaId];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [arenaId]: { ...target, managers: updatedManagers },
+      };
+    });
+  };
+
+  // Coupons state
+  const [coupons, setCoupons] = useState<DiscountCoupon[]>([
+    {
+      id: 'coupon-shark10',
+      code: 'SHARK10',
+      description: 'Cupom Global de Lançamento SHARK SET (R$ 10 OFF em qualquer arena)',
+      discountType: 'fixed',
+      discountValue: 10,
+      scope: 'global',
+      minBookingValue: 50,
+      maxUses: 500,
+      usedCount: 0,
+      active: true,
+      createdAt: '2026-10-20',
+    },
+  ]);
+
+  const createCoupon = async (
+    couponData: Omit<DiscountCoupon, 'id' | 'createdAt' | 'usedCount'>
+  ): Promise<DiscountCoupon> => {
+    const newCoupon: DiscountCoupon = {
+      ...couponData,
+      id: `coupon-${couponData.code.toLowerCase()}-${Date.now()}`,
+      code: couponData.code.trim().toUpperCase(),
+      usedCount: 0,
+      createdAt: new Date().toISOString(),
+      createdBy: auth.currentUser?.uid,
+    };
+    setCoupons((prev) => [newCoupon, ...prev]);
+    await persistCouponToFirestore(newCoupon);
+    return newCoupon;
+  };
+
+  const toggleCouponStatus = async (couponId: string) => {
+    setCoupons((prev) =>
+      prev.map((c) => (c.id === couponId ? { ...c, active: !c.active } : c))
+    );
+  };
+
+  const applyCouponToBooking = async (params: {
+    code: string;
+    arenaId: string;
+    originalPrice: number;
+  }) => {
+    return validateAndApplyCouponInFirestore(params);
   };
 
   // Location radius filter (in km)
@@ -413,23 +537,95 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [tenantModalOpen, setTenantModalOpen] = useState(false);
   const [activeLiveBroadcastBookingId, setActiveLiveBroadcastBookingId] = useState<string | null>(null);
 
-  // User quick profile
-  const [userProfile, setUserProfileState] = useState<{ name: string; phone: string; level: AthleteLevel | null }>(() => {
-    return { name: '', phone: '', level: null };
+  // User full athlete profile
+  const [userProfile, setUserProfileState] = useState<{
+    name: string;
+    phone: string;
+    level: AthleteLevel | null;
+    photoURL?: string;
+    tournamentTokens: number;
+    points: number;
+    wins: number;
+    titlesCount: number;
+    matchesPlayed: number;
+    tournamentsPlayed: number;
+  }>(() => {
+    return {
+      name: '',
+      phone: '',
+      level: null,
+      photoURL: '',
+      tournamentTokens: 1,
+      points: 0,
+      wins: 0,
+      titlesCount: 0,
+      matchesPlayed: 0,
+      tournamentsPlayed: 0,
+    };
   });
 
-  const setUserProfile = (profile: { name: string; phone: string; level: AthleteLevel | null }) => {
-    setUserProfileState(profile);
-    if (!auth.currentUser) return;
-    void persistUserProfileToFirestore({
-      displayName: profile.name || auth.currentUser?.displayName || 'Atleta',
+  const buyTournamentTokens = async (quantity: number) => {
+    setUserProfileState((prev) => ({
+      ...prev,
+      tournamentTokens: (prev.tournamentTokens || 0) + quantity,
+    }));
+    if (auth.currentUser) {
+      await addTournamentTokensInFirestore(auth.currentUser.uid, quantity);
+    }
+  };
+
+  const spendTournamentToken = async (): Promise<boolean> => {
+    if (userProfile.tournamentTokens < 1) return false;
+    setUserProfileState((prev) => ({
+      ...prev,
+      tournamentTokens: Math.max(0, prev.tournamentTokens - 1),
+    }));
+    if (auth.currentUser) {
+      await spendTournamentTokenInFirestore(auth.currentUser.uid);
+    }
+    return true;
+  };
+
+  const setUserProfile = (
+    profile: Partial<Omit<AthleteProfile, 'level'>> & {
+      name: string;
+      phone: string;
+      level: AthleteLevel | null;
+    }
+  ) => {
+    setUserProfileState((prev) => ({
+      ...prev,
+      ...profile,
+      name: profile.name,
       phone: profile.phone,
       level: profile.level,
-    }).then(() => {
-      const uid = auth.currentUser?.uid;
-      if (uid) localStorage.removeItem(`sharkset_user_level_${uid}`);
-    }).catch(() => {
-      console.warn('NÃ£o foi possÃ­vel sincronizar o perfil com o Firestore.');
+    }));
+    if (!auth.currentUser) return;
+    void persistFullAthleteProfileToFirestore({
+      id: auth.currentUser.uid,
+      name: profile.name || auth.currentUser.displayName || 'Atleta',
+      phone: profile.phone,
+      level: profile.level || 'iniciante',
+      photoURL: profile.photoURL || profile.photoUrl || auth.currentUser.photoURL || '',
+      tournamentTokens: profile.tournamentTokens ?? userProfile.tournamentTokens,
+      points: profile.points ?? userProfile.points,
+      wins: profile.wins ?? userProfile.wins,
+      titlesCount: profile.titlesCount ?? userProfile.titlesCount,
+      matchesPlayed: profile.matchesPlayed ?? userProfile.matchesPlayed,
+      tournamentsPlayed: profile.tournamentsPlayed ?? userProfile.tournamentsPlayed,
+      city: profile.city || tenant.city || 'Mineiros',
+      state: profile.state || tenant.state || 'GO',
+      country: profile.country || 'Brasil',
+      arenaId: profile.arenaId || tenant.id,
+      arenaName: profile.arenaName || tenant.name,
+      preferredSport: profile.preferredSport || 'futevolei',
+      bio: profile.bio,
+      courtSide: profile.courtSide,
+      dominantFoot: profile.dominantFoot,
+      stats: profile.stats,
+      achievements: profile.achievements,
+    }).catch((err) => {
+      console.warn('Erro ao sincronizar perfil completo com o Firestore:', err);
     });
   };
 
@@ -452,10 +648,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const cloudProfile = await getUserProfileFromFirestore(user.uid);
           if (!isCurrent || auth.currentUser?.uid !== user.uid) return;
 
+          const cloudData = (cloudProfile || {}) as Record<string, unknown>;
+          const tokenBal = typeof cloudData.tournamentTokens === 'number' ? cloudData.tournamentTokens : 1;
           const profile = {
             name: cloudProfile?.displayName || user.displayName || user.email?.split('@')[0] || 'Atleta',
             phone: cloudProfile?.phone || user.phoneNumber || '',
             level: cloudProfile?.level || savedLevel,
+            photoURL: (typeof cloudData.photoURL === 'string' ? cloudData.photoURL : '') || user.photoURL || '',
+            tournamentTokens: tokenBal,
+            points: typeof cloudData.points === 'number' ? cloudData.points : 0,
+            wins: typeof cloudData.wins === 'number' ? cloudData.wins : 0,
+            titlesCount: typeof cloudData.titlesCount === 'number' ? cloudData.titlesCount : 0,
+            matchesPlayed: typeof cloudData.matchesPlayed === 'number' ? cloudData.matchesPlayed : 0,
+            tournamentsPlayed: typeof cloudData.tournamentsPlayed === 'number' ? cloudData.tournamentsPlayed : 0,
           };
           setUserProfileState(profile);
           if (cloudProfile) {
@@ -466,21 +671,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             }
           }
 
-          // Migrate only the account-bound level value; never import the old shared profile cache.
-          if (!cloudProfile && user.emailVerified && user.email) {
-            void persistUserProfileToFirestore({
-              displayName: profile.name,
+          // Migrate and save full athlete profile to Firestore
+          if (!cloudProfile && user.email) {
+            void persistFullAthleteProfileToFirestore({
+              id: user.uid,
+              name: profile.name,
               phone: profile.phone,
-              level: profile.level,
-            }).then(() => {
-              try {
-                localStorage.removeItem(`sharkset_user_level_${user.uid}`);
-              } catch {
-                // The migration remains complete in Firestore.
-              }
-            }).catch(() => {
-              console.warn('NÃ£o foi possÃ­vel migrar o perfil desta conta para o Firestore.');
-            });
+              level: profile.level || 'iniciante',
+              photoURL: profile.photoURL || user.photoURL || '',
+              tournamentTokens: 1,
+            }).catch(() => {});
           }
         } catch {
           if (!isCurrent || auth.currentUser?.uid !== user.uid) return;
@@ -488,13 +688,58 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             name: user.displayName || user.email?.split('@')[0] || 'Atleta',
             phone: user.phoneNumber || '',
             level: savedLevel,
+            photoURL: user.photoURL || '',
+            tournamentTokens: 1,
+            points: 0,
+            wins: 0,
+            titlesCount: 0,
+            matchesPlayed: 0,
+            tournamentsPlayed: 0,
           });
         }
         void checkPlayerInactivity().catch((error) => console.warn(error.message));
       } else {
-        setUserProfileState({ name: '', phone: '', level: null });
+        setUserProfileState({
+          name: '',
+          phone: '',
+          level: null,
+          photoURL: '',
+          tournamentTokens: 1,
+          points: 0,
+          wins: 0,
+          titlesCount: 0,
+          matchesPlayed: 0,
+          tournamentsPlayed: 0,
+        });
       }
     });
+
+    // Boot synchronization of Arenas, Tournaments and Coupons from Firestore
+    void fetchArenasFromFirestore().then((cloudArenas) => {
+      if (!isCurrent || !cloudArenas.length) return;
+      setArenasMap((prev) => {
+        const merged = { ...prev };
+        for (const a of cloudArenas) {
+          merged[a.id] = { ...merged[a.id], ...a };
+        }
+        return merged;
+      });
+    });
+
+    void fetchTournamentsFromFirestore().then((cloudTournaments) => {
+      if (!isCurrent || !cloudTournaments.length) return;
+      setTournaments((prev) => {
+        const existingIds = new Set(prev.map((t) => t.id));
+        const newOnes = cloudTournaments.filter((t) => !existingIds.has(t.id));
+        return [...newOnes, ...prev];
+      });
+    });
+
+    void fetchCouponsFromFirestore().then((cloudCoupons) => {
+      if (!isCurrent || !cloudCoupons.length) return;
+      setCoupons(cloudCoupons);
+    });
+
     return () => {
       isCurrent = false;
       unsubscribe();
@@ -615,23 +860,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const stored = localStorage.getItem(STORAGE_KEYS.ATHLETES);
       const rawList: AthleteProfile[] = stored ? JSON.parse(stored) : INITIAL_ATHLETES;
       const usedEmails = new Set<string>();
-      return rawList.map((athlete: AthleteProfile, idx: number) => {
+      return rawList.map((athlete: AthleteProfile) => {
         const cleaned = resetInactiveProgress(athlete);
-        let email = (cleaned.email || '').trim().toLowerCase();
-        if (!email || usedEmails.has(email)) {
-          const baseSlug = (cleaned.name || `atleta${idx + 1}`)
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '.')
-            .replace(/^\.+|\.+$/g, '');
-          const candidate = `${baseSlug || 'atleta'}@sharkset.com.br`;
-          email = usedEmails.has(candidate)
-            ? `${baseSlug || 'atleta'}.${idx + 1}@sharkset.com.br`
-            : candidate;
-        }
-        usedEmails.add(email);
-        return { ...cleaned, email };
+        const email = (cleaned.email || '').trim().toLowerCase();
+        if (email && usedEmails.has(email)) return { ...cleaned, email: undefined };
+        if (email) usedEmails.add(email);
+        return { ...cleaned, email: email || undefined };
       });
     } catch {
       return INITIAL_ATHLETES;
@@ -737,6 +971,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return INITIAL_PAIRS;
     }
   });
+  const pairRegistrationLocks = useRef(new Set<string>());
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PAIRS, JSON.stringify(registeredPairs));
@@ -1333,32 +1568,57 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     registrationFee: number;
     responsibleName: string;
     responsiblePhone: string;
+    tenantId?: string;
+    createdScope?: 'arena' | 'user';
   }): Tournament => {
+    const isUserScope = data.createdScope === 'user';
+    const targetTenantId = data.tenantId || tenant.id;
+
+    if (isUserScope) {
+      if ((userProfile.tournamentTokens || 0) < 1) {
+        throw new Error('Você precisa de 1 Token de Campeonato para criar um torneio independente. Adquira tokens na loja para continuar.');
+      }
+      setUserProfileState((prev) => ({
+        ...prev,
+        tournamentTokens: Math.max(0, prev.tournamentTokens - 1),
+      }));
+      if (auth.currentUser) {
+        void spendTournamentTokenInFirestore(auth.currentUser.uid).catch(() => {});
+      }
+    }
+
+    const selectedArena = arenasMap[targetTenantId];
     const newTourn: Tournament = {
       id: `tourn-${Date.now()}`,
-      tenantId: tenant.id,
+      tenantId: targetTenantId,
       name: data.name,
       sport: data.sport,
       category: data.category,
       modalityFormat: data.modalityFormat || 'duplas',
       semiFormat: data.semiFormat,
       date: data.date,
-      location: data.location || `${tenant.name} (${tenant.city} - ${tenant.state})`,
+      location: data.location || (selectedArena ? `${selectedArena.name} (${selectedArena.city} - ${selectedArena.state})` : `${tenant.name} (${tenant.city} - ${tenant.state})`),
       specificRules:
         data.specificRules ||
-        'Sets de 18 pontos (diferenÃ§a mÃ­nima de 2 pontos). Semifinal conforme formato escolhido. PontuaÃ§Ã£o oficial para o Ranking de FutevÃ´lei.',
+        'Sets de 18 pontos (diferença mínima de 2 pontos). Semifinal conforme formato escolhido. Pontuação oficial para o Ranking de Futevôlei.',
       format: 'double_elimination_buraco4',
-      description: `Torneio oficial em ${data.location || tenant.name}. ResponsÃ¡vel tÃ©cnico: ${data.responsibleName}.`,
+      description: `Torneio oficial em ${data.location || selectedArena?.name || tenant.name}. Responsável técnico: ${data.responsibleName}.`,
       maxPairs: data.maxPairs || 8,
       registrationFee: data.registrationFee,
       responsibleName: data.responsibleName,
       responsiblePhone: data.responsiblePhone,
       isOpenForRegistration: true,
       isFinished: false,
+      tableLicenseStatus: isUserScope ? 'unlocked_single_20' : 'unlocked_arena_pro_99',
+      tableLicenseFee: isUserScope ? 20 : 0,
+      createdScope: isUserScope ? 'user' : 'arena',
+      creatorUid: auth.currentUser?.uid,
+      creatorTokensSpent: isUserScope ? 1 : 0,
     };
 
     setTournaments((prev) => [newTourn, ...prev]);
     setActiveTournamentId(newTourn.id);
+    void persistTournamentToFirestore(newTourn).catch(() => {});
 
     return newTourn;
   };
@@ -1409,6 +1669,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const isSingles = data.player2.trim().toLowerCase() === 'individual (1x1)';
     const p1Email = (data.player1Email || '').trim().toLowerCase();
     const p2Email = isSingles ? '' : (data.player2Email || '').trim().toLowerCase();
+    const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+    if (!isValidEmail(p1Email) || (!isSingles && !isValidEmail(p2Email))) {
+      throw new Error('Selecione atletas cadastrados com e-mail para inscrever no torneio.');
+    }
 
     if (!isSingles && p1Email && p2Email && p1Email === p2Email) {
       throw new Error('Os dois atletas da dupla nÃ£o podem ter o mesmo e-mail.');
@@ -1440,6 +1705,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (duplicateEnrollment) {
       throw new Error('Este atleta (e-mail) ou dupla jÃ¡ estÃ¡ inscrita neste torneio.');
     }
+
+    const registrationLockKey = `${data.tournamentId}:${[p1Email, p2Email].filter(Boolean).sort().join('|')}`;
+    if (pairRegistrationLocks.current.has(registrationLockKey)) {
+      throw new Error('Esta inscriÃ§Ã£o jÃ¡ estÃ¡ sendo processada.');
+    }
+    pairRegistrationLocks.current.add(registrationLockKey);
 
     const nextSeed = pairsInTourn.length + 1;
     const p1Paid = data.player1Paid ?? false;
@@ -1474,6 +1745,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const updatedAllPairs = [...registeredPairs, newPair];
     setRegisteredPairs(updatedAllPairs);
+    window.setTimeout(() => pairRegistrationLocks.current.delete(registrationLockKey), 2000);
 
     const tourn = tournaments.find((t) => t.id === data.tournamentId);
     const updatedTournPairs = updatedAllPairs.filter(
@@ -1716,7 +1988,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Athlete Profile & Ranking Management (Unique Email, allows duplicate Names)
   const addOrUpdateAthlete = (data: {
     name: string;
-    email?: string;
+    email: string;
     phone: string;
     birthDate?: string;
     experienceCategory?: ExperienceCategory;
@@ -1730,14 +2002,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     points?: number;
   }): AthleteProfile => {
     const cleanName = data.name.trim();
-    const rawEmail = (data.email || '').trim().toLowerCase();
-    const fallbackSlug = cleanName
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '.')
-      .replace(/^\.+|\.+$/g, '');
-    const emailToUse = rawEmail || `${fallbackSlug || 'atleta'}.${Date.now().toString().slice(-4)}@sharkset.com.br`;
+    const emailToUse = (data.email || '').trim().toLowerCase();
+    if (!cleanName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToUse)) {
+      throw new Error('Informe nome e e-mail válido do atleta.');
+    }
 
     const emailAlreadyExists = athletes.some(
       (a) => (a.email || '').trim().toLowerCase() === emailToUse
@@ -2158,6 +2426,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         classStudents,
         userProfile,
         setUserProfile,
+        buyTournamentTokens,
+        spendTournamentToken,
+        coupons,
+        createCoupon,
+        toggleCouponStatus,
+        applyCouponToBooking,
+        addArenaManager,
+        removeArenaManager,
         resetAllDataToCleanSlate,
         focusMode,
         setFocusMode,

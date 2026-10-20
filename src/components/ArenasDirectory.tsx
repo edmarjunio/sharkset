@@ -31,7 +31,6 @@ import {
   ArrowRight,
   Plus,
   Search,
-  Trophy,
   GraduationCap,
   Zap,
   Clock,
@@ -53,7 +52,6 @@ export const ArenasDirectory: React.FC = () => {
     setSelectedSport,
     setActiveTab,
     setArenaSubTab,
-    tournaments,
     updateArenaBranding,
   } = useApp();
 
@@ -331,7 +329,6 @@ export const ArenasDirectory: React.FC = () => {
           const isCurrent = arena.id === tenant.id;
           const uniqueSports = Array.from(new Set(arena.courts.flatMap((c) => c.sports)));
           const minPrice = Math.min(...arena.courts.map((c) => c.hourlyRate));
-          const arenaTournaments = tournaments.filter((t) => t.tenantId === arena.id);
           const coverImg =
             arena.imageUrl ||
             'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=1000&q=85';
@@ -426,14 +423,7 @@ export const ArenasDirectory: React.FC = () => {
                     <Clock className="w-3.5 h-3.5 text-slate-600" />
                     Horários
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectArena(arena, 'campeonatos')}
-                    className="px-3 py-2 text-xs font-extrabold text-orange-950 bg-orange-100 hover:bg-orange-200 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Trophy className="w-3.5 h-3.5 text-orange-700" />
-                    Torneios ({arenaTournaments.length})
-                  </button>
+
                   <button
                     type="button"
                     onClick={() => {

@@ -3,10 +3,13 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { defineBoolean, defineSecret, defineString } from 'firebase-functions/params';
 import { onRequest, type Request } from 'firebase-functions/v2/https';
+import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import { WebhookReceiver } from 'livekit-server-sdk';
 import { LiveService, applyWebhook } from './service';
 import { listBroadcasts } from './directory';
 import { LiveError, PROJECT_ID, REGION, validId } from './policy';
+import { didOfficialResultChange, validateOfficialResult } from './tournament-results';
 
 const apiKey = defineSecret('LIVEKIT_API_KEY');
 const apiSecret = defineSecret('LIVEKIT_API_SECRET');
@@ -75,4 +78,39 @@ export const livekitWebhook = onRequest({ ...common, serviceAccount: `livekit-we
   catch { res.sendStatus(401); return; }
   try { await applyWebhook(database(), event); res.sendStatus(204); }
   catch { res.sendStatus(503); } // Provider can retry. Never log body, Authorization, SDK errors or secrets.
+});
+
+export const tournamentResultNotification = onDocumentWritten({
+  document: 'tournaments/{tournamentId}/matches/{matchId}',
+  region: REGION,
+  maxInstances: 4,
+  retry: true,
+}, async (event) => {
+  const before = event.data?.before.data();
+  const after = event.data?.after.data();
+  if (!after || after.status !== 'completed' || !didOfficialResultChange(before, after)) return;
+
+  const { tournamentId, matchId } = event.params;
+  if (!validId(tournamentId) || !validId(matchId)) return;
+
+  const db = database();
+  const tournamentSnapshot = await db.doc(`tournaments/${tournamentId}`).get();
+  if (!tournamentSnapshot.exists) return;
+  const tournamentName = typeof tournamentSnapshot.data()?.name === 'string' ? tournamentSnapshot.data()!.name : '';
+  const notification = validateOfficialResult({
+    tournamentId,
+    matchId,
+    match: after,
+    tournamentName,
+    isCorrection: before?.status === 'completed',
+  });
+  if (!notification) return;
+
+  const notificationRef = db.doc(`tournaments/${tournamentId}/result_events/${notification.eventId}`);
+  try {
+    await notificationRef.create({ ...notification, createdAt: FieldValue.serverTimestamp() });
+  } catch (error) {
+    if ((error as { code?: number }).code === 6) return; // Idempotent retry of the same official revision.
+    throw error;
+  }
 });

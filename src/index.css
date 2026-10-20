@@ -529,7 +529,7 @@ body {
 
 /* One continuous underwater scene, behind the glass interface. */
 .shark-site-background::before, .shark-site-background::after { content: none; }
-.aquarium-world { background: #011f3f; }
+.aquarium-world { background: transparent; }
 .aquarium-video {
   position: absolute;
   inset: 0;
@@ -544,9 +544,9 @@ body {
   will-change: transform, opacity;
 }
 .aquarium-scenery {
-  position: absolute; inset: -2%;
+  position: absolute; inset: 0;
   background: url('/brand/ocean-bg.jpg') center center / cover no-repeat;
-  animation: aquarium-current 24s ease-in-out infinite alternate;
+  animation: none;
 }
 .aquarium-depth {
   position: absolute; inset: 0;

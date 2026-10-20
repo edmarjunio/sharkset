@@ -1,9 +1,10 @@
-import { LiveDirectory } from './components/LiveDirectory';
+﻿import { LiveDirectory } from './components/LiveDirectory';
 import { BroadcastWatchScreen } from './components/BroadcastWatchScreen';
 import { useBroadcastNavigation } from './store/useBroadcastNavigation';
 import { FreeSlotsDateTimeFilter } from './components/FreeSlotsDateTimeFilter';
 import React from 'react';
 import { AquariumBackground } from './components/AquariumBackground';
+import { SportBallIcon } from './components/icons/SportBallIcon';
 import { AppProvider, useApp } from './context/AppContext';
 import { ArenaAdmin } from './components/ArenaAdmin';
 import { Navbar } from './components/Navbar';
@@ -130,13 +131,13 @@ const MainContent: React.FC = () => {
       {!focusMode && (
         <>
           <Navbar />
-          <SmartNotificationBanner />
-          <FreeSlotsDateTimeFilter homeTop />
+          {activeTab === 'home' && <SmartNotificationBanner />}
+          {activeTab === 'home' && <FreeSlotsDateTimeFilter homeTop />}
         </>
       )}
 
       {/* Uninterrupted Live Broadcast Hub (Full on Home, Picture-in-Picture Floating Dock on other tabs) */}
-      {!focusMode && activeTab !== 'home' && <PersistentLiveStreamDock />}
+      {!focusMode && !['home', 'tournaments', 'arenas_directory', 'register_dupla'].includes(activeTab) && <PersistentLiveStreamDock />}
 
       <main className={`site-content relative flex-1 min-w-0 w-full ${focusMode ? 'pt-4 px-2 sm:px-4' : 'pb-6 sm:pb-10'}`}>
         {activeTab === 'arena_admin' && <ArenaAdmin />}
@@ -154,7 +155,7 @@ const MainContent: React.FC = () => {
 
       {!focusMode && (
         <footer
-          className="relative z-10 w-full mt-auto border-t border-b border-cyan-500/20 bg-[#020B17]/95 backdrop-blur-xl text-slate-300 transition-all mb-[var(--floating-dock-offset,9.5rem)] sm:mb-[var(--floating-dock-offset,8.75rem)]"
+          className="relative z-10 w-full mt-auto border-t border-b border-cyan-300/20 bg-[#03172b]/75 backdrop-blur-md text-slate-300 transition-all mb-[var(--floating-dock-offset,9.5rem)] sm:mb-[var(--floating-dock-offset,8.75rem)]"
           style={
             isArenaWhiteLabel && arenaPalette
               ? {
@@ -166,13 +167,13 @@ const MainContent: React.FC = () => {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
             {/* Top Row: Brand & Sports & Badges */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-white/10">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-cyan-100/10">
               {/* Brand Info */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3.5">
-                <div className="p-1.5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 shadow-md">
+              <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-3.5">
+                <div className="p-1.5 rounded-2xl bg-[#062b45]/75 border border-cyan-300/25 shadow-md">
                   <SharksetLogo size="sm" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center justify-center sm:justify-start gap-2">
                     <span className="font-black text-white text-base tracking-wider">
                       SHARK<span className="text-[#FF6B00]">SET</span>
@@ -181,7 +182,7 @@ const MainContent: React.FC = () => {
                       PLATAFORMA OFICIAL
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                  <p className="text-xs leading-relaxed text-slate-300/90 mt-1 max-w-sm">
                     Gestão esportiva inteligente, rankings automatizados, chaveamento de torneios e transmissões ao vivo.
                   </p>
                 </div>
@@ -190,13 +191,13 @@ const MainContent: React.FC = () => {
               {/* Sports Modalities Pills */}
               <div className="flex flex-wrap justify-center items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
-                  ⚽ Futevôlei
+                  <SportBallIcon sport="futevolei" /> Futevôlei
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
-                  🎾 Beach Tennis
+                  <SportBallIcon sport="beach-tennis" /> Beach Tennis
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
-                  🏐 Vôlei de Praia
+                  <SportBallIcon sport="volei-praia" /> Vôlei de Praia
                 </span>
               </div>
             </div>
@@ -220,7 +221,7 @@ const MainContent: React.FC = () => {
       )}
 
       {/* Floating Bottom Navigation & Featured Slots Carousel (Visible on Scroll Down) */}
-      {!focusMode && (
+      {!focusMode && !['tournaments', 'arenas_directory', 'register_dupla'].includes(activeTab) && (
         <FloatingBottomDock onSelectSlot={(slot) => setFloatingSlotModal(slot)} />
       )}
 

@@ -37,17 +37,32 @@ function getWhatsAppConfig(): WhatsAppConfig | null {
 }
 
 export function normalizePhoneNumber(rawPhone: string): string | null {
-  const digits = (rawPhone || '').replace(/\D/g, '');
+  const trimmed = (rawPhone || '').trim();
+  const digits = trimmed.replace(/\D/g, '');
   if (!digits) return null;
 
-  // Add Brazil country code (55) if standard DDD + phone is passed (10 or 11 digits)
-  const phone = (digits.length === 10 || digits.length === 11) && !digits.startsWith('55')
-    ? `55${digits}`
-    : digits;
+  // If the phone explicitly starts with international '+' (e.g. +1..., +44...), keep country code as is
+  if (trimmed.startsWith('+')) {
+    if (!/^\d{10,15}$/.test(digits)) return null;
+    return digits;
+  }
 
-  // Standard E.164 without leading plus must have between 10 and 15 digits
-  if (!/^\d{10,15}$/.test(phone)) return null;
-  return phone;
+  // If already prefixed with Brazilian DDI 55
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+    return digits;
+  }
+
+  // Standard Brazilian DDD + number (10 or 11 digits) -> prepend 55
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+
+  // Other valid E.164 without leading plus
+  if (/^\d{10,15}$/.test(digits)) {
+    return digits;
+  }
+
+  return null;
 }
 
 async function sendWhatsAppMessage(

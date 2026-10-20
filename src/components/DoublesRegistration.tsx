@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   AthleteLevel,
+  AthleteProfile,
   ExperienceCategory,
   RankingScope,
   SportType,
@@ -17,9 +18,9 @@ import {
   filterAndRankAthletesByScope,
   getRankingPromotionSuggestion,
   validatePairCategory,
-  validatePairWithUnifiedPassport,
 } from '../services/rankingValidator';
 import { AthleteLevelBadge } from './AthleteLevelBadge';
+import { AthleteEmailSelector } from './AthleteEmailSelector';
 import { toast } from '../store/useToastStore';
 import {
   Plus,
@@ -61,7 +62,7 @@ export const DoublesRegistration: React.FC = () => {
     updateTournamentConfig,
   } = useApp();
 
-  const [subView, setSubView] = useState<'ranking_atletas' | 'inscricao_duplas'>('ranking_atletas');
+  const [subView, setSubView] = useState<'ranking_atletas' | 'inscricao_duplas'>('inscricao_duplas');
 
   // Modals for operational actions (separated from visualization)
   const [isAddAthleteModalOpen, setIsAddAthleteModalOpen] = useState<boolean>(false);
@@ -78,16 +79,16 @@ export const DoublesRegistration: React.FC = () => {
 
   // Doubles / Singles registration state
   const [player1, setPlayer1] = useState('');
-  const [level1, setLevel1] = useState<AthleteLevel>('serie_c');
   const [player2, setPlayer2] = useState('');
-  const [level2, setLevel2] = useState<AthleteLevel>('iniciante');
-  const [phone, setPhone] = useState('');
   const [paymentMethod] = useState<'pix' | 'cartao' | 'arena'>('pix');
   const [searchQuery, setSearchQuery] = useState('');
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [isSubmittingPair, setIsSubmittingPair] = useState(false);
+  const pairSubmissionLock = useRef(false);
 
   // New Athlete Ranking registration state
   const [newAthName, setNewAthName] = useState('');
+  const [newAthEmail, setNewAthEmail] = useState('');
   const [newAthPhone, setNewAthPhone] = useState('');
   const [newAthBirthDate, setNewAthBirthDate] = useState('1996-04-15');
   const [newAthExp, setNewAthExp] = useState<ExperienceCategory>('amador');
@@ -106,6 +107,15 @@ export const DoublesRegistration: React.FC = () => {
 
   const activeTournament = tournaments.find((t) => t.id === activeTournamentId) || tournaments[0];
   const isSingles = activeTournament.modalityFormat === 'simples';
+
+  const selectedPlayer1 = useMemo(
+    () => athletes.find((athlete) => (athlete.email || '').trim().toLowerCase() === player1) || null,
+    [athletes, player1]
+  );
+  const selectedPlayer2 = useMemo(
+    () => athletes.find((athlete) => (athlete.email || '').trim().toLowerCase() === player2) || null,
+    [athletes, player2]
+  );
 
   // Extract unique Countries, States, Cities, and Arenas via Clean Code service
   const dimensions = useMemo(() => extractAvailableRankingDimensions(athletes), [athletes]);
@@ -136,11 +146,17 @@ export const DoublesRegistration: React.FC = () => {
 
   // Validate the selected pair against the active tournament's category + Cross-City Unified Passport + Anti-Sandbagging Ceiling
   const validation = useMemo(() => {
-    const matched1 = athletes.find((a) => a.name.toLowerCase() === player1.trim().toLowerCase());
-    const matched2 = athletes.find((a) => a.name.toLowerCase() === player2.trim().toLowerCase());
+    const invalid = (reason: string) => ({
+      isValid: false,
+      reason,
+      ruleSummary: 'Selecione atletas cadastrados; a categoria é carregada do perfil.',
+      combinedWeight: 0,
+      maxAllowedWeight: 0,
+    });
+    if (!selectedPlayer1) return invalid('Selecione o primeiro atleta pelo e-mail.');
 
     if (isSingles) {
-      const check1 = evaluateAthleteAntiSandbagging(matched1, level1, tenant.city);
+      const check1 = evaluateAthleteAntiSandbagging(selectedPlayer1, selectedPlayer1.level, tenant.city);
       return {
         isValid: check1.isAllowed,
         reason: !check1.isAllowed
@@ -152,21 +168,30 @@ export const DoublesRegistration: React.FC = () => {
         maxAllowedWeight: 5,
       };
     }
-
-    return validatePairWithUnifiedPassport(
-      activeTournament.category,
-      player1,
-      level1,
-      player2,
-      level2,
-      athletes,
-      tenant.city
-    );
-  }, [isSingles, activeTournament.category, player1, level1, player2, level2, athletes, tenant.city]);
+    if (!selectedPlayer2) return invalid('Selecione o segundo atleta pelo e-mail.');
+    if (selectedPlayer1.email?.trim().toLowerCase() === selectedPlayer2.email?.trim().toLowerCase()) {
+      return invalid('A dupla precisa ter dois e-mails diferentes.');
+    }
+    const check1 = evaluateAthleteAntiSandbagging(selectedPlayer1, selectedPlayer1.level, tenant.city);
+    const check2 = evaluateAthleteAntiSandbagging(selectedPlayer2, selectedPlayer2.level, tenant.city);
+    if (!check1.isAllowed || !check2.isAllowed) {
+      return invalid(check1.alertMessage || check2.alertMessage || 'Categoria bloqueada pelo Passaporte Único.');
+    }
+    return validatePairCategory(activeTournament.category, check1.effectiveLevel, check2.effectiveLevel);
+  }, [isSingles, activeTournament.category, selectedPlayer1, selectedPlayer2, tenant.city]);
 
   const currentPairs = useMemo(() => {
     return registeredPairs.filter((p) => p.tournamentId === activeTournament.id);
   }, [registeredPairs, activeTournament.id]);
+
+  const enrolledAthleteEmails = useMemo(
+    () => new Set(currentPairs
+      .filter((pair) => pair.enrollmentStatus !== 'rejected')
+      .flatMap((pair) => [pair.player1Email, pair.player2Email])
+      .filter((email): email is string => Boolean(email))
+      .map((email) => email.trim().toLowerCase())),
+    [currentPairs]
+  );
 
   const filteredPairs = useMemo(() => {
     if (!searchQuery.trim()) return currentPairs;
@@ -201,34 +226,50 @@ export const DoublesRegistration: React.FC = () => {
 
   const handleSubmitPair = (e: React.FormEvent) => {
     e.preventDefault();
+    if (pairSubmissionLock.current || !selectedPlayer1 || (!isSingles && !selectedPlayer2)) return;
     if (!validation.isValid) return;
-    if (!player1.trim() || (!isSingles && !player2.trim()) || !phone.trim()) return;
 
-    const newPair = registerDouble({
-      tournamentId: activeTournament.id,
-      player1: player1.trim(),
-      player1Level: level1,
-      player2: isSingles ? 'Individual (1x1)' : player2.trim(),
-      player2Level: isSingles ? level1 : level2,
-      phone: phone.trim(),
-      category: activeTournament.category,
-      paymentMethod,
-      player1Paid: false,
-      player2Paid: false,
-    });
+    pairSubmissionLock.current = true;
+    setIsSubmittingPair(true);
+    try {
+      const newPair = registerDouble({
+        tournamentId: activeTournament.id,
+        player1Id: selectedPlayer1.id,
+        player1Email: selectedPlayer1.email,
+        player1Phone: selectedPlayer1.phone,
+        player1: selectedPlayer1.name,
+        player1Level: selectedPlayer1.level,
+        player2Id: isSingles ? undefined : selectedPlayer2?.id,
+        player2Email: isSingles ? undefined : selectedPlayer2?.email,
+        player2Phone: isSingles ? undefined : selectedPlayer2?.phone,
+        player2: isSingles ? 'Individual (1x1)' : selectedPlayer2!.name,
+        player2Level: isSingles ? selectedPlayer1.level : selectedPlayer2!.level,
+        phone: selectedPlayer1.phone || selectedPlayer2?.phone || '',
+        category: activeTournament.category,
+        paymentMethod,
+        player1Paid: false,
+        player2Paid: false,
+      });
 
-    setPlayer1('');
-    setPlayer2('');
-    setPhone('');
-    toast.success(`Inscrição da dupla realizada com sucesso!`);
-    triggerToast(
-      `Vaga #${newPair.seed} reservada como PENDENTE em ${activeTournament.name}! A vaga será confirmada assim que os 2 atletas confirmarem o pagamento.`
-    );
+      setPlayer1('');
+      setPlayer2('');
+      toast.success('Inscrição realizada com sucesso!');
+      triggerToast(`Vaga #${newPair.seed} reservada em ${activeTournament.name}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível concluir a inscrição.');
+    } finally {
+      setIsSubmittingPair(false);
+      pairSubmissionLock.current = false;
+    }
   };
-
   const handleAddAthlete = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAthName.trim()) return;
+    const normalizedEmail = newAthEmail.trim().toLowerCase();
+    if (!newAthName.trim() || !normalizedEmail) return;
+    if (athletes.some((athlete) => (athlete.email || '').trim().toLowerCase() === normalizedEmail)) {
+      toast.error('Este e-mail já está cadastrado. Selecione o perfil existente.');
+      return;
+    }
 
     const chosenArena =
       availableTenants.find((a) => a.id === newAthArenaId) ||
@@ -236,7 +277,8 @@ export const DoublesRegistration: React.FC = () => {
 
     addOrUpdateAthlete({
       name: newAthName.trim(),
-      phone: newAthPhone.trim() || '64999990000',
+      email: normalizedEmail,
+      phone: newAthPhone.trim(),
       birthDate: newAthBirthDate,
       experienceCategory: newAthExp,
       level: newAthLevel,
@@ -250,6 +292,7 @@ export const DoublesRegistration: React.FC = () => {
 
     const addedName = newAthName;
     setNewAthName('');
+    setNewAthEmail('');
     setNewAthPhone('');
     setIsAddAthleteModalOpen(false);
     toast.success(`Atleta "${addedName}" cadastrado com sucesso!`);
@@ -302,7 +345,7 @@ export const DoublesRegistration: React.FC = () => {
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            RANKING SHARK SET OFICIAL{' '}
+            INSCRIÇÕES DO TORNEIO{' '}
             <span className="text-base sm:text-lg font-bold text-[#5BC3FA]">
               ({athletes.length} Jogadores Homologados)
             </span>
@@ -346,7 +389,7 @@ export const DoublesRegistration: React.FC = () => {
             <>
               <button
                 type="button"
-                onClick={() => setSubView('ranking_atletas')}
+                onClick={() => setActiveTab('ranking_athletes')}
                 className="px-3.5 py-2.5 rounded-lg bg-[#071D3D]/90 hover:bg-[#0B254E] text-slate-100 border border-slate-600/70 font-bold text-xs transition-colors flex items-center gap-1.5"
               >
                 ← Voltar para Tabela de Classificação
@@ -691,8 +734,8 @@ export const DoublesRegistration: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setPlayer1(ath.name);
-                                  setLevel1(ath.level);
+                                  setPlayer1((ath.email || '').trim().toLowerCase());
+                                  setPlayer2('');
                                   setSubView('inscricao_duplas');
                                 }}
                                 className="px-2.5 py-1.5 bg-[#071D3D] hover:bg-[#0B254E] text-slate-200 border border-slate-700 font-semibold rounded-md text-[11px]"
@@ -768,6 +811,10 @@ export const DoublesRegistration: React.FC = () => {
                 />
               </div>
 
+              <div>
+                <label className="mb-1 block font-bold text-slate-200">E-mail único do atleta:</label>
+                <input type="email" required value={newAthEmail} onChange={(event) => setNewAthEmail(event.target.value)} placeholder="atleta@email.com" className="w-full rounded-lg border border-[#145A9B]/60 bg-[#030D1A] px-3 py-2.5 text-sm text-white" />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-200 mb-1">Data de Nascimento:</label>
@@ -1085,21 +1132,7 @@ export const DoublesRegistration: React.FC = () => {
               >
                 🔗 Copiar Link Direto de Inscrição
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPlayer1('Lucas Pingo');
-                  setLevel1('iniciante');
-                  setPlayer2('Juninho Silva');
-                  setLevel2('iniciante');
-                  triggerToast(
-                    '🛡️ Teste Anti-Sandbagging: Lucas Pingo é Série A em Mineiros/GO e tentou se inscrever como Iniciante — veja o bloqueio automático no formulário!'
-                  );
-                }}
-                className="px-3.5 py-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-[#12C7BB] font-bold text-xs cursor-pointer"
-              >
-                🛡️ Testar Bloqueio Série A em Outra Cidade
-              </button>
+
             </div>
           </div>
 
@@ -1150,136 +1183,34 @@ export const DoublesRegistration: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmitPair} className="space-y-3.5 text-xs">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800">
-                    {isSingles ? 'Jogador (Simples 1x1):' : 'Atleta 1:'}
-                  </label>
-                  <AthleteLevelBadge level={level1} size="xs" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  list="athletes-datalist"
-                  value={player1}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setPlayer1(val);
-                    const matched = athletes.find((a) => a.name.toLowerCase() === val.toLowerCase());
-                    if (matched) setLevel1(matched.level);
-                  }}
-                  placeholder="Digite ou escolha do ranking"
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg"
-                />
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-500">Nível no Ranking:</span>
-                  <select
-                    value={level1}
-                    onChange={(e) => setLevel1(e.target.value as AthleteLevel)}
-                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-900"
-                  >
-                    {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
+              <AthleteEmailSelector
+                label={isSingles ? 'Atleta da inscrição individual' : 'Atleta 1 da dupla'}
+                athletes={athletes}
+                selectedEmail={player1}
+                enrolledEmails={enrolledAthleteEmails}
+                onSelectAthlete={(athlete) => setPlayer1((athlete?.email || '').trim().toLowerCase())}
+              />
               {!isSingles && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-800">Atleta 2 (Parceiro):</label>
-                    <AthleteLevelBadge level={level2} size="xs" />
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    list="athletes-datalist"
-                    value={player2}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPlayer2(val);
-                      const matched = athletes.find((a) => a.name.toLowerCase() === val.toLowerCase());
-                      if (matched) setLevel2(matched.level);
-                    }}
-                    placeholder="Digite ou escolha do ranking"
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg"
-                  />
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-slate-500">Nível no Ranking:</span>
-                    <select
-                      value={level2}
-                      onChange={(e) => setLevel2(e.target.value as AthleteLevel)}
-                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-900"
-                    >
-                      {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
-                        <option key={k} value={k}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <datalist id="athletes-datalist">
-                {athletes.map((a) => (
-                  <option key={a.id} value={a.name}>
-                    {ATHLETE_LEVEL_LABELS[a.level]} ({a.points} pts)
-                  </option>
-                ))}
-              </datalist>
-
-              <div
-                className={`p-3 rounded-xl border space-y-2 ${
-                  validation.isValid
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
-                    : 'bg-rose-50 border-rose-200 text-rose-950'
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold block">{validation.reason}</span>
-                    <span className="text-[11px] opacity-80 block mt-0.5">{validation.ruleSummary}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">WhatsApp de Contato:</label>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Ex: (64) 99988-1122"
-                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg font-mono"
+                <AthleteEmailSelector
+                  label="Atleta 2 da dupla"
+                  athletes={athletes}
+                  selectedEmail={player2}
+                  excludeEmail={player1}
+                  enrolledEmails={enrolledAthleteEmails}
+                  onSelectAthlete={(athlete) => setPlayer2((athlete?.email || '').trim().toLowerCase())}
                 />
+              )}
+              <div className={`rounded-xl border p-3 ${validation.isValid ? 'border-emerald-300 bg-emerald-50 text-emerald-950' : 'border-rose-300 bg-rose-50 text-rose-950'}`}>
+                <strong className="block">{validation.reason}</strong>
+                <span className="mt-1 block text-[11px] opacity-80">{validation.ruleSummary}</span>
               </div>
-
               <button
                 type="submit"
-                disabled={
-                  !validation.isValid ||
-                  currentPairs.filter((p) => p.enrollmentStatus !== 'rejected').length >=
-                    activeTournament.maxPairs
-                }
-                className={`w-full py-2.5 px-4 text-xs font-extrabold rounded-xl transition-colors flex items-center justify-center gap-2 ${
-                  validation.isValid &&
-                  currentPairs.filter((p) => p.enrollmentStatus !== 'rejected').length <
-                    activeTournament.maxPairs
-                    ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 cursor-pointer shadow-xs'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
+                disabled={!validation.isValid || isSubmittingPair || currentPairs.filter((pair) => pair.enrollmentStatus !== 'rejected').length >= activeTournament.maxPairs}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-xs font-extrabold text-slate-950 transition-colors enabled:hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Plus className="w-4 h-4" />
-                {currentPairs.filter((p) => p.enrollmentStatus !== 'rejected').length >=
-                activeTournament.maxPairs
-                  ? 'Limite de Vagas Atingido'
-                  : 'Garantir Vaga (Fica Pendente até Pagamento 2/2)'}
+                <Plus className="h-4 w-4" />
+                {isSubmittingPair ? 'Processando inscrição…' : 'Inscrever dupla'}
               </button>
             </form>
           </div>

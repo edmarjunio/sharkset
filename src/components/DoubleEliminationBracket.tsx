@@ -5,7 +5,7 @@ import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
 import { matchPhaseLabel } from '../services/bracketPresentation';
 import { TournamentOperationsPanel } from './TournamentOperationsPanel';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { useApp } from '../context/AppContext';
 import {
@@ -36,9 +36,9 @@ import {
 import { ShareBracketModal } from './ShareBracketModal';
 import { MatchHistoryModal } from './MatchHistoryModal';
 import { SharksetLogo } from './SharksetLogo';
-import { MostWatchedGamesMiniRail } from './MostWatchedGamesMiniRail';
 import { IntegrityReportModal } from './IntegrityReportModal';
 import { toast } from '../store/useToastStore';
+import { AthleteEmailSelector } from './AthleteEmailSelector';
 import {
   Trophy,
   MessageSquare,
@@ -69,6 +69,10 @@ import {
   Minimize2,
   Eye,
   Zap,
+  Coins,
+  Building2,
+  User,
+  ShoppingCart,
 } from 'lucide-react';
 
 interface DoubleEliminationBracketProps {
@@ -99,6 +103,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     updateTournamentConfig,
     athletes,
     userProfile,
+    buyTournamentTokens,
     setActiveTab,
     setArenaSubTab,
     availableTenants,
@@ -174,6 +179,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
 
   // Create or Edit Tournament Modal State
   const [showTournamentModal, setShowTournamentModal] = useState<'create' | 'edit' | null>(null);
+  const [formScope, setFormScope] = useState<'arena' | 'user'>('arena');
+  const [formTenantId, setFormTenantId] = useState<string>(tenant.id);
   const [formName, setFormName] = useState('');
   const [formDate, setFormDate] = useState('2026-10-25');
   const [formLocation, setFormLocation] = useState('');
@@ -184,14 +191,13 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   const [formFee, setFormFee] = useState<number>(120);
   const [formRules, setFormRules] = useState('');
   const [formResponsible, setFormResponsible] = useState('');
+  const tournamentSaveLock = useRef(false);
 
   // Quick Registration Modal inside Tournament View
   const [showQuickEnrollModal, setShowQuickEnrollModal] = useState(false);
   const [enrollP1, setEnrollP1] = useState('');
-  const [enrollLvl1, setEnrollLvl1] = useState<AthleteLevel>('serie_c');
   const [enrollP2, setEnrollP2] = useState('');
-  const [enrollLvl2, setEnrollLvl2] = useState<AthleteLevel>('iniciante');
-  const [enrollPhone, setEnrollPhone] = useState('');
+  const quickEnrollLock = useRef(false);
 
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
@@ -203,6 +209,20 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   const activePairsInTourn = pairsInTourn.filter((p) => p.enrollmentStatus !== 'rejected');
   const presentPairsInTourn = activePairsInTourn.filter((p) => p.isPresent !== false && p.enrollmentStatus === 'confirmed');
   const confirmedPairsCount = activePairsInTourn.filter((p) => p.enrollmentStatus === 'confirmed').length;
+  const enrolledAthleteEmails = useMemo(
+    () => new Set(pairsInTourn
+      .filter((pair) => pair.enrollmentStatus !== 'rejected')
+      .flatMap((pair) => [pair.player1Email, pair.player2Email])
+      .filter((email): email is string => Boolean(email))
+      .map((email) => email.trim().toLowerCase())),
+    [pairsInTourn]
+  );
+  const selectedEnrollPlayer1 = athletes.find(
+    (athlete) => (athlete.email || '').trim().toLowerCase() === enrollP1
+  ) || null;
+  const selectedEnrollPlayer2 = athletes.find(
+    (athlete) => (athlete.email || '').trim().toLowerCase() === enrollP2
+  ) || null;
 
   const liveMatches = useMemo(() => {
     return currentMatches.filter(
@@ -211,6 +231,12 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         (m.status !== 'completed' && m.liveReferee && ((m.score1 ?? 0) > 0 || (m.score2 ?? 0) > 0))
     );
   }, [currentMatches]);
+  const liveBroadcastTournamentIds = useMemo(
+    () => new Set(tournamentMatches
+      .filter((match) => Boolean(match.linkedBroadcastId) && match.status === 'in_progress')
+      .map((match) => match.tournamentId)),
+    [tournamentMatches]
+  );
 
   const activeRefereeMatch = useMemo(() => {
     if (!refereeModalMatchId) return null;
@@ -361,6 +387,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
 
   // Open Create or Edit Tournament Modal
   const openCreateModal = () => {
+    setFormScope('arena');
+    setFormTenantId(tenant.id);
     setFormName('');
     setFormDate('2026-10-25');
     setFormLocation(`${tenant.name} - ${tenant.city}/${tenant.state}`);
@@ -396,89 +424,123 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
 
   const handleSaveTournamentModal = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim()) return;
+    if (tournamentSaveLock.current || !formName.trim()) return;
 
-    if (showTournamentModal === 'create') {
-      const created = createTournament({
-        name: formName.trim(),
-        sport: 'futevolei',
-        category: formCategory,
-        modalityFormat: formModality,
-        semiFormat: formSemiFormat,
-        date: formDate,
-        location: formLocation.trim(),
-        specificRules: formRules.trim(),
-        maxPairs: formMaxParticipants,
-        registrationFee: formFee,
-        responsibleName: formResponsible.trim() || userProfile.name,
-        responsiblePhone: userProfile.phone,
-      });
-      toast.success(`Torneio "${created.name}" criado com sucesso!`);
-      triggerToast(`Torneio "${created.name}" (${formModality.toUpperCase()}) criado com sucesso!`);
-    } else if (showTournamentModal === 'edit' && activeTournament) {
-      updateTournamentConfig(activeTournament.id, {
-        name: formName.trim(),
-        date: formDate,
-        location: formLocation.trim(),
-        modalityFormat: formModality,
-        category: formCategory,
-        semiFormat: formSemiFormat,
-        maxPairs: formMaxParticipants,
-        specificRules: formRules.trim(),
-        responsibleName: formResponsible.trim(),
-      });
-      toast.success(`Torneio "${formName.trim()}" atualizado com sucesso!`);
-      triggerToast(`Configurações e regras do torneio "${formName.trim()}" atualizadas!`);
+    tournamentSaveLock.current = true;
+    let saved = false;
+    try {
+      if (showTournamentModal === 'create') {
+        const isUserScope = formScope === 'user';
+        const targetTenant = isUserScope
+          ? availableTenants.find((a) => a.id === formTenantId) || tenant
+          : tenant;
+        const targetLocation = isUserScope
+          ? `${targetTenant.name} (${targetTenant.city} - ${targetTenant.state})`
+          : `${tenant.name} (${tenant.city} - ${tenant.state})`;
+
+        const created = createTournament({
+          name: formName.trim(),
+          sport: 'futevolei',
+          category: formCategory,
+          modalityFormat: formModality,
+          semiFormat: formSemiFormat,
+          date: formDate,
+          location: targetLocation,
+          tenantId: targetTenant.id,
+          createdScope: formScope,
+          specificRules: formRules.trim(),
+          maxPairs: formMaxParticipants,
+          registrationFee: formFee,
+          responsibleName: formResponsible.trim() || userProfile.name,
+          responsiblePhone: userProfile.phone,
+        });
+        toast.success(`Torneio "${created.name}" criado com sucesso!`);
+        triggerToast(`Torneio "${created.name}" criado com sucesso!`);
+      } else if (showTournamentModal === 'edit' && activeTournament) {
+        updateTournamentConfig(activeTournament.id, {
+          name: formName.trim(),
+          date: formDate,
+          location: formLocation.trim(),
+          modalityFormat: formModality,
+          category: formCategory,
+          semiFormat: formSemiFormat,
+          maxPairs: formMaxParticipants,
+          specificRules: formRules.trim(),
+          responsibleName: formResponsible.trim(),
+        });
+        toast.success(`Torneio "${formName.trim()}" atualizado com sucesso!`);
+        triggerToast(`Torneio "${formName.trim()}" atualizado com sucesso!`);
+      }
+      setShowTournamentModal(null);
+      saved = true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível salvar o torneio.');
+    } finally {
+      if (saved) { window.setTimeout(() => { tournamentSaveLock.current = false; }, 1000); } else { tournamentSaveLock.current = false; }
     }
-
-    setShowTournamentModal(null);
   };
-
   // Validate Quick Enroll (Safe even when activeTournament is undefined)
   const activeTournamentCategory = activeTournament?.category || 'iniciante_serie_c';
   const enrollValidation = useMemo(() => {
+    if (!selectedEnrollPlayer1) {
+      return { isValid: false, reason: 'Selecione um atleta pelo e-mail.', ruleSummary: 'A categoria vem do perfil.' };
+    }
     if (isSingles) {
       return {
         isValid: true,
-        reason: `Inscrição Individual (Simples 1x1) liberada para nível ${ATHLETE_LEVEL_LABELS[enrollLvl1]}.`,
+        reason: `Inscrição individual para ${selectedEnrollPlayer1.name} (${ATHLETE_LEVEL_LABELS[selectedEnrollPlayer1.level]}).`,
         ruleSummary: 'Formato Simples 1x1.',
       };
     }
-    return validatePairCategory(activeTournamentCategory, enrollLvl1, enrollLvl2);
-  }, [isSingles, activeTournamentCategory, enrollLvl1, enrollLvl2]);
+    if (!selectedEnrollPlayer2) {
+      return { isValid: false, reason: 'Selecione o segundo atleta pelo e-mail.', ruleSummary: 'A categoria vem do perfil.' };
+    }
+    if (selectedEnrollPlayer1.email?.trim().toLowerCase() === selectedEnrollPlayer2.email?.trim().toLowerCase()) {
+      return { isValid: false, reason: 'A dupla precisa ter e-mails diferentes.', ruleSummary: 'Escolha dois atletas.' };
+    }
+    return validatePairCategory(activeTournamentCategory, selectedEnrollPlayer1.level, selectedEnrollPlayer2.level);
+  }, [isSingles, activeTournamentCategory, selectedEnrollPlayer1, selectedEnrollPlayer2]);
 
   const handleQuickEnrollSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeTournament) return;
-    if (pairsInTourn.length >= activeTournament.maxPairs) {
+    if (quickEnrollLock.current || !activeTournament || !selectedEnrollPlayer1) return;
+    if (!isSingles && !selectedEnrollPlayer2) return;
+    if (pairsInTourn.filter((pair) => pair.enrollmentStatus !== 'rejected').length >= activeTournament.maxPairs) {
       triggerToast(`Limite máximo de ${activeTournament.maxPairs} participantes atingido!`);
       return;
     }
-    if (!enrollValidation.isValid || !enrollP1.trim()) return;
+    if (!enrollValidation.isValid) return;
 
-    const p2Name = isSingles ? 'Individual (1x1)' : enrollP2.trim();
-    if (!isSingles && !p2Name) return;
+    quickEnrollLock.current = true;
+    try {
+      const newEntry = registerDouble({
+        tournamentId: activeTournament.id,
+        player1Id: selectedEnrollPlayer1.id,
+        player1Email: selectedEnrollPlayer1.email,
+        player1Phone: selectedEnrollPlayer1.phone,
+        player1: selectedEnrollPlayer1.name,
+        player1Level: selectedEnrollPlayer1.level,
+        player2Id: isSingles ? undefined : selectedEnrollPlayer2?.id,
+        player2Email: isSingles ? undefined : selectedEnrollPlayer2?.email,
+        player2Phone: isSingles ? undefined : selectedEnrollPlayer2?.phone,
+        player2: isSingles ? 'Individual (1x1)' : selectedEnrollPlayer2!.name,
+        player2Level: isSingles ? selectedEnrollPlayer1.level : selectedEnrollPlayer2!.level,
+        phone: selectedEnrollPlayer1.phone || selectedEnrollPlayer2?.phone || '',
+        category: activeTournament.category,
+        paymentMethod: 'pix',
+      });
 
-    const newEntry = registerDouble({
-      tournamentId: activeTournament.id,
-      player1: enrollP1.trim(),
-      player1Level: enrollLvl1,
-      player2: p2Name,
-      player2Level: isSingles ? enrollLvl1 : enrollLvl2,
-      phone: enrollPhone.trim() || userProfile.phone,
-      category: activeTournament.category,
-      paymentMethod: 'pix',
-    });
-
-    setEnrollP1('');
-    setEnrollP2('');
-    setShowQuickEnrollModal(false);
-    toast.success(`Dupla cadastrada com sucesso no torneio!`);
-    triggerToast(
-      `Inscrição #${newEntry.seed} confirmada na chave e adicionada à Classificação do Torneio!`
-    );
+      setEnrollP1('');
+      setEnrollP2('');
+      setShowQuickEnrollModal(false);
+      toast.success('Inscrição realizada com sucesso!');
+      triggerToast(`Vaga #${newEntry.seed} reservada em ${activeTournament.name}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível concluir a inscrição.');
+    } finally {
+      quickEnrollLock.current = false;
+    }
   };
-
   const getInlineScore = (match: BracketMatch, side: 's1' | 's2'): string => {
     if (inlineScores[match.id]?.[side] !== undefined) {
       return inlineScores[match.id][side];
@@ -633,8 +695,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     try { handleAdvanceMatch(match.id, winningTeam, s1, s2); }
     catch (error) { triggerToast(error instanceof Error ? error.message : 'Placar inválido.'); return; }
     triggerGsapWinningPathAnimation(winner, match);
-    triggerToast(
-      `Jogo ${match.matchNumber} finalizado (${s1}x${s2}): ${formatParticipantName(winner)} avançou! Trajetória GSAP destacada e votação de MVP liberada!`
+    toast.success(
+      `Jogo #${match.matchNumber} finalizado (${s1}x${s2})! ${formatParticipantName(winner)} avançou e alertas WhatsApp foram enviados!`
     );
   };
 
@@ -668,8 +730,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         : undefined;
     if (winner) {
       triggerGsapWinningPathAnimation(winner, updated || match);
-      triggerToast(
-        `✅ Jogo #${match.matchNumber} encerrado (${sets.map((s) => `${s.score1}x${s.score2}`).join(' / ')})! ${formatParticipantName(winner)} avançou automaticamente na chave!`
+      toast.success(
+        `✅ Jogo #${match.matchNumber} encerrado (${sets.map((s) => `${s.score1}x${s.score2}`).join(' / ')})! ${formatParticipantName(winner)} avançou e alertas WhatsApp foram emitidos!`
       );
     }
   };
@@ -1122,9 +1184,9 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           arena={availableTenants.find(arena => arena.id === activeTournament.tenantId)} />
       )}
       {feedbackToast && (
-        <div className="p-3.5 bg-[#071D3D] text-white border border-[#0987CE] rounded-xl text-xs flex items-center justify-between shadow-lg animate-in fade-in">
+        <div role="status" aria-live="polite" className="p-3.5 bg-emerald-950/70 text-emerald-50 border border-emerald-400/60 rounded-xl text-xs flex items-center justify-between shadow-lg animate-in fade-in">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#12C7BB] shrink-0" />
+            <Check className="w-4 h-4 text-emerald-300 shrink-0" />
             <span>{feedbackToast}</span>
           </div>
           <button
@@ -1136,14 +1198,39 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         </div>
       )}
 
-      {/* Miniature Most-Watched Live Games Rail */}
-      {!isFullscreen && <div className="rounded-2xl bg-slate-950 p-4 border border-slate-700"><LocationScopeFilter /><p className="text-xs text-slate-400 mt-3">{scopedTournaments.length} campeonatos neste local. Use o seletor para abrir a tabela.</p></div>}
-      {!isFullscreen && (
-        <MostWatchedGamesMiniRail
-          onSelectTournamentMatch={(m) => setSelectedLiveMatchId(m.id)}
-        />
+      {!isFullscreen && <div className="rounded-xl border border-slate-700 bg-slate-950/80 p-2.5"><LocationScopeFilter /></div>}
+      {!isFullscreen && scopedTournaments.length > 0 && (
+        <section aria-label="Campeonatos disponíveis" className="space-y-2 rounded-2xl border border-[#145A9B]/70 bg-[#030B17]/85 p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-black text-white">Campeonatos</h2>
+            <span className="text-[11px] text-slate-400">{scopedTournaments.length} disponíveis</span>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {scopedTournaments.map((tournament) => {
+              const isSelected = tournament.id === activeTournament.id;
+              const isBroadcastLive = liveBroadcastTournamentIds.has(tournament.id);
+              return (
+                <button
+                  key={tournament.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    setActiveTournamentId(tournament.id);
+                    setManualKnockoutToggle(null);
+                  }}
+                  className={`flex min-w-0 items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors ${isSelected ? 'border-cyan-300 bg-cyan-950/50' : 'border-slate-700 bg-slate-900/80 hover:border-cyan-500/70'}`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-bold text-white">{tournament.name}</span>
+                    <span className="mt-1 block truncate text-[10px] text-slate-400">{tournament.date} · {tournament.location || 'Local a definir'}</span>
+                  </span>
+                  {isBroadcastLive && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-600 px-2 py-1 text-[10px] font-black text-white"><Radio className="h-3 w-3 animate-pulse" /> AO VIVO</span>}
+                </button>
+              );
+            })}
+          </div>
+        </section>
       )}
-
       {/* Coastal Beach Stadium Hero Banner matching the User's Print */}
       {!isFullscreen && (
         <div className="aquarium-glass relative rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-slate-900">
@@ -1159,6 +1246,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                 <span className="px-3 py-1 rounded-full bg-emerald-500 text-slate-950 font-black uppercase tracking-wider text-[11px]">
                   {activeTournament.isOpenForRegistration ? 'INSCRIÇÕES ABERTAS' : 'EM ANDAMENTO'}
                 </span>
+                {liveBroadcastTournamentIds.has(activeTournament.id) && <span className="inline-flex items-center gap-1 rounded-full bg-rose-600 px-3 py-1 text-[11px] font-black text-white"><Radio className="h-3.5 w-3.5 animate-pulse" /> AO VIVO AGORA</span>}
                 <span className="flex items-center gap-1 text-slate-200 font-semibold">
                   <MapPin className="w-3.5 h-3.5 text-orange-400" />
                   {activeTournament.location || `${tenant.name} · ${tenant.city}/${tenant.state}`}
@@ -1200,14 +1288,14 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           <div className="space-y-2.5 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="px-2.5 py-0.5 rounded bg-[#0987CE] text-white font-black uppercase text-[10px]">
-                FLUXO INTUITIVO SHARK SET · INSCRIÇÃO, SORTEIO E TRANSMISSÃO AO VIVO
+                FLUXO INTUITIVO SHARK SET · INSCRIÇÃO E CHAVEAMENTO
               </span>
               <span className="font-bold text-[#12C7BB]">
                 {tournaments.length} campeonatos ativos em {availableTenants.length} arenas simultâneas
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs">
               <button
                 type="button"
                 onClick={() => setShowQuickEnrollModal(true)}
@@ -1230,19 +1318,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  const target = liveMatches[0] || currentMatches[0];
-                  if (target) setSelectedLiveMatchId(target.id);
-                }}
-                className="p-3 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#0987CE] text-left transition-all cursor-pointer"
-              >
-                <span className="font-black text-white block">PASSO 3 · Jogo em Tempo Real & Chat</span>
-                <span className="text-[11px] text-slate-300">
-                  Clique em qualquer cartão de jogo para ver placar, saque, juiz e chat
-                </span>
-              </button>
+
             </div>
           </div>
 
@@ -1449,112 +1525,6 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
             )}
           </div>
         </div>
-
-        {/* Real-Time Live Match Scoreboard Banner (Clickable to open MatchLiveDetailsModal) */}
-        {liveMatches.length > 0 && (
-          <div className="aquarium-glass bg-[#030B17] border-2 border-[#0987CE]/80 rounded-2xl p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#145A9B]/60 pb-2.5">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-black uppercase animate-pulse">
-                  <Radio className="w-3.5 h-3.5" />
-                  JOGOS AO VIVO AGORA ({liveMatches.length})
-                </span>
-                <span className="text-xs text-slate-300 font-medium">
-                  Clique no jogo para acompanhar em tempo real com chat da torcida, histórico de pontos, quem está sacando e juiz.
-                </span>
-              </div>
-              <span className="text-[11px] font-mono text-[#12C7BB] font-bold">
-                Sincronização Instantânea Ativa
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {liveMatches.map((lm) => {
-                const refState = lm.liveReferee;
-                const currentServer =
-                  refState?.serviceOrderLabels?.[refState.serverRotationIndex] || lm.team1?.player1;
-                const lastPoint = refState?.pointHistory?.[0];
-                return (
-                  <div
-                    key={lm.id}
-                    onClick={() => setSelectedLiveMatchId(lm.id)}
-                    className="bg-[#071D3D] hover:bg-[#0B254E] border border-[#145A9B] hover:border-[#12C7BB] rounded-xl p-3.5 flex flex-col justify-between gap-3 cursor-pointer transition-all"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <span className="font-black text-[#5BC3FA]">
-                        Jogo {lm.matchNumber} · {lm.stageName} ({lm.courtName || 'Quadra Central'})
-                      </span>
-                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedLiveMatchId(lm.id)}
-                          className="px-2.5 py-1 rounded-lg bg-[#12C7BB] text-slate-950 font-black text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          Ver Jogo & Chat
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setRefereeModalMatchId(lm.id)}
-                          className="px-2.5 py-1 rounded-lg bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
-                        >
-                          <ShieldAlert className="w-3.5 h-3.5" />
-                          Súmula Juiz
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-7 items-center gap-2 bg-[#030B17] rounded-xl p-3 border border-[#145A9B]">
-                      <div className="col-span-3">
-                        <div className="text-xs font-extrabold text-white truncate">
-                          {formatParticipantName(lm.team1)}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          Tempos: {refState?.team1TimeoutsUsed ?? 0}/1
-                        </div>
-                      </div>
-
-                      <div className="col-span-1 text-center">
-                        <span className="px-2.5 py-1 rounded-lg bg-[#0987CE] text-white font-mono font-black text-base tabular-nums shadow-sm">
-                          {lm.score1 ?? 0}x{lm.score2 ?? 0}
-                        </span>
-                      </div>
-
-                      <div className="col-span-3 text-right">
-                        <div className="text-xs font-extrabold text-white truncate">
-                          {formatParticipantName(lm.team2)}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          Tempos: {refState?.team2TimeoutsUsed ?? 0}/1
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
-                      <span className="font-bold text-[#12C7BB]">
-                        🏐 Sacando: {currentServer} · Juiz: {refState?.refereeName || 'Oficial SHARK SET'}
-                      </span>
-                      {refState?.activeTimeout ? (
-                        <span className="px-2 py-0.5 rounded bg-[#0987CE]/20 text-[#0987CE] font-bold flex items-center gap-1">
-                          <Timer className="w-3 h-3" />
-                          Pedido de Tempo: {refState.activeTimeout.label}
-                        </span>
-                      ) : lastPoint ? (
-                        <span className="text-slate-400 truncate">
-                          Último ponto ({lastPoint.scoreAfter}): <strong className="text-white">{lastPoint.scorerName}</strong> ({lastPoint.skill})
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">
-                          Trocas de quadra: {refState?.courtSwapsCount ?? 0}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {!minimalistPlayerView && (
           currentMatches.length > 0 && currentMatches.every(match => match.source1) ? (
@@ -2126,6 +2096,143 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                 </button>
               </div>
 
+              {/* Scope & Token Selector for Tournament Creation */}
+              {showTournamentModal === 'create' && (
+                <div className="p-3.5 rounded-xl bg-[#031527] border border-[#145A9B] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#12C7BB] flex items-center gap-1.5">
+                      <Coins className="w-3.5 h-3.5" />
+                      Modo de Criação & Economia de Tokens
+                    </span>
+                    <span className="text-xs font-bold text-amber-300 font-mono bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-600/40">
+                      Saldo: {userProfile.tournamentTokens ?? 0} Token(s) 🪙
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormScope('arena')}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        formScope === 'arena'
+                          ? 'border-[#12C7BB] bg-[#12C7BB]/15 text-white shadow-md'
+                          : 'border-[#145A9B]/60 bg-[#030B17] text-slate-300 hover:border-[#145A9B]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Building2 className="w-4 h-4 text-[#12C7BB]" />
+                        <span className="font-bold text-xs">Torneio da Arena</span>
+                      </div>
+                      <span className="text-[11px] text-slate-300 block">
+                        Fixo na {tenant.name}. Sem custo de tokens (Incluso no plano da Arena).
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFormScope('user')}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        formScope === 'user'
+                          ? 'border-amber-400 bg-amber-500/15 text-white shadow-md'
+                          : 'border-[#145A9B]/60 bg-[#030B17] text-slate-300 hover:border-[#145A9B]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <User className="w-4 h-4 text-amber-400" />
+                        <span className="font-bold text-xs">Organizador Independente</span>
+                      </div>
+                      <span className="text-[11px] text-slate-300 block">
+                        Custa 1 Token de Campeonato. Escolha qualquer arena cadastrada no app.
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Independent Organizer: Choose any Arena */}
+                  {formScope === 'user' && (
+                    <div className="space-y-2 pt-1 border-t border-[#145A9B]/60">
+                      <label className="block font-semibold text-slate-300">
+                        Selecione a Arena Sede do Torneio:
+                      </label>
+                      <select
+                        value={formTenantId}
+                        onChange={(e) => {
+                          setFormTenantId(e.target.value);
+                          const chosen = availableTenants.find((a) => a.id === e.target.value);
+                          if (chosen) {
+                            setFormLocation(`${chosen.name} - ${chosen.city}/${chosen.state}`);
+                          }
+                        }}
+                        className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white font-semibold"
+                      >
+                        {availableTenants.map((arena) => (
+                          <option key={arena.id} value={arena.id}>
+                            {arena.name} ({arena.city} - {arena.state})
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Token Pack Purchase Quick Panel */}
+                      <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-600/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            Comprar Tokens de Torneio (Atleta / Organizador)
+                          </span>
+                          <span className="text-[10px] text-slate-400">Uso gradual</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await buyTournamentTokens(1);
+                              toast.success('1 Token de Campeonato adicionado com sucesso!');
+                            }}
+                            className="p-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-center transition-all cursor-pointer"
+                          >
+                            <span className="block font-extrabold text-amber-300 text-xs">+1 Token</span>
+                            <span className="block text-[10px] text-slate-300">R$ 20</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await buyTournamentTokens(5);
+                              toast.success('Pacote de 5 Tokens de Campeonato adicionado!');
+                            }}
+                            className="p-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-center transition-all cursor-pointer"
+                          >
+                            <span className="block font-extrabold text-amber-300 text-xs">+5 Tokens</span>
+                            <span className="block text-[10px] text-slate-300">R$ 85 (-15%)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await buyTournamentTokens(10);
+                              toast.success('Super Pacote de 10 Tokens de Campeonato adicionado!');
+                            }}
+                            className="p-2 rounded-lg bg-amber-500/30 hover:bg-amber-500/40 border border-amber-400 text-center transition-all cursor-pointer ring-1 ring-amber-400/50"
+                          >
+                            <span className="block font-extrabold text-amber-300 text-xs">+10 Tokens</span>
+                            <span className="block text-[10px] text-emerald-300 font-bold">R$ 150 (-25%)</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Arena Scope: Fixed Arena indicator */}
+                  {formScope === 'arena' && (
+                    <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-700/50 text-cyan-200 text-xs flex items-center gap-2">
+                      <Building2 className="w-4 h-4 shrink-0 text-[#12C7BB]" />
+                      <span>
+                        Arena vinculada: <strong>{tenant.name}</strong> ({tenant.city} - {tenant.state}). Não consome tokens de usuário.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block font-semibold text-slate-300 mb-1">Nome do Torneio:</label>
                 <input
@@ -2154,10 +2261,19 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                   <input
                     type="text"
                     required
-                    value={formLocation}
+                    readOnly={showTournamentModal === 'create' && formScope === 'arena'}
+                    value={
+                      showTournamentModal === 'create' && formScope === 'arena'
+                        ? `${tenant.name} (${tenant.city} - ${tenant.state})`
+                        : formLocation
+                    }
                     onChange={(e) => setFormLocation(e.target.value)}
                     placeholder="Ex: SHARK SET Arena Matriz - Mineiros/GO"
-                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
+                    className={`w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white ${
+                      showTournamentModal === 'create' && formScope === 'arena'
+                        ? 'opacity-80 cursor-not-allowed'
+                        : ''
+                    }`}
                   />
                 </div>
               </div>
@@ -2270,148 +2386,31 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       {/* ===================================================================== */}
       {/* MODAL B: SISTEMA DE INSCRIÇÃO RÁPIDA NO TORNEIO (SIMPLES OU DUPLAS)   */}
       {/* ===================================================================== */}
-      {showQuickEnrollModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150">
+      {showQuickEnrollModal && activeTournament && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowQuickEnrollModal(false); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="quick-enroll-title" className="aquarium-glass max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[#145A9B] bg-[#071D3D] p-5 text-white shadow-2xl sm:p-6">
             <form onSubmit={handleQuickEnrollSubmit} className="space-y-4 text-xs">
-              <div className="flex items-center justify-between pb-3 border-b border-[#145A9B]/60">
+              <div className="flex items-start justify-between gap-3 border-b border-[#145A9B]/60 pb-3">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-[#12C7BB]">
-                    Sistema de Inscrição ({pairsInTourn.length}/{activeTournament.maxPairs} Vagas)
-                  </span>
-                  <h3 className="text-base font-bold text-white">
-                    Inscrever {isSingles ? 'Jogador (Simples 1x1)' : 'Dupla (2x2)'} em {activeTournament.name}
-                  </h3>
+                  <span className="text-[10px] font-bold uppercase text-[#12C7BB]">Inscrição · {activePairsInTourn.length}/{activeTournament.maxPairs} vagas</span>
+                  <h3 id="quick-enroll-title" className="mt-1 text-base font-bold">Inscrever {isSingles ? 'atleta' : 'dupla'} em {activeTournament.name}</h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowQuickEnrollModal(false)}
-                  className="text-slate-400 hover:text-white p-1 cursor-pointer font-bold"
-                >
-                  ✕
-                </button>
+                <button type="button" aria-label="Fechar" onClick={() => setShowQuickEnrollModal(false)} className="rounded-lg px-2 py-1 text-slate-300 hover:bg-white/10 hover:text-white">✕</button>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div className="sm:col-span-2">
-                  <label className="block font-semibold text-slate-300 mb-1">
-                    {isSingles ? 'Nome do Jogador:' : 'Atleta 1:'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={enrollP1}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setEnrollP1(val);
-                      const found = athletes.find((a) => a.name.toLowerCase() === val.toLowerCase());
-                      if (found) setEnrollLvl1(found.level);
-                    }}
-                    placeholder="Ex: Edmar Júnio"
-                    className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Nível Ranking:</label>
-                  <select
-                    value={enrollLvl1}
-                    onChange={(e) => setEnrollLvl1(e.target.value as AthleteLevel)}
-                    className="w-full px-2.5 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-semibold text-white"
-                  >
-                    {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <AthleteEmailSelector label={isSingles ? 'Atleta' : 'Atleta 1'} athletes={athletes} selectedEmail={enrollP1} enrolledEmails={enrolledAthleteEmails} onSelectAthlete={(athlete) => setEnrollP1((athlete?.email || '').trim().toLowerCase())} />
+              {!isSingles && <AthleteEmailSelector label="Atleta 2" athletes={athletes} selectedEmail={enrollP2} excludeEmail={enrollP1} enrolledEmails={enrolledAthleteEmails} onSelectAthlete={(athlete) => setEnrollP2((athlete?.email || '').trim().toLowerCase())} />}
+              <div className={`rounded-xl border p-3 ${enrollValidation.isValid ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-100' : 'border-rose-500/40 bg-rose-950/40 text-rose-100'}`}>
+                <strong className="block">{enrollValidation.reason}</strong>
+                <span className="mt-1 block text-[11px] opacity-80">{enrollValidation.ruleSummary}</span>
               </div>
-
-              {!isSingles && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div className="sm:col-span-2">
-                    <label className="block font-semibold text-slate-300 mb-1">Atleta 2 (Parceiro):</label>
-                    <input
-                      type="text"
-                      required
-                      value={enrollP2}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEnrollP2(val);
-                        const found = athletes.find((a) => a.name.toLowerCase() === val.toLowerCase());
-                        if (found) setEnrollLvl2(found.level);
-                      }}
-                      placeholder="Ex: Juninho Silva"
-                      className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Nível Parceiro:</label>
-                    <select
-                      value={enrollLvl2}
-                      onChange={(e) => setEnrollLvl2(e.target.value as AthleteLevel)}
-                      className="w-full px-2.5 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-semibold text-white"
-                    >
-                      {Object.entries(ATHLETE_LEVEL_LABELS).map(([k, label]) => (
-                        <option key={k} value={k}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <div
-                className={`p-3 rounded-xl border flex items-start gap-2 ${
-                  enrollValidation.isValid
-                    ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-200'
-                    : 'bg-rose-950/50 border-rose-500/40 text-rose-200'
-                }`}
-              >
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold block">{enrollValidation.reason}</span>
-                  <span className="text-[11px] opacity-80 block">{enrollValidation.ruleSummary}</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">WhatsApp de Contato:</label>
-                <input
-                  type="tel"
-                  value={enrollPhone}
-                  onChange={(e) => setEnrollPhone(e.target.value)}
-                  placeholder="(64) 99988-1122"
-                  className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono text-white"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowQuickEnrollModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-300 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={!enrollValidation.isValid || pairsInTourn.length >= activeTournament.maxPairs}
-                  className={`px-5 py-2.5 text-xs font-black rounded-xl ${
-                    enrollValidation.isValid && pairsInTourn.length < activeTournament.maxPairs
-                      ? 'bg-[#0987CE] hover:bg-[#0772b0] text-white cursor-pointer'
-                      : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  }`}
-                >
-                  Confirmar Inscrição na Chave
-                </button>
+              <div className="flex justify-end gap-2 border-t border-[#145A9B]/60 pt-3">
+                <button type="button" onClick={() => setShowQuickEnrollModal(false)} className="rounded-lg px-4 py-2 text-slate-300 hover:bg-white/10">Cancelar</button>
+                <button type="submit" disabled={!enrollValidation.isValid || quickEnrollLock.current || activePairsInTourn.length >= activeTournament.maxPairs} className="rounded-xl bg-[#12C7BB] px-5 py-2.5 font-black text-slate-950 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">Confirmar inscrição</button>
               </div>
             </form>
           </div>
         </div>
       )}
-
       {/* Full Unfrozen Match Editor Modal */}
       {editingMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
@@ -2808,8 +2807,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
             if (winPair) {
               triggerGsapWinningPathAnimation(winPair, selectedLiveMatch);
             }
-            triggerToast(
-              `Partida finalizada (${s1}x${s2})! Trajetória GSAP destacada e votação de MVP liberada!`
+            toast.success(
+              `Partida finalizada (${s1}x${s2})! Vencedor avançou e alertas WhatsApp emitidos.`
             );
           }}
           onOpenFullRefereeConsole={(mId) => {
@@ -2847,8 +2846,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
             if (winPair) {
               triggerGsapWinningPathAnimation(winPair, activeRefereeMatch);
             }
-            triggerToast(
-              `Partida finalizada pelo árbitro (${s1}x${s2})! Trajetória GSAP destacada e votação de MVP liberada!`
+            toast.success(
+              `Partida finalizada pelo árbitro (${s1}x${s2})! Vencedor avançou e alertas WhatsApp emitidos.`
             );
           }}
           onNotify10PointsRemaining={(matchId, s1, s2) => {
