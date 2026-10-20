@@ -1,7 +1,10 @@
 {
-  "firestore": {
-    "rules": "firestore.rules"
-  },
+  "firestore": [
+    {
+      "database": "ai-studio-izibolaarenabeac-fbe2fcd6-71ad-48a2-8b43-55c4f4c3b2c2",
+      "rules": "firestore.rules"
+    }
+  ],
   "hosting": {
     "site": "sharkset",
     "public": "dist",
