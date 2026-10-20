@@ -252,6 +252,62 @@ service cloud.firestore {
         data.ownerId is string && isValidId(data.ownerId);
     }
 
+    function canManageTournamentMatches(tournamentId) {
+      let tournamentPath = /databases/$(database)/documents/tournaments/$(tournamentId);
+      return isVerifiedUser() && isValidId(tournamentId) && exists(tournamentPath) &&
+        (isAdmin() || isOwner(get(tournamentPath).data.ownerId) || isArenaOrganizer(get(tournamentPath).data.tenantId));
+    }
+
+    function isPublicBracketTeam(team) {
+      return team is map && team.keys().hasAll(['id', 'tournamentId', 'player1', 'player1Level', 'player2', 'player2Level', 'category', 'seed']) &&
+        team.keys().hasOnly(['id', 'tournamentId', 'player1', 'player1Level', 'player2', 'player2Level', 'category', 'seed', 'enrollmentStatus', 'isPresent']) &&
+        isValidId(team.id) && isValidId(team.tournamentId) &&
+        team.player1 is string && team.player1.size() >= 1 && team.player1.size() <= 120 &&
+        team.player2 is string && team.player2.size() <= 120 &&
+        team.seed is int && team.seed >= 0 && team.seed <= 128;
+    }
+
+    function isPublicBracketSource(source) {
+      return source is map && (
+        (source.kind == 'team' && source.keys().hasAll(['kind', 'team', 'slot']) && source.keys().hasOnly(['kind', 'team', 'slot']) &&
+          isPublicBracketTeam(source.team) && source.slot is int && source.slot >= 0) ||
+        (source.kind in ['winner', 'loser'] && source.keys().hasAll(['kind', 'matchId']) && source.keys().hasOnly(['kind', 'matchId']) && isValidId(source.matchId))
+      );
+    }
+
+    function isValidPublicBracketMatch(data, tournamentId, matchId) {
+      return data.keys().hasAll(['id', 'tournamentId', 'matchNumber', 'stage', 'round', 'stageName', 'status', 'revision']) &&
+        data.keys().hasOnly([
+          'id', 'tournamentId', 'matchNumber', 'stage', 'round', 'stageName', 'status', 'revision',
+          'source1', 'source2', 'initialLowerSource', 'region', 'rules', 'sets', 'resultMode', 'officialAt',
+          'team1', 'team2', 'score1', 'score2', 'winnerId', 'loserId', 'courtId', 'courtName', 'scheduledTime',
+          'nextMatchWinnerId', 'winnerDestinationSlot', 'nextMatchLoserId', 'loserDestinationSlot', 'linkedBroadcastId', 'semifinalDecision'
+        ]) &&
+        data.id == matchId && data.tournamentId == tournamentId &&
+        isValidId(data.id) && isValidId(data.tournamentId) &&
+        data.matchNumber is int && data.matchNumber >= 1 && data.matchNumber <= 10000 &&
+        data.round is int && data.round >= 1 && data.round <= 100 &&
+        data.stage in ['winners', 'losers', 'semifinals', 'third_place', 'grand_final', 'super_final'] &&
+        data.status in ['scheduled', 'in_progress', 'completed'] &&
+        data.stageName is string && data.stageName.size() >= 1 && data.stageName.size() <= 80 &&
+        data.revision is int && data.revision >= 0 && data.revision <= 100000 &&
+        (!('team1' in data) || isPublicBracketTeam(data.team1)) &&
+        (!('team2' in data) || isPublicBracketTeam(data.team2)) &&
+        (!('source1' in data) || isPublicBracketSource(data.source1)) &&
+        (!('source2' in data) || isPublicBracketSource(data.source2)) &&
+        (!('initialLowerSource' in data) || isPublicBracketSource(data.initialLowerSource)) &&
+        (!('score1' in data) || (data.score1 is int && data.score1 >= 0 && data.score1 <= 500)) &&
+        (!('score2' in data) || (data.score2 is int && data.score2 >= 0 && data.score2 <= 500)) &&
+        (!('winnerId' in data) || isValidId(data.winnerId)) && (!('loserId' in data) || isValidId(data.loserId)) &&
+        (!('resultMode' in data) || data.resultMode in ['played', 'walkover']) &&
+        (!('officialAt' in data) || (data.officialAt is string && data.officialAt.size() <= 40)) &&
+        (!('sets' in data) || (data.sets is list && data.sets.size() <= 5)) &&
+        (!('courtName' in data) || (data.courtName is string && data.courtName.size() <= 100)) &&
+        (!('courtId' in data) || (data.courtId is string && data.courtId.size() <= 64)) &&
+        (!('scheduledTime' in data) || (data.scheduledTime is string && data.scheduledTime.size() <= 40)) &&
+        (!('linkedBroadcastId' in data) || (data.linkedBroadcastId is string && data.linkedBroadcastId.size() <= 64));
+    }
+
     function isValidCourtBlock(data) {
       return data.keys().hasAll(['id', 'tenantId', 'courtId', 'date', 'startTime', 'endTime', 'ownerId']) &&
         data.keys().hasOnly([
@@ -460,6 +516,18 @@ service cloud.firestore {
         (isAdmin() || incoming().ownerId == existing().ownerId);
       allow delete: if isVerifiedUser() && isValidId(tournamentId) &&
         (isAdmin() || isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId));
+
+      match /matches/{matchId} {
+        allow read: if true;
+        allow create, update: if canManageTournamentMatches(tournamentId) && isValidId(matchId) &&
+          isValidPublicBracketMatch(incoming(), tournamentId, matchId);
+        allow delete: if canManageTournamentMatches(tournamentId) && isValidId(matchId);
+      }
+
+      match /result_events/{eventId} {
+        allow read: if isValidId(tournamentId) && isValidId(eventId);
+        allow write: if false;
+      }
     }
 
     // Court Blocks: Administrative timetable and court maintenance locks

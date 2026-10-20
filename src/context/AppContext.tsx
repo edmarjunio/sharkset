@@ -91,6 +91,8 @@ import {
   addManagerToArenaInFirestore,
   removeManagerFromArenaInFirestore,
   persistTournamentToFirestore,
+  persistTournamentMatchChanges,
+  listenToTournamentMatches,
   fetchTournamentsFromFirestore,
   persistCouponToFirestore,
   fetchCouponsFromFirestore,
@@ -992,6 +994,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(tournamentMatches));
   }, [tournamentMatches]);
+
+  useEffect(() => {
+    if (!activeTournamentId) return;
+    return listenToTournamentMatches(activeTournamentId, (cloudMatches) => {
+      if (cloudMatches.length === 0) return;
+      setTournamentMatches((current) => [
+        ...current.filter((match) => match.tournamentId !== activeTournamentId),
+        ...cloudMatches,
+      ]);
+    }, (error) => {
+      console.error('Falha ao acompanhar a tabela oficial do campeonato.', error);
+    });
+  }, [activeTournamentId]);
 
   // Real-Time Synchronization via Server-Sent Events (SSE) + BroadcastChannel + Storage Event
   useEffect(() => {
@@ -2193,6 +2208,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } catch { throw new Error('NÃ£o foi possÃ­vel preservar o histÃ³rico neste navegador. Libere espaÃ§o antes de salvar a alteraÃ§Ã£o.'); }
     const updated = [...tournamentMatches.filter(match => match.tournamentId !== tournamentId), ...matches];
     setTournamentMatches(updated);
+    if (auth.currentUser?.emailVerified) {
+      void persistTournamentMatchChanges(tournamentId, matches, previous).catch((error) => {
+        console.error('Falha ao sincronizar a tabela oficial com o Firestore.', error);
+        window.dispatchEvent(new CustomEvent('sharkset:firestore-sync-error', {
+          detail: { message: 'Não foi possível sincronizar o resultado com o Firestore. A alteração está somente neste dispositivo.' },
+        }));
+      });
+    }
     if (teams) setRegisteredPairs(prev => [...prev.filter(team => team.tournamentId !== tournamentId), ...teams]);
     setTournaments(prev => prev.map(tournament => tournament.id === tournamentId ? { ...tournament,
       isFinished: matches.length > 0 && matches.every(match => match.status === 'completed'), semiFormat: 'semi_direta' } : tournament));

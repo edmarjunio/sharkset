@@ -994,6 +994,24 @@ export async function persistTournamentMatchChanges(
   }
 }
 
+export function listenToTournamentMatches(
+  tournamentId: string,
+  onUpdate: (matches: BracketMatch[]) => void,
+  onError?: (error: unknown) => void
+): () => void {
+  const matchesRef = collection(db, 'tournaments', tournamentId, 'matches');
+  return onSnapshot(
+    matchesRef,
+    (snapshot) => {
+      const matches = snapshot.docs
+        .map((matchDoc) => matchDoc.data() as BracketMatch)
+        .sort((left, right) => left.matchNumber - right.matchNumber);
+      onUpdate(matches);
+    },
+    (error) => onError?.(error)
+  );
+}
+
 export type TournamentResultEvent = {
   eventId: string;
   kind: 'result_confirmed' | 'result_corrected';
