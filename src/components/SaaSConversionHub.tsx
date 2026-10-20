@@ -71,32 +71,30 @@ export const SaaSConversionHub: React.FC = () => {
     );
   };
 
-  const handleUnlockSingleTable20 = async (e: React.FormEvent) => {
+  const handleUnlockSingleTable20 = (e: React.FormEvent) => {
     e.preventDefault();
     const nameToUse =
       quickTournName.trim() || `Copa ${tenant.name} - Tabela Oficial SHARK SET`;
     const orgToUse = quickTournOrganizer.trim() || 'Organizador Oficial';
     const phoneToUse = quickTournPhone.trim() || tenant.whatsapp;
 
-    try {
-      await createTournament({
-        name: nameToUse,
-        sport: 'futevolei',
-        category: 'iniciante_serie_c',
-        modalityFormat: 'duplas',
-        semiFormat: 'semi_direta',
-        date: new Date().toISOString().split('T')[0],
-        location: `${tenant.name} · ${tenant.city} - ${tenant.state}`,
-        specificRules:
-          'Set único até 18 pontos. Tabela oficial liberada por R$ 20,00 com placar ao vivo e súmula do árbitro.',
-        maxPairs: 8,
-        registrationFee: 120,
-        responsibleName: orgToUse,
-        responsiblePhone: phoneToUse,
-      });
+    createTournament({
+      name: nameToUse,
+      sport: 'futevolei',
+      category: 'iniciante_serie_c',
+      modalityFormat: 'duplas',
+      semiFormat: 'semi_direta',
+      date: new Date().toISOString().split('T')[0],
+      location: `${tenant.name} · ${tenant.city} - ${tenant.state}`,
+      specificRules:
+        'Set único até 18 pontos. Tabela oficial liberada por R$ 20,00 com placar ao vivo e súmula do árbitro.',
+      maxPairs: 8,
+      registrationFee: 120,
+      responsibleName: orgToUse,
+      responsiblePhone: phoneToUse,
+    });
 
-      setActiveTab('tournaments');
-    } catch (error) { setFeedbackBanner(error instanceof Error ? error.message : 'Não foi possível publicar o torneio.'); }
+    setActiveTab('tournaments');
   };
 
   return (

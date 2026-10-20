@@ -34,7 +34,7 @@ export const ATHLETE_TIERS: TierMeta[] = [
     maxPoints: 249,
     minTitlesForAutoPromo: 2,
     nextLevel: 'serie_c',
-    description: 'Início de competição. Evolução por MMR e consistência de resultados.',
+    description: 'Atletas em início de competição. Sobe para Série C com 250 pts ou 2 títulos.',
   },
   {
     level: 'serie_c',
@@ -52,7 +52,7 @@ export const ATHLETE_TIERS: TierMeta[] = [
     maxPoints: 949,
     minTitlesForAutoPromo: 4,
     nextLevel: 'serie_a',
-    description: 'Avançado competitivo. Próxima faixa: 950 MMR, com consistência.',
+    description: 'Avançado competitivo. Sobe para Série A ao atingir 950 pts ou 4 títulos.',
   },
   {
     level: 'serie_a',
@@ -319,12 +319,21 @@ export function getRankingPromotionSuggestion(
   const pointsToNext = Math.max(0, nextMin - points);
 
   const reachedPoints = points >= nextMin;
+  const reachedTitles = tier.minTitlesForAutoPromo ? titlesCount >= tier.minTitlesForAutoPromo : false;
   const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
+  const reachedDominance =
+    (currentLevel === 'iniciante' && wins >= 8 && winRate >= 70) ||
+    (currentLevel === 'serie_c' && wins >= 12 && winRate >= 70) ||
+    (currentLevel === 'serie_b' && wins >= 18 && winRate >= 70);
 
   // Trava de Consistência rigorosa: Mínimo de 6 partidas com 4 vitórias e taxa de vitória >= 60%
   const hasConsistencyLockSatisfied = matchesPlayed >= 6 && wins >= 4 && winRate >= 60;
-  if (hasConsistencyLockSatisfied && reachedPoints) {
-    const reasonDetail = `atingiu ${points} pts (teto: ${tier.maxPoints} pts)`;
+  if (hasConsistencyLockSatisfied && (reachedPoints || reachedTitles || reachedDominance)) {
+    const reasonDetail = reachedPoints
+      ? `atingiu ${points} pts (teto: ${tier.maxPoints} pts)`
+      : reachedTitles
+      ? `conquistou ${titlesCount} títulos na categoria`
+      : `alta dominância em torneios (${wins} vitórias / ${winRate}% aproveitamento)`;
 
     return {
       shouldPromote: true,
@@ -332,7 +341,7 @@ export function getRankingPromotionSuggestion(
       explanation: `SUBIDA OBRIGATÓRIA: Atleta ${reasonDetail} com consistência comprovada. Promovido para ${ATHLETE_LEVEL_LABELS[tier.nextLevel]} (bloqueado de atuar em ${ATHLETE_LEVEL_LABELS[currentLevel]}).`,
       progressPercent: 100,
       pointsToNext: 0,
-      triggeredByDominance: false,
+      triggeredByDominance: reachedDominance,
     };
   }
 
@@ -340,8 +349,8 @@ export function getRankingPromotionSuggestion(
     shouldPromote: false,
     recommendedLevel: currentLevel,
     explanation: reachedPoints && !hasConsistencyLockSatisfied
-      ? `Pontuação atingida (${points} pts), mas aguardando trava de consistência (mínimo de 6 jogos, 4 vitórias e 60% de aproveitamento).`
-      : `Para subir: ${pointsToNext} pts restantes (${progressPercent}% XP) + trava de consistência (mínimo de 6 jogos, 4 vitórias e 60% de aproveitamento).`,
+      ? `Pontuação atingida (${points} pts), mas aguardando trava de consistência (mínimo 5 jogos com 60% win rate ou 1 título).`
+      : `Para subir: ${pointsToNext} pts restantes (${progressPercent}% XP) + trava de consistência (mínimo 5 jogos com 60% win rate ou título).`,
     progressPercent,
     pointsToNext,
   };

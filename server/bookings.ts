@@ -4,7 +4,7 @@ import { addDays, arenaDate, buildArenaAvailability, minutes, validDate, type Oc
 import type { TenantConfig } from '../src/types';
 
 export function registerBookingRoutes(app: Express, getDatabase = adminDatabase) {
-  const readAvailability = async (tenantId: unknown, date: unknown): Promise<{ status: number; body: Record<string, unknown>; refresh?: () => Record<string, unknown> }> => {
+  const readAvailability = async (tenantId: unknown, date: unknown): Promise<{ status: number; body: Record<string, unknown> }> => {
     if (typeof tenantId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(tenantId) || typeof date !== 'string' || !validDate(date)) {
       return { status: 400, body: { error: 'Arena ou data inválida.' } };
     }
@@ -36,14 +36,12 @@ export function registerBookingRoutes(app: Express, getDatabase = adminDatabase)
           typeof b.courtId !== 'string' || !(minutes(b.startTime) < minutes(b.endTime)))) {
         return { status: 503, body: { error: 'A agenda contém um registro inconsistente. A arena precisa revisá-lo.' } };
       }
-      const refresh = () => {
-        const currentDay = arenaDate(new Date(), arena.timeZone);
-        const cells = buildArenaAvailability({ ...arena, id: tenantId }, date, reservations, {
-          horizonDays, timeZone: arena.timeZone, blocks: administrativeBlocks,
+      const cells = buildArenaAvailability({ ...arena, id: tenantId }, date,
+        reservations, {
+          horizonDays, timeZone: arena.timeZone,
+          blocks: administrativeBlocks,
         });
-        return { cells, maxDate: addDays(currentDay, horizonDays - 1), today: currentDay, timeZone: arena.timeZone || 'America/Sao_Paulo' };
-      };
-      return { status: 200, body: refresh(), refresh };
+      return { status: 200, body: { cells, maxDate, today, timeZone: arena.timeZone || 'America/Sao_Paulo' } };
     } catch {
       return { status: 503, body: { error: 'Não foi possível verificar a disponibilidade. Tente novamente.' } };
     }
@@ -65,28 +63,16 @@ export function registerBookingRoutes(app: Express, getDatabase = adminDatabase)
     res.write('retry: 15000\n\n');
     let closed = false, sequence = 0;
     let debounce: ReturnType<typeof setTimeout> | undefined;
-    let refreshClock: (() => Record<string, unknown>) | undefined;
-    let previousBody = '';
     const unsubscribers: (() => void)[] = [];
     const emit = (event: string, body: unknown) => { if (!closed) res.write('event: ' + event + '\ndata: ' + JSON.stringify(body) + '\n\n'); };
     // Reuse the exact validated public projection from the HTTP route.
     const publish = async () => {
       const revision = ++sequence;
       const result = await readAvailability(tenantId, date);
-      if (revision === sequence) {
-        refreshClock = result.refresh;
-        previousBody = JSON.stringify(result.body);
-        emit(result.status === 200 ? 'availability' : 'availability-error', result.body);
-      }
+      if (revision === sequence) emit(result.status === 200 ? 'availability' : 'availability-error', result.body);
     };
     const schedule = () => { if (debounce) clearTimeout(debounce); debounce = setTimeout(() => { void publish(); }, 75); };
-    const tick = setInterval(() => {
-      // Recompute clock/hold expiry from the last authoritative snapshot, without another Firestore read.
-      const body = refreshClock?.();
-      const encoded = body && JSON.stringify(body);
-      if (body && encoded !== previousBody) { previousBody = encoded!; emit('availability', body); }
-      else if (!closed) res.write(': heartbeat\n\n');
-    }, 30000);
+    const tick = setInterval(() => { void publish(); }, 30000);
     const cleanup = () => {
       if (closed) return;
       closed = true;

@@ -1,26 +1,121 @@
 import React, { useState } from 'react';
-import { LockKeyhole, ShieldCheck } from 'lucide-react';
-import type { AthleteLevel } from '../types';
+import { AthleteLevel } from '../types';
 import { ATHLETE_TIERS } from '../services/rankingValidator';
-import { useModalFocus } from '../hooks/useModalFocus';
-interface Props { isOpen: boolean; playerName: string; onComplete: (level: AthleteLevel) => Promise<void> }
-export function AthleteOnboardingModal(props: Props) { return props.isOpen ? <CategoryDialog {...props} /> : null; }
-function CategoryDialog({ playerName, onComplete }: Props) {
-  const ref = useModalFocus(() => {});
-  const [selected, setSelected] = useState<AthleteLevel | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selected || busy) return;
-    setBusy(true); setError('');
-    try { await onComplete(selected); }
-    catch (error) { setError(error instanceof Error ? error.message : 'Não foi possível confirmar. Reconecte e tente novamente.'); }
-    finally { setBusy(false); }
-  };
-  return <dialog ref={ref} aria-labelledby="onboarding-title" className="athlete-dialog"><form className="athlete-sheet" onSubmit={submit}>
-    <header className="athlete-sheet-header"><div><p className="athlete-eyebrow">Bem-vindo ao SHARKSET, {playerName || 'atleta'}</p><h2 className="athlete-name" id="onboarding-title">Escolha sua categoria inicial</h2><p className="text-sm text-slate-300 mt-2">Esta escolha é permanente. Depois, sua categoria evolui exclusivamente por MMR e consistência dos resultados.</p></div><ShieldCheck size={30} className="shrink-0 text-cyan-300" /></header>
-    <div className="athlete-sheet-scroll"><fieldset disabled={busy} className="space-y-3"><legend className="sr-only">Categorias de jogo</legend>{ATHLETE_TIERS.map(tier => <label key={tier.level} className={`athlete-category-option ${selected === tier.level ? 'is-selected' : ''}`}><input type="radio" name="initial-category" value={tier.level} checked={selected === tier.level} onChange={() => setSelected(tier.level)} /><div><strong>{tier.label}</strong><p>{tier.description}</p></div><span className="shrink-0 tabular-nums font-black text-cyan-200">{tier.minPoints}+ MMR</span></label>)}</fieldset><p className="athlete-lock-note"><LockKeyhole size={15} />Fixada no cadastro · Não será possível trocar manualmente</p>{error && <p className="athlete-error" role="alert">{error}</p>}</div>
-    <footer className="athlete-sheet-footer"><span className="text-xs text-slate-300">Confirmação vinculada à sua conta</span><button type="submit" className="athlete-primary-button" disabled={!selected || busy}>{busy ? 'Confirmando…' : 'Confirmar categoria'}</button></footer>
-  </form></dialog>;
+import { SharksetLogo } from './SharksetLogo';
+import { Shield, Zap, Star, Award, Trophy, CheckCircle, ArrowRight } from 'lucide-react';
+
+interface OnboardingModalProps {
+  isOpen: boolean;
+  playerName: string;
+  onComplete: (level: AthleteLevel) => void;
 }
+
+const LEVEL_ICONS: Record<AthleteLevel, React.FC<{ className?: string }>> = {
+  iniciante: Shield,
+  serie_c: Zap,
+  serie_b: Star,
+  serie_a: Award,
+  profissional: Trophy,
+};
+
+export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
+  isOpen,
+  playerName,
+  onComplete,
+}) => {
+  const [selectedLevel, setSelectedLevel] = useState<AthleteLevel>('iniciante');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onComplete(selectedLevel);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-title"
+    >
+      <div className="aquarium-glass bg-[#030E1F]/98 border-2 border-[#12C7BB]/60 text-white rounded-3xl max-w-xl w-full shadow-2xl my-auto max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
+        <div className="min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5">
+        {/* Header */}
+        <div className="flex flex-col items-center text-center space-y-2 border-b border-white/10 pb-4">
+          <SharksetLogo size="sm" showText />
+          <h2 id="onboarding-title" className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
+            Defina sua Categoria Inicial
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300 max-w-md">
+            Olá, <strong className="text-cyan-300">{playerName || 'Atleta'}</strong>! Para entrar no{' '}
+            <strong>Ranking Oficial SHARKSET</strong> e disputar partidas nas arenas, selecione seu nível técnico inicial:
+          </p>
+        </div>
+
+        {/* Options */}
+        <form id="athlete-category-form" onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2.5">
+            {ATHLETE_TIERS.map((tier) => {
+              const Icon = LEVEL_ICONS[tier.level];
+              const isSelected = selectedLevel === tier.level;
+
+              return (
+                <button
+                  key={tier.level}
+                  type="button"
+                  onClick={() => setSelectedLevel(tier.level)}
+                  className={`w-full p-3.5 rounded-2xl text-left transition-all cursor-pointer flex items-center gap-3.5 border ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-[#0987CE]/30 via-[#12C7BB]/20 to-transparent border-[#12C7BB] shadow-[0_0_20px_rgba(18,199,187,0.35)] scale-[1.01]'
+                      : 'bg-slate-900/80 border-slate-700 hover:border-slate-500 hover:bg-slate-800/80'
+                  }`}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner ${
+                      isSelected
+                        ? 'bg-[#12C7BB] text-[#030E1F] font-black'
+                        : 'bg-white/10 text-slate-300'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <strong className="text-sm sm:text-base font-extrabold text-white block">
+                        {tier.label}
+                      </strong>
+                      <span className="text-[11px] font-mono text-cyan-300 font-bold shrink-0">
+                        {tier.minPoints} pts
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 line-clamp-2 mt-0.5">{tier.description}</p>
+                  </div>
+                  {isSelected && <CheckCircle className="w-5 h-5 text-[#12C7BB] shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+
+        </form>
+        </div>
+          <div className="onboarding-confirm-panel">
+            <span className="text-sm text-white font-bold">
+              Categoria selecionada: {ATHLETE_TIERS.find(tier => tier.level === selectedLevel)?.label}
+            </span>
+            <span className="text-[11px] text-amber-300 font-semibold">
+              🔒 Escolha única no cadastro: após confirmar, a categoria não poderá ser alterada manualmente e subirá por pontuação (MMR).
+            </span>
+            <button
+              type="submit"
+              form="athlete-category-form"
+              className="onboarding-confirm-button"
+            >
+              <span>Confirmar Categoria</span>
+              <ArrowRight className="w-4 h-4 stroke-[3]" />
+            </button>
+          </div>
+      </div>
+    </div>
+  );
+};

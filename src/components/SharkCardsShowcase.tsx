@@ -190,7 +190,7 @@ export const SharkCardsShowcase: React.FC<SharkCardsShowcaseProps> = ({
             <SharkCard3D
               athlete={
                 myAthlete || {
-                  id: 'my-card', phone: '', preferredSport: 'futevolei',
+                  id: 'my-card',
                   name: currentUser.displayName || userProfile.name || 'Atleta SHARK SET',
                   level: userProfile.level || 'iniciante',
                   points: 0,
@@ -202,6 +202,8 @@ export const SharkCardsShowcase: React.FC<SharkCardsShowcaseProps> = ({
                   state: 'GO',
                   country: 'Brasil',
                   arenaName: tenant?.name || 'Arena Credenciada',
+                  phone: userProfile.phone || '',
+                  preferredSport: 'futevolei',
                 }
               }
               isLocked

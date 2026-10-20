@@ -1,6 +1,4 @@
 import { LiveDirectory } from './components/LiveDirectory';
-import { PushNotificationToast } from './components/PushNotificationToast';
-import { NotificationLinkHandler } from './components/NotificationLinkHandler';
 import { BroadcastWatchScreen } from './components/BroadcastWatchScreen';
 import { useBroadcastNavigation } from './store/useBroadcastNavigation';
 import { FreeSlotsDateTimeFilter } from './components/FreeSlotsDateTimeFilter';
@@ -25,28 +23,57 @@ import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
-import { AthleteProfileDialog } from './components/AthleteProfileDialog';
 import {
   Maximize2,
   Minimize2,
+  Home,
+  Trophy,
+  MapPin,
+  TrendingUp,
+  Radio,
+  CalendarCheck,
+  Shield,
 } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { FloatingBottomDock } from './components/FloatingBottomDock';
+import { TopBarSlotDetailsModal } from './components/TopBarSlotDetailsModal';
+import type { UpcomingSlotItem } from './hooks/useUpcomingFreeSlots';
 
 const MainContent: React.FC = () => {
   const {
     activeTab,
     setActiveTab,
     tenant,
+    setTenantId,
+    setArenaSubTab,
     activeLiveBroadcastBookingId,
     setActiveLiveBroadcastBookingId,
     userProfile,
-    chooseInitialCategory,
-    profileStatus,
+    setUserProfile,
     focusMode,
     toggleFocusMode,
   } = useApp();
 
-  const showOnboarding = profileStatus === 'ready' && !userProfile.level;
+  const [floatingSlotModal, setFloatingSlotModal] = React.useState<UpcomingSlotItem | null>(null);
+
+  // Onboarding state: triggers if user has not yet completed initial technical category setup
+  const [showOnboarding, setShowOnboarding] = React.useState<boolean>(() => {
+    try {
+      return !localStorage.getItem('sharkset_onboarding_completed');
+    } catch {
+      return false;
+    }
+  });
+
+  const handleCompleteOnboarding = (level: typeof userProfile.level) => {
+    setUserProfile({ ...userProfile, level });
+    try {
+      localStorage.setItem('sharkset_onboarding_completed', 'true');
+    } catch {
+      // ignore
+    }
+    setShowOnboarding(false);
+  };
 
   const isArenaWhiteLabel =
     Boolean(tenant.whiteLabelEnabled && tenant.logoUrl && tenant.brandPalette) &&
@@ -78,8 +105,6 @@ const MainContent: React.FC = () => {
       }
     >
       <AquariumBackground />
-      <PushNotificationToast />
-      <NotificationLinkHandler />
 
       {/* Floating Focus Mode Bar when active */}
       {focusMode && (
@@ -177,7 +202,7 @@ const MainContent: React.FC = () => {
             </div>
 
             {/* Bottom Row: Legal Copyright & Badges */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-white/5 text-[11px] text-slate-400 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 text-[11px] text-slate-400 text-center sm:text-left">
               <p>
                 &copy; {new Date().getFullYear()} SHARK SET — Todos os direitos reservados. Orgulhosamente desenvolvido para o esporte de areia.
               </p>
@@ -194,6 +219,28 @@ const MainContent: React.FC = () => {
         </footer>
       )}
 
+      {/* Floating Bottom Navigation & Featured Slots Carousel (Visible on Scroll Down) */}
+      {!focusMode && (
+        <FloatingBottomDock onSelectSlot={(slot) => setFloatingSlotModal(slot)} />
+      )}
+
+      {/* Modal Completo de Detalhes da Arena e Agendamento Instantâneo */}
+      <TopBarSlotDetailsModal
+        isOpen={Boolean(floatingSlotModal)}
+        onClose={() => setFloatingSlotModal(null)}
+        arena={floatingSlotModal?.arena || null}
+        court={floatingSlotModal?.court || null}
+        slot={floatingSlotModal?.slot || null}
+        distanceKm={floatingSlotModal?.distanceKm}
+        onGoToArena={(arena) => {
+          setFloatingSlotModal(null);
+          setTenantId(arena.id);
+          setArenaSubTab('agendamentos');
+          setActiveTab('scheduler');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+
       {activeLiveBroadcastBookingId && (
         <LiveBookingBroadcastModal
           bookingId={activeLiveBroadcastBookingId}
@@ -204,11 +251,10 @@ const MainContent: React.FC = () => {
       <AthleteOnboardingModal
         isOpen={showOnboarding}
         playerName={userProfile.name}
-        onComplete={chooseInitialCategory}
+        onComplete={handleCompleteOnboarding}
       />
 
       <CommandPalette />
-      <AthleteProfileDialog />
       <TenantSelectorModal />
     </div>
   );

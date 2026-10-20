@@ -1,4 +1,5 @@
 import { LocationScopeFilter } from './LocationScopeFilter';
+import { PodiumCardStudio } from './PodiumCardStudio';
 import { useScopedCatalog } from '../hooks/useScopedCatalog';
 import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { matchPhaseLabel } from '../services/bracketPresentation';
@@ -16,7 +17,7 @@ import {
   TournamentModalityFormat,
 } from '../types';
 import { generateMatchCallWhatsAppLink } from '../services/whatsappAdapter';
-import { computeTournamentStandings, getPodium, officializeMatch, changeMatchRules } from '../services/bracketEngine';
+import { computeTournamentStandings, getPodium, officializeMatch } from '../services/bracketEngine';
 import {
   ATHLETE_LEVEL_LABELS,
   TOURNAMENT_CATEGORY_LABELS,
@@ -390,28 +391,26 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     setShowTournamentModal('edit');
   };
 
-  const handleSaveTournamentModal = async (e: React.FormEvent) => {
+  const handleSaveTournamentModal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) return;
 
     if (showTournamentModal === 'create') {
-      try {
-        const created = await createTournament({
-          name: formName.trim(),
-          sport: 'futevolei',
-          category: formCategory,
-          modalityFormat: formModality,
-          semiFormat: formSemiFormat,
-          date: formDate,
-          location: formLocation.trim(),
-          specificRules: formRules.trim(),
-          maxPairs: formMaxParticipants,
-          registrationFee: formFee,
-          responsibleName: formResponsible.trim() || userProfile.name,
-          responsiblePhone: userProfile.phone,
-        });
-        triggerToast(`Torneio "${created.name}" (${formModality.toUpperCase()}) criado com sucesso!`);
-      } catch (error) { triggerToast(error instanceof Error ? error.message : 'Não foi possível publicar o torneio.'); return; }
+      const created = createTournament({
+        name: formName.trim(),
+        sport: 'futevolei',
+        category: formCategory,
+        modalityFormat: formModality,
+        semiFormat: formSemiFormat,
+        date: formDate,
+        location: formLocation.trim(),
+        specificRules: formRules.trim(),
+        maxPairs: formMaxParticipants,
+        registrationFee: formFee,
+        responsibleName: formResponsible.trim() || userProfile.name,
+        responsiblePhone: userProfile.phone,
+      });
+      triggerToast(`Torneio "${created.name}" (${formModality.toUpperCase()}) criado com sucesso!`);
     } else if (showTournamentModal === 'edit') {
       updateTournamentConfig(activeTournament.id, {
         name: formName.trim(),
@@ -1110,6 +1109,10 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       }
     >
       {/* Toast Feedback */}
+      {!minimalistPlayerView && activeTournament && (
+        <PodiumCardStudio key={activeTournament.id} tournament={activeTournament} matches={currentMatches}
+          arena={availableTenants.find(arena => arena.id === activeTournament.tenantId)} />
+      )}
       {feedbackToast && (
         <div className="p-3.5 bg-[#071D3D] text-white border border-[#0987CE] rounded-xl text-xs flex items-center justify-between shadow-lg animate-in fade-in">
           <div className="flex items-center gap-2">
@@ -2813,14 +2816,10 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           onUpdateLiveMatch={(matchId, updater) => {
             updateLiveRefereeMatch(matchId, updater);
           }}
-          onConfirmFinalResult={(matchId, winningTeam, s1, s2, sets, rules) => {
+          onConfirmFinalResult={(matchId, winningTeam, s1, s2) => {
             const winPair =
               winningTeam === 1 ? activeRefereeMatch.team1 : activeRefereeMatch.team2;
-            try {
-              if (!sets?.length || !rules) throw new Error('Feche todos os sets antes de confirmar.');
-              const withRules = changeMatchRules(currentMatches, matchId, rules, { reason: 'Formato utilizado no placar de transmissão' });
-              applyTournamentEdit(activeTournament.id, officializeMatch(withRules, matchId, sets, { reason: 'Parciais confirmadas na mesa de transmissão' }));
-            }
+            try { handleAdvanceMatch(matchId, winningTeam, s1, s2); }
             catch (error) { triggerToast(error instanceof Error ? error.message : 'Confira os sets em Administrar tabela.'); return; }
             setRefereeModalMatchId(null);
             if (winPair) {

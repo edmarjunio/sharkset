@@ -55,6 +55,7 @@ export const DoublesRegistration: React.FC = () => {
     athletes,
     rankingLogs,
     addOrUpdateAthlete,
+    changeAthleteLevel,
     awardAthletePoints,
     updateTournamentConfig,
   } = useApp();
@@ -671,7 +672,18 @@ export const DoublesRegistration: React.FC = () => {
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             {promo.shouldPromote ? (
-                              <span className="px-2.5 py-1.5 text-[#12C7BB] font-bold text-[11px]">Progressão automática por MMR</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  changeAthleteLevel(ath.id, promo.recommendedLevel);
+                                  triggerToast(
+                                    `🎉 ${ath.name} promovido para ${ATHLETE_LEVEL_LABELS[promo.recommendedLevel]}!`
+                                  );
+                                }}
+                                className="px-2.5 py-1.5 bg-[#FF6B00] hover:bg-[#e66000] text-white font-bold rounded-md text-[11px]"
+                              >
+                                Promover →
+                              </button>
                             ) : (
                               <button
                                 type="button"

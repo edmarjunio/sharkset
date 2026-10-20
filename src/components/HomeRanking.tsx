@@ -1,4 +1,4 @@
-import { Trophy, ArrowUpRight, MapPin, Calendar } from 'lucide-react';
+import { Trophy, ArrowUpRight, Calendar } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useRankingAthletes } from '../hooks/useRankingAthletes';
 import { ATHLETE_LEVEL_LABELS, filterAndRankAthletesByScope, formatSharksetSince } from '../services/rankingValidator';
@@ -9,14 +9,14 @@ export function HomeRanking() {
   const leaders = filterAndRankAthletesByScope(sourceAthletes, { scope: 'geral' }).slice(0, 5);
   return (
     <section aria-labelledby="home-ranking-title" className="aquarium-glass rounded-3xl border border-cyan-500/30 overflow-hidden shadow-2xl">
-      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-white/10">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-white/10">
         <h2 id="home-ranking-title" className="font-extrabold text-base flex items-center gap-2 text-white">
           <Trophy size={18} className="text-amber-400" />
           <span>Top 5 do ranking</span>
         </h2>
         <button
           onClick={() => setActiveTab('ranking_athletes')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-cyan-500/40 bg-[#052445]/90 hover:bg-[#083566] text-white font-bold text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer"
+          className="inline-flex shrink-0 items-center gap-2 px-4 py-2 rounded-xl border border-cyan-500/40 bg-[#052445]/90 hover:bg-[#083566] text-white font-bold text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer"
         >
           <span>Ver ranking</span>
           <ArrowUpRight size={15} />
@@ -25,7 +25,7 @@ export function HomeRanking() {
       {isLoading ? (
         <p role="status" className="p-4 text-sm text-slate-400">Carregando ranking…</p>
       ) : leaders.length ? (
-        <ol className="grid divide-y divide-white/10 lg:grid-cols-5 lg:divide-y-0 lg:divide-x">
+        <ol className="grid grid-cols-1 divide-y divide-white/10">
           {leaders.map((athlete, index) => {
             const matches = athlete.matchesPlayed || 0;
             const wins = athlete.wins || 0;

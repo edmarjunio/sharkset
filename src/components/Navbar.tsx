@@ -22,12 +22,27 @@ import {
   Award,
   Info,
   Sparkles,
-  Shield,
+  ShieldCheck,
 } from 'lucide-react';
+import { FreeSlotsNewsTicker } from './FreeSlotsNewsTicker';
+import { TopBarSlotDetailsModal } from './TopBarSlotDetailsModal';
+import { QuickBookingPaymentModal, type QuickBookingSlotData } from './QuickBookingPaymentModal';
+import {
+  NavIconHome,
+  NavIconTrophy,
+  NavIconNet,
+  NavIconPodium,
+  NavIconBooking,
+  NavIconReader,
+} from './icons/NavIcons';
+import type { UpcomingSlotItem } from '../hooks/useUpcomingFreeSlots';
+import type { AvailabilityCell } from '../services/bookingAvailability';
+import type { Court, TenantConfig } from '../types';
 
 export const Navbar: React.FC = () => {
   const {
     tenant,
+    setTenantId,
     activeTab,
     setActiveTab,
     arenaSubTab,
@@ -49,6 +64,30 @@ export const Navbar: React.FC = () => {
   const [scrollY, setScrollY] = useState<number>(0);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
+  const [selectedSlotModal, setSelectedSlotModal] = useState<UpcomingSlotItem | null>(null);
+  const [checkoutSlotData, setCheckoutSlotData] = useState<QuickBookingSlotData | null>(null);
+
+  const handleSelectBookingFromModal = (arena: TenantConfig, slot: AvailabilityCell, court: Court) => {
+    setSelectedSlotModal(null);
+    setCheckoutSlotData({
+      arena,
+      courtId: court.id,
+      courtName: court.name,
+      date: slot.date,
+      time: slot.startTime,
+      endTime: slot.endTime,
+      price: slot.price,
+      sport: court.sports[0] || 'futevolei',
+    });
+  };
+
+  const handleGoToArenaFromModal = (arena: TenantConfig) => {
+    setSelectedSlotModal(null);
+    setTenantId(arena.id);
+    setArenaSubTab('agendamentos');
+    setActiveTab('scheduler');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setFirebaseUser(u));
@@ -86,74 +125,65 @@ export const Navbar: React.FC = () => {
     if (booking) setActiveLiveBroadcastBookingId(booking.id);
     else if (tenant.id) { setActiveTab('scheduler'); setArenaSubTab('transmissoes'); } else setActiveTab('live');
   };
-  const liveActions = (
-    <div className="navbar-live-actions flex items-center gap-2">
+  const liveButtons = (
+    <div className="navbar-live-actions flex items-center gap-2 shrink-0">
       <button
         type="button"
         onClick={() => setActiveTab('live')}
         aria-current={activeTab === 'live' ? 'page' : undefined}
-        className="navbar-live-action relative inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-red-700/30 border border-red-400/50 active:translate-y-0.5 transition-all cursor-pointer"
+        className="navbar-live-action relative inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-red-700/30 border border-red-400/50 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
         title="Assistir partidas ao vivo agora"
       >
-        <Radio size={18} className="navbar-live-icon" aria-hidden="true" />
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+        </span>
         <span>LIVE</span>
       </button>
+
       <button
         type="button"
         onClick={openBroadcastStudio}
-        className="navbar-live-action navbar-live-studio inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#FF6B00] to-[#EA580C] text-white border border-orange-300 font-black text-xs uppercase tracking-wider shadow-lg shadow-orange-600/40 active:translate-y-0.5 transition-all cursor-pointer"
+        className="navbar-live-action inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#FF6B00] via-[#FF8533] to-[#E65100] hover:from-[#FF781F] hover:to-[#FF6B00] text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,107,0,0.45)] border border-amber-300 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
         title="Abrir estúdio de transmissão ao vivo"
       >
-        <Radio size={16} className="text-white" aria-hidden="true" />
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+        </span>
+        <Radio size={14} className="text-slate-950 stroke-[2.5]" />
         <span>INICIAR TRANSMISSÃO</span>
       </button>
     </div>
-  );
-
-  const adminAction = (
-    <button
-      type="button"
-      onClick={() => { setActiveTab('arena_admin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-      aria-label="Área do administrador da arena"
-      aria-current={activeTab === 'arena_admin' ? 'page' : undefined}
-      title="Área do administrador da arena"
-      className={`navbar-admin-action inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full border shadow-md transition-all active:scale-95 cursor-pointer ${
-        activeTab === 'arena_admin'
-          ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 border-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.45)]'
-          : 'bg-[#150f04]/90 hover:bg-[#241a06] text-amber-300 hover:text-white border-amber-500/40 hover:border-amber-300'
-      }`}
-    >
-      <Shield size={18} className={activeTab === 'arena_admin' ? 'text-slate-950 stroke-[2.5]' : 'text-amber-400'} aria-hidden="true" />
-    </button>
   );
 
   // General Platform Navigation Items with unified pill standard
   const navItems: {
     id: typeof activeTab;
     label: string;
-    icon: React.FC<{ size?: number; className?: string }>;
+    icon: React.FC<{ size?: number; className?: string; isActive?: boolean }>;
     isArena?: boolean;
   }[] = [
-    { id: 'home', label: 'INÍCIO', icon: Home },
-    { id: 'tournaments', label: 'CAMPEONATOS', icon: Trophy },
-    { id: 'arenas_directory', label: 'ARENAS', icon: MapPin, isArena: true },
-    { id: 'ranking_athletes', label: 'RANKINGS', icon: TrendingUp },
-    { id: 'shark_academy', label: 'COMUNIDADE', icon: Users },
-    { id: 'register_dupla', label: 'INSCRIÇÕES', icon: UserCheck },
+    { id: 'home', label: 'INÍCIO', icon: NavIconHome },
+    { id: 'tournaments', label: 'CAMPEONATOS', icon: NavIconTrophy },
+    { id: 'arenas_directory', label: 'ARENAS', icon: NavIconNet, isArena: true },
+    { id: 'ranking_athletes', label: 'RANKINGS', icon: NavIconPodium },
+    { id: 'shark_academy', label: 'COMUNIDADE', icon: NavIconReader },
+    { id: 'register_dupla', label: 'INSCRIÇÕES', icon: NavIconBooking },
   ];
 
   // Dedicated Arena Page Navigation Items with unified pill standard
   const arenaNavItems: {
     id: ArenaSubTab;
     label: string;
-    icon: React.FC<{ size?: number; className?: string }>;
+    icon: React.FC<{ size?: number; className?: string; isActive?: boolean }>;
     isLive?: boolean;
   }[] = [
-    { id: 'agendamentos', label: 'AGENDAMENTOS', icon: Calendar },
-    { id: 'ranking', label: 'RANKING', icon: Trophy },
-    { id: 'campeonatos', label: 'CAMPEONATOS', icon: Award },
+    { id: 'agendamentos', label: 'AGENDAMENTOS', icon: NavIconBooking },
+    { id: 'ranking', label: 'RANKING', icon: NavIconPodium },
+    { id: 'campeonatos', label: 'CAMPEONATOS', icon: NavIconTrophy },
     { id: 'transmissoes', label: 'AO VIVO', icon: Radio, isLive: true },
-    { id: 'comunidade', label: 'COMUNIDADE', icon: Users },
+    { id: 'comunidade', label: 'COMUNIDADE', icon: NavIconReader },
     { id: 'info_historico', label: 'INFORMAÇÕES', icon: Info },
   ];
 
@@ -164,7 +194,9 @@ export const Navbar: React.FC = () => {
 
   return (
     <header
-      className="site-navbar aquarium-glass sticky top-0 z-40 w-full bg-[#030B17]/95 backdrop-blur-md text-white border-b border-cyan-500/20 shadow-md transition-colors"
+      className={`site-navbar aquarium-glass sticky top-0 z-40 w-full bg-[#030B17]/95 backdrop-blur-md text-white border-b border-cyan-500/20 shadow-md transition-all duration-300 ${
+        scrollY > 90 ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+      }`}
       style={
         isArenaWhiteLabelSite && arenaPalette
           ? {
@@ -216,16 +248,13 @@ export const Navbar: React.FC = () => {
       <div className="header-desktop hidden lg:block max-w-[1600px] mx-auto px-4 sm:px-6 py-2 transition-all duration-300">
         <div className="header-layout flex items-center gap-4 lg:gap-5">
 
-          {/* Logo Column (Desktop) */}
-          <div className="shrink-0 flex items-center justify-center pt-0.5">
+          {/* Logo Column (Desktop) - Aumentada ocupando o círculo branco de ~124px */}
+          <div className="shrink-0 flex items-center justify-center self-stretch pr-2">
             {isArenaWhiteLabelSite && tenant.logoUrl ? (
               <button
                 type="button"
                 onClick={() => setActiveTab('scheduler')}
-                className={`group cursor-pointer rounded-full overflow-hidden border-2 border-white/80 shadow-xl transition-all duration-300 ${
-                  isScrolled
-                    ? 'w-16 h-16' : 'w-16 h-16'
-                }`}
+                className="group cursor-pointer rounded-full overflow-hidden border-2 border-white/80 shadow-2xl transition-all duration-300 w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center bg-slate-900"
                 style={{ borderColor: arenaPalette?.accent || '#FF6B00' }}
                 title={tenant.name}
               >
@@ -242,26 +271,23 @@ export const Navbar: React.FC = () => {
                   e.preventDefault();
                   setActiveTab('home');
                 }}
-                className={`navbar-coin-anchor block cursor-pointer transition-all duration-300 ease-out z-30 ${
-                  isScrolled
-                    ? '' : ''
-                }`}
+                className="navbar-coin-anchor flex items-center justify-center cursor-pointer transition-all duration-300 ease-out z-30 p-1 hover:scale-105"
                 title="SHARKSET Oficial"
               >
                 <SharksetLogo
                   variant="coin3d"
-                  customPx={64}
-                  className="transition-all duration-300"
+                  customPx={124}
+                  className="transition-all duration-300 drop-shadow-[0_10px_28px_rgba(0,180,255,0.45)]"
                 />
               </a>
             )}
           </div>
 
-          {/* Content Column: Linha 1 (Navegação + Ações) e Linha 2 (Busca) */}
+          {/* Content Column: Linha 1 (Abas), Linha 2 (Ticker no Retângulo Vermelho + Ações LIVE), Linha 3 (Busca) */}
           <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
 
-            {/* Linha 1: Botões de navegação + Ações */}
-            <div className="header-navigation-row flex flex-wrap items-center justify-between gap-2">
+            {/* Linha 1: Botões de navegação das abas */}
+            <div className="header-navigation-row flex items-center justify-between gap-2">
               <nav aria-label="Navegação desktop" className="flex flex-wrap items-center gap-2 py-0.5">
                 {isArenaPage ? (
                   <>
@@ -300,9 +326,12 @@ export const Navbar: React.FC = () => {
                           }`}
                         >
                           {item.isLive ? (
-                            <Radio size={18} className="navbar-live-icon" aria-hidden="true" />
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                            </span>
                           ) : (
-                            <Icon size={14} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                            <Icon size={20} isActive={isActive} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
                           )}
                           <span>{item.label}</span>
                         </button>
@@ -326,28 +355,41 @@ export const Navbar: React.FC = () => {
                             : 'bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300'
                         }`}
                       >
-                        <Icon size={14} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                        <Icon size={20} isActive={isActive} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
                         <span>{item.label}</span>
                       </button>
                     );
                   })
                 )}
               </nav>
+            </div>
 
-              {/* Ações Desktop */}
-              <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-                {liveActions}
+            {/* Linha 2: ONDE O USUÁRIO DESENHOU O QUADRADO VERMELHO (Carrossel na esquerda ocupando todo o espaço restante) + Ações à direita (LIVE, INICIAR TRANSMISSÃO, etc) */}
+            <div className="flex items-center justify-between gap-3 w-full">
+              {/* O Quadrado Vermelho: Carrossel de Horários Livres esticado até o botão de LIVE */}
+              <div className="flex-1 min-w-0">
+                <FreeSlotsNewsTicker
+                  onSlotClick={(item) => setSelectedSlotModal(item)}
+                  variant="topbar"
+                />
+              </div>
 
+              {/* Botões de Ação na Direita: LIVE, INICIAR TRANSMISSÃO, Notificação, Usuário, Admin */}
+              <div className="flex items-center gap-2 shrink-0">
+                {liveButtons}
+
+                {/* Botão de Notificações com cor bem chamativa (Gradiente Fuchsia/Roxo vibrante com brilho neon) */}
                 <button
                   type="button"
                   onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
-                  className="relative inline-flex items-center justify-center p-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-slate-200 hover:text-white border border-cyan-500/40 hover:border-cyan-300 transition-all cursor-pointer shadow-md active:translate-y-0.5"
+                  className="relative inline-flex items-center justify-center p-2 rounded-full bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white border border-fuchsia-300/80 hover:border-white transition-all cursor-pointer shadow-[0_0_18px_rgba(217,70,239,0.55)] active:translate-y-0.5 active:scale-95 shrink-0"
                   title="Alertas e Notificações"
+                  aria-label="Alertas e Notificações"
                 >
-                  <Bell className="w-4 h-4 text-cyan-300" />
+                  <Bell className="w-4 h-4 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
                   {(unreadSmartCount > 0 || notifiedWaitlistCount > 0) && (
                     <span
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-black text-white flex items-center justify-center shadow-xs bg-red-500 animate-pulse"
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-black text-white flex items-center justify-center shadow-xs bg-red-500 animate-pulse border border-white"
                     >
                       {unreadSmartCount + notifiedWaitlistCount}
                     </span>
@@ -390,11 +432,26 @@ export const Navbar: React.FC = () => {
                     </span>
                   </button>
                 )}
-                {adminAction}
+
+                {/* Botão de Área do Administrador com fundo amarelo igual ao botão flutuante */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('arena_admin')}
+                  aria-current={activeTab === 'arena_admin' ? 'page' : undefined}
+                  className={`inline-flex items-center justify-center p-2 rounded-full font-bold transition-all active:translate-y-0.5 cursor-pointer shadow-md shrink-0 ${
+                    activeTab === 'arena_admin'
+                      ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black border border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+                      : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 hover:border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                  }`}
+                  title="Área do Administrador"
+                  aria-label="Área do Administrador"
+                >
+                  <ShieldCheck size={18} className={activeTab === 'arena_admin' ? 'text-slate-950 stroke-[2.5]' : 'text-amber-300'} />
+                </button>
               </div>
             </div>
 
-            {/* Linha 2: Campo de Busca Desktop */}
+            {/* Linha 3: Campo de Busca Desktop */}
             <div className="w-full pb-1">
               <button
                 type="button"
@@ -434,13 +491,13 @@ export const Navbar: React.FC = () => {
             DIREITA: Perfil do usuário */}
         <div className="w-full flex items-center justify-between gap-2">
 
-          {/* ESQUERDA: LOGO (elevada com profundidade parecida com os botões, sem borda) */}
+          {/* ESQUERDA: LOGO AUMENTADA (ocupando o espaço com presença forte) */}
           <div className="flex items-center shrink-0">
             {isArenaWhiteLabelSite && tenant.logoUrl ? (
               <button
                 type="button"
                 onClick={() => setActiveTab('scheduler')}
-                className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden shadow-[0_4px_10px_rgba(0,0,0,0.6)] flex items-center justify-center cursor-pointer active:translate-y-0.5 transition-all"
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-center cursor-pointer active:translate-y-0.5 transition-all"
                 title={tenant.name}
               >
                 <img
@@ -456,15 +513,8 @@ export const Navbar: React.FC = () => {
                 className="cursor-pointer group flex items-center justify-center shrink-0 transition-transform active:scale-95"
                 title="SHARKSET Início"
               >
-                {/* Logo 2D elevada com profundidade estilo botão, sem borda */}
-                <div className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-transparent active:translate-y-0.5 transition-all">
-                  <img
-                    src="/brand/sharkset-logo-transparent.png"
-                    alt="SHARKSET"
-                    width={40}
-                    height={40}
-                    className="w-full h-full rounded-full object-contain shark-logo-elevated"
-                  />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-transparent active:translate-y-0.5 transition-all">
+                  <SharksetLogo variant="coin3d" customPx={54} />
                 </div>
               </button>
             )}
@@ -472,18 +522,34 @@ export const Navbar: React.FC = () => {
 
           {/* DIREITA: BOTÃO DE NOTIFICAÇÃO AO LADO DA FOTO DO USUÁRIO + BOLINHA ONLINE À FRENTE DA FOTO E DO ENTORNO */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* BOTÃO DE NOTIFICAÇÃO */}
+            {/* BOTÃO DA ÁREA DO ADMINISTRADOR COM FUNDO AMARELO */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('arena_admin')}
+              aria-current={activeTab === 'arena_admin' ? 'page' : undefined}
+              className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 shrink-0 shadow-xs border ${
+                activeTab === 'arena_admin'
+                  ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
+                  : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.2)]'
+              }`}
+              title="Área do Administrador"
+              aria-label="Área do Administrador"
+            >
+              <ShieldCheck className={`w-4 h-4 ${activeTab === 'arena_admin' ? 'text-slate-950 stroke-[2.5]' : 'text-amber-300'}`} />
+            </button>
+
+            {/* BOTÃO DE NOTIFICAÇÃO COM COR BEM CHAMATIVA (FUCHSIA/ROXO VIBRANTE) */}
             <button
               type="button"
               onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
-              className="relative p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 shadow-xs cursor-pointer transition-all active:scale-95 shrink-0"
+              className="relative p-2 rounded-xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white border border-fuchsia-300/80 shadow-[0_0_14px_rgba(217,70,239,0.55)] cursor-pointer transition-all active:scale-95 shrink-0"
               title="Alertas e Notificações"
               aria-label="Notificações"
             >
-              <Bell className="w-4 h-4 text-slate-200" />
+              <Bell className="w-4 h-4 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
               {(unreadSmartCount > 0 || notifiedWaitlistCount > 0) && (
                 <span
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-black text-white bg-[#FF6B00] border border-[#030B17] flex items-center justify-center shadow-xs"
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-black text-white bg-red-500 border border-white flex items-center justify-center shadow-xs animate-pulse"
                 >
                   {unreadSmartCount + notifiedWaitlistCount}
                 </span>
@@ -528,12 +594,14 @@ export const Navbar: React.FC = () => {
                 />
               </div>
             )}
-            {adminAction}
           </div>
 
         </div>
 
-        <div className="flex justify-center w-full">{liveActions}</div>
+        <div className="w-full flex flex-col gap-2">
+          <FreeSlotsNewsTicker onSlotClick={(item) => setSelectedSlotModal(item)} variant="topbar" />
+          <div className="flex justify-center w-full">{liveButtons}</div>
+        </div>
 
         {/* LINHA 2: BOTÕES SEMPRE A MOSTRA (SEM ROLAR!)
             Grid responsivo: 3 colunas x 2 linhas em celulares / 6 colunas em tablets.
@@ -569,9 +637,9 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     {item.isLive ? (
-                      <Radio size={18} className="navbar-live-icon" aria-hidden="true" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse shrink-0" />
                     ) : (
-                      <Icon size={13} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                      <Icon size={18} isActive={isActive} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
                     )}
                     <span className="truncate">{item.label}</span>
                   </button>
@@ -593,7 +661,7 @@ export const Navbar: React.FC = () => {
                         : 'text-white bg-[#052445]/90 hover:bg-[#083566] border-cyan-500/30'
                     }`}
                   >
-                    <Icon size={13} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                    <Icon size={18} isActive={isActive} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
                     <span className="truncate">{item.label}</span>
                   </button>
                 );
@@ -621,6 +689,22 @@ export const Navbar: React.FC = () => {
       <UserProfileModal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
+      />
+
+      <TopBarSlotDetailsModal
+        isOpen={Boolean(selectedSlotModal)}
+        onClose={() => setSelectedSlotModal(null)}
+        arena={selectedSlotModal?.arena || null}
+        court={selectedSlotModal?.court || null}
+        slot={selectedSlotModal?.slot || null}
+        distanceKm={selectedSlotModal?.distanceKm}
+        onSelectBooking={handleSelectBookingFromModal}
+        onGoToArena={handleGoToArenaFromModal}
+      />
+
+      <QuickBookingPaymentModal
+        slotData={checkoutSlotData}
+        onClose={() => setCheckoutSlotData(null)}
       />
     </header>
   );
