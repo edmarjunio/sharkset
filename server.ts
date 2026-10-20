@@ -7,6 +7,7 @@ import { registerInactivityRoutes } from './server/inactivity';
 import { registerBroadcastRoutes } from './server/broadcasts';
 import { registerBookingRoutes } from './server/bookings';
 import { registerLivekitProxy } from './server/livekitProxy';
+import { registerWhatsAppRoutes } from './server/whatsapp';
 
 interface LiveMatchPayload {
   matchId: string;
@@ -22,7 +23,7 @@ async function startServer() {
   const app = express();
   const port = Number(process.env.PORT || 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error('PORT deve ser um número inteiro entre 1 e 65535.');
+    throw new Error('PORT deve ser um nÃºmero inteiro entre 1 e 65535.');
   }
   const httpServer = createServer(app);
   let vite: Awaited<ReturnType<typeof createViteServer>> | undefined;
@@ -39,6 +40,7 @@ async function startServer() {
   registerBroadcastRoutes(app);
   registerBookingRoutes(app);
   registerLivekitProxy(app);
+  registerWhatsAppRoutes(app);
 
   // Authoritative in-memory store for real-time live matches + connected SSE clients
   const liveMatchesState = new Map<string, LiveMatchPayload>();
@@ -149,17 +151,17 @@ async function startServer() {
       httpServer.once('error', reject);
       httpServer.listen(port, '0.0.0.0', resolve);
     });
-    console.log(`SHARKSET disponível em http://localhost:${port}`);
+    console.log(`SHARKSET disponÃ­vel em http://localhost:${port}`);
   } catch (error) {
     await vite?.close();
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
-      throw new Error(`A porta ${port} já está ocupada. Encerre a outra instância do SHARKSET ou configure PORT no .env.`);
+      throw new Error(`A porta ${port} jÃ¡ estÃ¡ ocupada. Encerre a outra instÃ¢ncia do SHARKSET ou configure PORT no .env.`);
     }
     throw error;
   }
 }
 
 startServer().catch(error => {
-  console.error(error instanceof Error ? error.message : 'Não foi possível iniciar o SHARKSET.');
+  console.error(error instanceof Error ? error.message : 'NÃ£o foi possÃ­vel iniciar o SHARKSET.');
   process.exitCode = 1;
 });

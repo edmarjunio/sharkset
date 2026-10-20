@@ -82,6 +82,10 @@ import { auth, getUserProfileFromFirestore, persistUserProfileToFirestore } from
 import { onAuthStateChanged } from 'firebase/auth';
 import { checkPlayerInactivity } from '../services/inactivityClient';
 import { applyRankedActivity, resetInactiveProgress } from '../services/rankingActivity';
+import {
+  sendTournamentStartWhatsAppAlert,
+  sendMatchResultWhatsAppAlert,
+} from '../services/whatsappNotificationService';
 
 export type MainTab =
   | 'home'
@@ -1659,6 +1663,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         recipientPhone: userPair?.phone || userProfile.phone,
       });
       useSharkStore.getState().pushSmartNotification(startNotif);
+
+      sendTournamentStartWhatsAppAlert({
+        tournament: tourn,
+        pairs: eligiblePairs,
+        arenaName: tenant.name || tourn.location,
+      }).catch(() => {});
     }
 
     return withReferee;
@@ -1976,13 +1986,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           recipientPhone: winnerTeam.phone || userProfile.phone,
         });
         useSharkStore.getState().pushSmartNotification(resultNotif);
+
+        sendMatchResultWhatsAppAlert({
+          tournamentId,
+          tournamentName: tourn?.name || 'Torneio Oficial SHARK SET',
+          match: latestMatch,
+          winnerTeam,
+          loserTeam,
+          scoreSummary,
+        }).catch(() => {});
       }
     }
   };
 
   const handleAdvanceMatch = (matchId: string, winningTeam: 1 | 2, score1: number, score2: number) => {
     const target = tournamentMatches.find(match => match.id === matchId);
-    if (!target) throw new Error('Partida nÃ£o encontrada.');
+    if (!target) throw new Error('Partida não encontrada.');
     const matches = tournamentMatches.filter(match => match.tournamentId === target.tournamentId);
     applyTournamentEdit(target.tournamentId, advanceWinner(matches, matchId, winningTeam, score1, score2));
   };

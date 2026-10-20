@@ -298,10 +298,10 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     catch (error) { triggerToast(error instanceof Error ? error.message : 'Falha ao gerar tabela.'); return; }
     setManualKnockoutToggle(null);
     setShowStartDrawModal(false);
-    triggerToast(
+    toast.success(
       drawMode === 'random'
-        ? `Torneio iniciado! Tabela gerada com Sorteio Aleatório para ${presentPairsInTourn.length} duplas presentes!`
-        : `Torneio iniciado! Tabela gerada com Alocação Manual nas posições escolhidas para ${presentPairsInTourn.length} duplas presentes!`
+        ? `Torneio iniciado! Tabela gerada e alertas WhatsApp disparados para as ${presentPairsInTourn.length} duplas!`
+        : `Torneio iniciado! Tabela gerada com alocação manual e alertas WhatsApp disparados!`
     );
   };
 
