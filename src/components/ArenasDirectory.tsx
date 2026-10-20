@@ -9,7 +9,14 @@ import { SportType, TenantConfig } from '../types';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
 import { FreeSlotsDateTimeFilter } from './FreeSlotsDateTimeFilter';
 import { ARENA_BRAND_PRESETS } from '../services/logoPaletteExtractor';
-import { calculateHaversineDistance, GeoCoordinates, DEFAULT_BASE_COORDINATES } from '../utils/geoUtils';
+import {
+  calculateHaversineDistanceKm,
+  calculateArenaDistanceFromUser,
+  sortArenasByProximity,
+  filterAndSortArenasByProximity,
+  formatArenaDistanceKm,
+  isValidGeoCoordinates,
+} from '../services/geoService';
 import {
   clearRecentSearches,
   getPopularArenaSuggestions,
@@ -68,48 +75,19 @@ export const ArenasDirectory: React.FC = () => {
     volei_praia: 'Vôlei de Praia',
   };
 
-  // Compute calculated distance for each arena using browser GPS if available, with fallback to reference distanceKm
+  // Compute calculated distance for each arena using geoService utilities (closest first)
   const arenasWithCalculatedDistance = useMemo(() => {
-    return scopedArenas.map((arena) => {
-      let distanceKm = Number.isFinite(arena.distanceKm) ? arena.distanceKm : Infinity;
-      if (validCoordinates(userCoords) && validCoordinates({ lat: arena.lat!, lng: arena.lng! })) {
-        distanceKm = calculateHaversineDistance(
-          userCoords.lat,
-          userCoords.lng,
-          arena.lat!,
-          arena.lng!
-        );
-      }
-      return {
-        ...arena,
-        calculatedDistanceKm: distanceKm,
-      };
-    });
+    return sortArenasByProximity(scopedArenas, userCoords);
   }, [scopedArenas, userCoords]);
 
-  // Filter arenas by radius, sport, and search query
+  // Filter arenas by sport and search query, preserving proximity ordering
   const filteredArenas = useMemo(() => {
-    return arenasWithCalculatedDistance
-      .filter((arena) => {
-
-
-        if (selectedSport !== 'all') {
-          const hasSport = arena.courts.some((c) => c.sports.includes(selectedSport));
-          if (!hasSport) return false;
-        }
-
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchName = arena.name.toLowerCase().includes(q);
-          const matchCity = arena.city.toLowerCase().includes(q);
-          const matchAddress = arena.address.toLowerCase().includes(q);
-          if (!matchName && !matchCity && !matchAddress) return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => a.calculatedDistanceKm - b.calculatedDistanceKm);
-  }, [arenasWithCalculatedDistance, selectedSport, searchQuery]);
+    return filterAndSortArenasByProximity(scopedArenas, {
+      userCoords,
+      sport: selectedSport,
+      searchQuery,
+    });
+  }, [scopedArenas, userCoords, selectedSport, searchQuery]);
 
   // Enter selected Arena
   const handleSelectArena = (
