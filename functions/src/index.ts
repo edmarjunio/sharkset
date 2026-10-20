@@ -13,7 +13,7 @@ const apiSecret = defineSecret('LIVEKIT_API_SECRET');
 const serverUrl = defineSecret('LIVEKIT_URL');
 // Keep this default aligned with firebase-applet-config.json and firebase.json.
 const firestoreDatabaseId = defineString('FIRESTORE_DATABASE_ID', {
-  default: 'ai-studio-izibolaarenabeac-fbe2fcd6-71ad-48a2-8b43-55c4f4c3b2c2',
+  default: '(default)',
 });
 // A standard LiveKit JWT discloses its API-key identifier as `iss`. Explicit acceptance is required.
 const allowIssuerDisclosure = defineBoolean('LIVEKIT_ALLOW_JWT_ISSUER_DISCLOSURE', { default: false });
