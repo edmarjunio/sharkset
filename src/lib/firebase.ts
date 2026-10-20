@@ -301,13 +301,13 @@ export async function fetchTopAthletesFromFirestore(
   limitCount = 50
 ): Promise<AthleteProfile[]> {
   const currentUser = auth.currentUser;
+  if (!currentUser) {
+    return [];
+  }
   const path = 'athletes_public';
   try {
     const collRef = collection(db, path);
-    // If user is authenticated, query their owned athletes or collection
-    const q = currentUser
-      ? query(collRef, where('ownerId', '==', currentUser.uid), limit(limitCount))
-      : query(collRef, limit(limitCount));
+    const q = query(collRef, where('ownerId', '==', currentUser.uid), limit(limitCount));
 
     const snap = await getDocs(q);
     if (snap.empty) {
