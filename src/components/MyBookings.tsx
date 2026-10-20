@@ -85,12 +85,37 @@ export const MyBookings: React.FC = () => {
   };
 
   // Client's athlete ranking record
-  const myAthleteProfile = useMemo(() => {
-    return (
-      athletes.find((a) => a.name.toLowerCase() === userProfile.name.toLowerCase()) ||
-      athletes[0]
-    );
-  }, [athletes, userProfile.name]);
+  const myAthleteProfile: AthleteProfile = useMemo(() => {
+    const found = athletes.find((a) => a.name.toLowerCase() === userProfile.name.toLowerCase()) || athletes[0];
+    if (found) return found;
+
+    return {
+      id: 'current-user-profile',
+      name: userProfile.name || 'Atleta',
+      phone: userProfile.phone || '',
+      level: userProfile.level || 'iniciante',
+      points: 0,
+      wins: 0,
+      matchesPlayed: 0,
+      titlesCount: 0,
+      experienceCategory: 'amador',
+      country: 'Brasil',
+      state: 'GO',
+      city: 'Mineiros',
+      arenaId: tenant?.id || '',
+      arenaName: tenant?.name || '',
+      bio: '',
+      achievements: [],
+      mediaGallery: [],
+      stats: {
+        aces: 0,
+        errors: 0,
+        sharkAttacks: 0,
+        pingoPoints: 0,
+        defenses: 0,
+      },
+    };
+  }, [athletes, userProfile, tenant]);
 
   const [bioInput, setBioInput] = useState(myAthleteProfile?.bio || '');
 
@@ -1009,7 +1034,7 @@ export const MyBookings: React.FC = () => {
         <div className="space-y-3">
           {bookings.map((booking) => {
             const isCancelled = booking.status === 'cancelled';
-            const waLink = generateBookingWhatsAppLink(booking, tenant.whatsapp, booking.arenaName || tenant.name);
+            const waLink = generateBookingWhatsAppLink(booking, tenant?.whatsapp, booking.arenaName || tenant?.name);
 
             const waitingForThisBooking = waitlist
               .filter(

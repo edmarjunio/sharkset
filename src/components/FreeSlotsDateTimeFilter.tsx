@@ -81,7 +81,7 @@ export function FreeSlotsDateTimeFilter({ userCoords, className = '', defaultSpo
   const badRange = !!from && !!to && minutes(from) >= minutes(to);
   return <>
     {arenas.map(({ arena }) => <ArenaSubscription key={arena.id + ':' + date} arena={arena} date={date} receive={receive} />)}
-    {(!homeTop || activeTab === 'home') && <section ref={section} data-nearby-availability className={'max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 ' + className} aria-label="Horários livres nas próximas horas">
+    {(!homeTop || activeTab === 'home') && arenas.length > 0 && <section ref={section} data-nearby-availability className={'max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 ' + className} aria-label="Horários livres nas próximas horas">
       <div className="vacancy-promo rounded-3xl border border-cyan-400/50 bg-[#041529] p-4 sm:p-5 text-white space-y-3">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
           <h2 className="flex items-center gap-2 text-sm sm:text-base font-black uppercase text-amber-300">

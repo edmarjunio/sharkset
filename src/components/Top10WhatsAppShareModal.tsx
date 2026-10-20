@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Share2, Download, Copy, X, MessageCircle } from 'lucide-react';
 import type { AthleteProfile, AthleteLevel, RankingScope } from '../types';
-import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
+import { ATHLETE_LEVEL_LABELS, formatSharksetSince } from '../services/rankingValidator';
 import { lockImmersiveScroll } from '../services/fullscreen';
 
 interface Props {
@@ -43,13 +43,13 @@ export const Top10WhatsAppShareModal: React.FC<Props> = ({ isOpen, onClose, topA
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error('Não foi possível gerar a imagem.');
         ctx.fillStyle = '#04182b'; ctx.fillRect(0, 0, 1080, 1350);
-        ctx.drawImage(logo, 52, 38, 112, 112);
-        ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff'; ctx.font = 'bold 44px sans-serif';
-        ctx.fillText('TOP 10 DO RANKING', 192, 90);
-        ctx.fillStyle = '#94a3b8'; ctx.font = '23px sans-serif'; ctx.fillText(subtitle, 192, 132, 820);
+        ctx.drawImage(logo, 52, 28, 100, 100);
+        ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff'; ctx.font = 'bold 40px sans-serif';
+        ctx.fillText('TOP 10 DO RANKING', 175, 75);
+        ctx.fillStyle = '#94a3b8'; ctx.font = '21px sans-serif'; ctx.fillText(subtitle, 175, 112, 850);
         const fit = (value: string, width: number) => { let text = value; while (ctx.measureText(text).width > width && text.length > 1) text = text.slice(0, -2) + '…'; return text; };
         topAthletes.slice(0, 10).forEach((athlete, index) => {
-          const y = 190 + index * 95;
+          const y = 155 + index * 98;
           // Card background with podium distinction: 1º Ouro, 2º Prata, 3º Bronze
           if (index === 0) {
             ctx.fillStyle = '#2a210d'; // Warm gold dark tint
@@ -61,7 +61,7 @@ export const Top10WhatsAppShareModal: React.FC<Props> = ({ isOpen, onClose, topA
             ctx.fillStyle = '#092338';
           }
           ctx.beginPath();
-          ctx.roundRect(48, y, 984, 84, 12);
+          ctx.roundRect(48, y, 984, 92, 14);
           ctx.fill();
 
           // Stroke border for top 3
@@ -82,32 +82,56 @@ export const Top10WhatsAppShareModal: React.FC<Props> = ({ isOpen, onClose, topA
           // Rank Number & Badge
           const rankColors = ['#fbbf24', '#e2e8f0', '#f59e0b', '#94a3b8'];
           ctx.fillStyle = rankColors[Math.min(index, 3)];
-          ctx.font = 'bold 30px sans-serif';
-          ctx.fillText(String(index + 1) + 'º', 70, y + 52);
+          ctx.font = 'bold 28px sans-serif';
+          ctx.fillText(String(index + 1) + 'º', 72, y + 54);
 
-          // Name
+          // Calculations: V/D, WinRate, Cidade-UF, Categoria, Desde
+          const matches = athlete.matchesPlayed || 0;
+          const wins = athlete.wins || 0;
+          const losses = Math.max(0, matches - wins);
+          const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
+          const cityUf = `${(athlete.city || 'Mineiros').split(' - ')[0]} - ${athlete.state || 'GO'}`;
+          const catLabel = (ATHLETE_LEVEL_LABELS[athlete.level] || athlete.level).toUpperCase();
+          const since = formatSharksetSince(athlete.createdAt);
+
+          // Row 1: Athlete Name + Categoria Tag
           ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 27px sans-serif';
-          ctx.fillText(fit(athlete.name, 620), 140, y + 35);
+          ctx.font = 'bold 23px sans-serif';
+          const nameText = fit(athlete.name, 450);
+          ctx.fillText(nameText, 135, y + 32);
+          const nameWidth = ctx.measureText(nameText).width;
 
-          // Category & Titles
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 15px sans-serif';
+          ctx.fillText('· ' + catLabel, 135 + nameWidth + 10, y + 32);
+
+          // Row 2: Vitória/Derrota, WinRate, Cidade-UF
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = '16px sans-serif';
+          ctx.fillText(`V/D: ${wins}V - ${losses}D   ·   WinRate: ${winRate}%   ·   📍 ${cityUf}`, 135, y + 57);
+
+          // Row 3: Joga no SHARKSET desde:
           ctx.fillStyle = '#94a3b8';
-          ctx.font = '20px sans-serif';
-          const titlesStr = (athlete.titlesCount || 0) > 0 ? ` · 🏆 ${athlete.titlesCount}` : '';
-          ctx.fillText(ATHLETE_LEVEL_LABELS[athlete.level] + titlesStr, 140, y + 64);
+          ctx.font = '14px sans-serif';
+          ctx.fillText(`🗓️ Joga no SHARKSET desde: ${since}`, 135, y + 79);
 
-          // Points
+          // Right Column: Points and WR badge
           ctx.textAlign = 'right';
           ctx.fillStyle = index === 0 ? '#fbbf24' : '#67e8f9';
-          ctx.font = 'bold 28px sans-serif';
-          ctx.fillText((athlete.points || 0).toLocaleString('pt-BR') + ' pts', 1000, y + 52);
+          ctx.font = 'bold 26px sans-serif';
+          ctx.fillText((athlete.points || 0).toLocaleString('pt-BR') + ' pts', 1000, y + 42);
+
+          ctx.fillStyle = winRate >= 60 ? '#34d399' : '#94a3b8';
+          ctx.font = 'bold 16px sans-serif';
+          const titlesStr = (athlete.titlesCount || 0) > 0 ? ` 🏆 ${athlete.titlesCount}` : '';
+          ctx.fillText(`${winRate}% WR${titlesStr}`, 1000, y + 70);
           ctx.textAlign = 'left';
         });
         if (!topAthletes.length) { ctx.fillStyle = '#94a3b8'; ctx.font = '28px sans-serif'; ctx.fillText('Nenhum atleta neste filtro.', 60, 250); }
-        ctx.strokeStyle = '#284359'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(48, 1170, 984, 100, 12); ctx.stroke();
-        ctx.textAlign = 'center'; ctx.fillStyle = '#94a3b8'; ctx.font = '18px sans-serif'; ctx.fillText('PATROCINADOR OFICIAL DO APP', 540, 1205);
-        ctx.fillStyle = '#cbd5e1'; ctx.font = '24px sans-serif'; ctx.fillText('Espaço reservado para sua marca', 540, 1244);
-        ctx.fillStyle = '#64748b'; ctx.font = '18px sans-serif'; ctx.fillText(window.location.host, 540, 1310);
+        ctx.strokeStyle = '#284359'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(48, 1150, 984, 95, 12); ctx.stroke();
+        ctx.textAlign = 'center'; ctx.fillStyle = '#94a3b8'; ctx.font = '18px sans-serif'; ctx.fillText('PATROCINADOR OFICIAL DO APP', 540, 1185);
+        ctx.fillStyle = '#cbd5e1'; ctx.font = '24px sans-serif'; ctx.fillText('Espaço reservado para sua marca', 540, 1222);
+        ctx.fillStyle = '#64748b'; ctx.font = '18px sans-serif'; ctx.fillText(window.location.host, 540, 1290);
         if (!cancelled) setPreview(canvas.toDataURL('image/png'));
       } catch { if (!cancelled) setStatus('Não foi possível gerar a imagem. Feche e tente novamente.'); }
     }
@@ -117,7 +141,28 @@ export const Top10WhatsAppShareModal: React.FC<Props> = ({ isOpen, onClose, topA
 
   if (!isOpen) return null;
   function message() {
-    return ['*Top 10 · Ranking Sharkset*', subtitle, '', ...topAthletes.slice(0, 10).map((athlete, i) => `${i + 1}. ${athlete.name} — ${athlete.points || 0} pts · ${ATHLETE_LEVEL_LABELS[athlete.level]}`), '', window.location.origin].join('\n');
+    return [
+      '🦈 *TOP 10 · RANKING SHARKSET*',
+      subtitle,
+      '────────────────────────────',
+      ...topAthletes.slice(0, 10).map((athlete, i) => {
+        const matches = athlete.matchesPlayed || 0;
+        const wins = athlete.wins || 0;
+        const losses = Math.max(0, matches - wins);
+        const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
+        const cityUf = `${(athlete.city || 'Mineiros').split(' - ')[0]} - ${athlete.state || 'GO'}`;
+        const cat = ATHLETE_LEVEL_LABELS[athlete.level];
+        const since = formatSharksetSince(athlete.createdAt);
+        return [
+          `*${i + 1}º ${athlete.name.toUpperCase()}* — *${(athlete.points || 0).toLocaleString('pt-BR')} pts*`,
+          `   🏷️ Categoria: ${cat} · 📍 ${cityUf}`,
+          `   ⚔️ V/D: ${wins}V - ${losses}D | 🎯 WinRate: ${winRate}%`,
+          `   🗓️ Joga no SHARKSET desde: ${since}`,
+        ].join('\n');
+      }),
+      '────────────────────────────',
+      `📲 Acompanhe ao vivo em: ${window.location.origin}`,
+    ].join('\n');
   }
   function download() {
     const link = document.createElement('a'); link.download = `sharkset_top10_${category}_${scope}.png`; link.href = preview; link.click();

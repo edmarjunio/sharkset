@@ -1,3 +1,4 @@
+import { livekitApiPath } from '../services/livekitApi';
 import { LocationScopeFilter } from './LocationScopeFilter';
 import { useDirectoryScope } from '../store/useDirectoryScope';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -30,7 +31,7 @@ export function LiveDirectory({ compact = false }: { compact?: boolean }) {
       if (filter.mode === 'city') { params.set('city', filter.city); if (filter.state) params.set('state', filter.state); }
       if (filter.mode === 'nearby' && coords) { params.set('lat', String(coords.lat)); params.set('lng', String(coords.lng)); }
       if (after) params.set('cursor', after);
-      const response = await fetch('/api/broadcasts?' + params, { signal: controller.signal });
+      const response = await fetch((import.meta.env.VITE_LIVEKIT_ENABLED === 'true' ? livekitApiPath('directory') : '/api/broadcasts') + '?' + params, { signal: controller.signal });
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         if (version === generation.current) {

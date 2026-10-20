@@ -82,7 +82,7 @@ export function registerBroadcastRoutes(app: Express, getDatabase = adminDatabas
       await db.runTransaction(async transaction => {
         const ref = db.collection('broadcasts').doc(id);
         const previous = (await transaction.get(ref)).data();
-        if (!previous || previous.ownerId !== user.uid) throw new Error('FORBIDDEN');
+        if (!previous || previous.provider === 'livekit' || previous.ownerId !== user.uid) throw new Error('FORBIDDEN');
         if (previous.revision !== revision) throw new Error('CONFLICT');
         const next = { ...previous, ...patch };
         if (!validScoreboard(next) || typeof next.isLive !== 'boolean' ||

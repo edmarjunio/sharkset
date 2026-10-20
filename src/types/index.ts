@@ -93,6 +93,7 @@ export interface AthleteProfile {
   highestHistoricalLevel?: AthleteLevel; // Passaporte Único: impede descer de categoria em outra cidade
   autoPromotedFrom?: AthleteLevel;       // Registro de subida automática por excesso de títulos/pontos
   tournamentsPlayed?: number;            // Total de torneios oficiais disputados
+  createdAt?: string;                    // Data de entrada no SHARK SET
 }
 
 export interface RankingMatchLog {

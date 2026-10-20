@@ -38,6 +38,12 @@ export const EMPTY_TENANT: TenantConfig = {
   courts: [],
   operatingHours: { open: '06:00', close: '23:00' },
   amenities: [],
+  tagline: '',
+  rating: 0,
+  whatsapp: '',
+  primaryColor: '',
+  accentColor: '',
+  sandBg: ''
 };
 
 import {
@@ -336,17 +342,10 @@ const STORAGE_KEYS = {
   ATHLETES: 'sharkset_v2_athletes',
   RANKING_LOGS: 'sharkset_v1_ranking_logs',
   CLASS_STUDENTS: 'sharkset_v2_class_students',
-  USER_PROFILE: 'sharkset_v1_user_profile',
+  USER_PROFILE: 'sharkset_prod_user_profile',
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      useSharkStore.getState().setFirebaseUserEmail(user?.email || null);
-      if (user) void checkPlayerInactivity().catch(error => console.warn(error.message));
-    });
-    return () => unsubscribe();
-  }, []);
   // Arenas state
   const [arenasMap, setArenasMap] = useState<Record<string, TenantConfig>>(() => {
     try {
@@ -399,9 +398,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [userProfile, setUserProfileState] = useState<{ name: string; phone: string; level: AthleteLevel }>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-      return stored ? JSON.parse(stored) : { name: 'Edmar Júnio', phone: '64999881122', level: 'serie_c' };
+      return stored ? JSON.parse(stored) : { name: '', phone: '', level: 'iniciante' };
     } catch {
-      return { name: 'Edmar Júnio', phone: '64999881122', level: 'serie_c' };
+      return { name: '', phone: '', level: 'iniciante' };
     }
   });
 
@@ -413,6 +412,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       // ignore
     }
   };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      useSharkStore.getState().setFirebaseUserEmail(user?.email || null);
+      if (user) {
+        setUserProfileState((prev) => {
+          const updated = {
+            name: user.displayName || prev.name || user.email?.split('@')[0] || 'Atleta',
+            phone: user.phoneNumber || prev.phone || '',
+            level: prev.level || 'iniciante',
+          };
+          try {
+            localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(updated));
+          } catch {
+            // ignore
+          }
+          return updated;
+        });
+        void checkPlayerInactivity().catch((error) => console.warn(error.message));
+      } else {
+        setUserProfileState({ name: '', phone: '', level: 'iniciante' });
+        try {
+          localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
+        } catch {
+          // ignore
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
 
   const resetAllDataToCleanSlate = () => {
@@ -1593,6 +1622,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       city: data.city,
       arenaId: data.arenaId || tenant.id,
       arenaName: data.arenaName || tenant.name,
+      createdAt: new Date().toISOString(),
     };
     setAthletes((prev) => [newAth, ...prev]);
   };

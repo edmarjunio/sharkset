@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useApp, ArenaSubTab } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
 import { SharksetLogo } from './SharksetLogo';
+import { UserProfileModal } from './UserProfileModal';
+import { auth } from '../lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import {
   Search,
   Bell,
@@ -9,6 +12,7 @@ import {
   MapPin,
   ArrowLeft,
   PlusCircle,
+  LogIn,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -33,6 +37,13 @@ export const Navbar: React.FC = () => {
   } = useSharkStore();
 
   const [scrollY, setScrollY] = useState<number>(0);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setFirebaseUser(u));
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -334,26 +345,42 @@ export const Navbar: React.FC = () => {
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('my_bookings')}
-                  className="relative flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 transition-all cursor-pointer shrink-0"
-                  title={`Perfil de ${userProfile.name} (${activeBookingsCount} reservas)`}
-                >
-                  <div className="relative shrink-0">
-                    <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white/80 shadow-xs">
-                      <img
-                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
-                        alt={userProfile.name}
-                        className="w-full h-full object-cover"
-                      />
+                {!firebaseUser ? (
+                  <button
+                    type="button"
+                    onClick={() => setProfileModalOpen(true)}
+                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-500/40 text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95"
+                    title="Entrar com Google"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Entrar com Google</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setProfileModalOpen(true)}
+                    className="relative flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 transition-all cursor-pointer shrink-0"
+                    title={`Perfil de ${firebaseUser.displayName || userProfile.name || 'Atleta'}`}
+                  >
+                    <div className="relative shrink-0">
+                      <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white/80 shadow-xs">
+                        {firebaseUser.photoURL ? (
+                          <img
+                            src={firebaseUser.photoURL}
+                            alt={firebaseUser.displayName || userProfile.name || 'Atleta'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span>{(firebaseUser.displayName || userProfile.name || 'A').charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-slate-900 shadow-[0_0_8px_rgba(16,185,129,0.95)] z-20 pointer-events-none" />
                     </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-slate-900 shadow-[0_0_8px_rgba(16,185,129,0.95)] z-20 pointer-events-none" />
-                  </div>
-                  <span className="text-xs font-black text-white max-w-[80px] truncate">
-                    {userProfile.name.split(' ')[0]}
-                  </span>
-                </button>
+                    <span className="text-xs font-black text-white max-w-[80px] truncate">
+                      {(firebaseUser.displayName || userProfile.name || 'Atleta').split(' ')[0]}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -453,26 +480,44 @@ export const Navbar: React.FC = () => {
               )}
             </button>
 
-            {/* FOTO DO USUÁRIO COM BOLINHA ONLINE À FRENTE DA FOTO E DO ENTORNO */}
-            <div className="relative shrink-0">
+            {/* BOTÃO DO USUÁRIO OU LOGIN COM GOOGLE */}
+            {!firebaseUser ? (
               <button
                 type="button"
-                onClick={() => setActiveTab('my_bookings')}
-                className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-slate-900 border-2 border-white/90 shadow-md block cursor-pointer active:scale-95 transition-transform"
-                title={`Perfil de ${userProfile.name} (${activeBookingsCount} reservas)`}
+                onClick={() => setProfileModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/40 text-xs font-black cursor-pointer active:scale-95 transition-all shrink-0"
+                title="Entrar com Google"
               >
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
-                  alt={userProfile.name}
-                  className="w-full h-full object-cover"
-                />
+                <LogIn className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Entrar</span>
               </button>
-              {/* Bolinha de usuário online NA FRENTE da foto e do entorno */}
-              <span
-                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#030B17] shadow-[0_0_8px_rgba(16,185,129,0.95)] z-20 pointer-events-none"
-                aria-label="Usuário online"
-              />
-            </div>
+            ) : (
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setProfileModalOpen(true)}
+                  className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-slate-900 border-2 border-white/90 shadow-md block cursor-pointer active:scale-95 transition-transform"
+                  title={`Perfil de ${firebaseUser.displayName || userProfile.name || 'Atleta'}`}
+                >
+                  {firebaseUser.photoURL ? (
+                    <img
+                      src={firebaseUser.photoURL}
+                      alt={firebaseUser.displayName || userProfile.name || 'Atleta'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white font-bold text-xs bg-slate-800">
+                      {(firebaseUser.displayName || userProfile.name || 'A').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </button>
+                {/* Bolinha de usuário online NA FRENTE da foto e do entorno */}
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#030B17] shadow-[0_0_8px_rgba(16,185,129,0.95)] z-20 pointer-events-none"
+                  aria-label="Usuário online"
+                />
+              </div>
+            )}
           </div>
 
         </div>
@@ -550,6 +595,11 @@ export const Navbar: React.FC = () => {
         </div>
 
       </div>
+
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
     </header>
   );
 };

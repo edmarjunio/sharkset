@@ -657,3 +657,19 @@ export function filterAndRankAthletesByScope(
   });
 }
 
+/**
+ * Formata a data de entrada do atleta na plataforma SHARK SET (ex: "Out/2026")
+ */
+export function formatSharksetSince(dateStr?: string): string {
+  if (!dateStr) return 'Out/2026';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Out/2026';
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return `${months[d.getMonth()]}/${d.getFullYear()}`;
+  } catch {
+    return 'Out/2026';
+  }
+}
+
+

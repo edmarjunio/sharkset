@@ -1,9 +1,11 @@
 import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { BroadcastOverlay, elapsedTime, type ScoreboardState } from './BroadcastOverlay';
 import { isYouTubeUrl, getYouTubeEmbedUrl } from '../utils/videoUtils';
+
+const ArenaLivePublisher = lazy(() => import('./ArenaLivePublisher').then(module => ({ default: module.ArenaLivePublisher })));
 
 interface Broadcast extends ScoreboardState {
   id: string; ownerId: string; title: string; team1: string; team2: string;
@@ -42,7 +44,7 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
     finally { setBusy(false); }
   }
   const canEdit = !broadcastId && broadcast?.ownerId === auth.currentUser?.uid;
-  return <section className="aquarium-glass rounded-2xl border border-sky-200 bg-white p-4 space-y-3 text-slate-900">
+  const externalPanel = <section className="aquarium-glass rounded-2xl border border-sky-200 bg-white p-4 space-y-3 text-slate-900">
     <h2 className="font-bold">{arenaId ? 'Transmissão da arena' : 'Transmissão livre'}</h2>
     <p className="text-sm text-slate-600">Sem reserva ou outros jogadores. Não vale pontos no ranking.</p>
     {!id && <button disabled={busy} onClick={() => save()} className="rounded-xl bg-[#0987CE] text-white px-4 py-3 font-bold">Criar transmissão</button>}
@@ -81,4 +83,8 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
       </fieldset>}
     </>}
   </section>;
+  return <>
+    {arenaId && !broadcastId && <Suspense fallback={<p role="status" className="p-4 text-slate-300">Preparando transmissão…</p>}><ArenaLivePublisher key={arenaId} arenaId={arenaId} /></Suspense>}
+    {arenaId && !broadcastId ? <details className="aquarium-glass rounded-2xl border border-slate-700 p-4"><summary className="cursor-pointer text-sm font-bold text-cyan-200">Vídeo externo (YouTube ou URL)</summary><div className="mt-3">{externalPanel}</div></details> : externalPanel}
+  </>;
 }

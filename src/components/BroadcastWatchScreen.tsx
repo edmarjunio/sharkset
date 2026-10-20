@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useReducer, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ArrowLeft, Maximize2, Minimize2, Pause, Play, Trophy, Volume2, VolumeX } from 'lucide-react';
 import { db } from '../lib/firebase';
@@ -12,7 +12,9 @@ import { BroadcastOverlay, isSemiOrFinalStage } from './BroadcastOverlay';
 import { isYouTubeUrl, getYouTubeEmbedUrl } from '../utils/videoUtils';
 import type { TeamPair } from '../types';
 
-interface PublishedVideo { title?: string; videoUrl?: string; isLive?: boolean; team1?: string; team2?: string; score1?: number; score2?: number }
+const LivekitViewer = lazy(() => import('./LivekitViewer').then(module => ({ default: module.LivekitViewer })));
+
+interface PublishedVideo { provider?: 'livekit'; arenaId?: string; liveExpiresAt?: number; title?: string; videoUrl?: string; isLive?: boolean; team1?: string; team2?: string; score1?: number; score2?: number }
 const noop = () => {};
 const pairName = (pair?: TeamPair) => pair ? [pair.player1, pair.player2 === 'Individual (1x1)' ? '' : pair.player2].filter(Boolean).join(' / ') : 'A definir';
 
@@ -30,6 +32,8 @@ function WatchScreen({ source }: { source: WatchSource }) {
   const linkedTournament = source.tournamentId || Object.entries(matchesByTournament).find(([, matches]) => publishedId && matches.some(item => item.linkedBroadcastId === publishedId))?.[0] || '';
   const [session, dispatch] = useReducer(watchSessionReducer, { view: 'video', tournamentId: linkedTournament });
   const [tableOpened, setTableOpened] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(timer); }, []);
   const [published, setPublished] = useState<PublishedVideo | null>(null);
   const [error, setError] = useState('');
   const [controls, setControls] = useState(true);
@@ -45,7 +49,9 @@ function WatchScreen({ source }: { source: WatchSource }) {
   const url = broadcast?.videoUrl || '';
   const isYouTube = isYouTubeUrl(url);
   const youTubeEmbedUrl = isYouTube ? getYouTubeEmbedUrl(url, { autoplay: true, muted }) : null;
-  const playable = Boolean(broadcast?.isLive && (isYouTube || /^https:\/\//i.test(url)));
+  const isLivekit = published?.provider === 'livekit';
+  const livekitPlayable = isLivekit && !!published?.arenaId && published?.isLive && (published.liveExpiresAt || 0) > now;
+  const playable = livekitPlayable || Boolean(broadcast?.isLive && (isYouTube || /^https:\/\//i.test(url)));
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -92,7 +98,7 @@ function WatchScreen({ source }: { source: WatchSource }) {
     try { if (video.current.paused) await video.current.play(); else video.current.pause(); }
     catch { setError('Não foi possível reproduzir o vídeo. Tente novamente.'); }
   }
-  const visibleControls = !fullscreen || controls || paused || !!error;
+  const visibleControls = !fullscreen || controls || (!isLivekit && paused) || !!error;
   return <ImmersiveSurface active>
     <div ref={screen} tabIndex={-1} className={`watch-screen ${fullscreen ? 'watch-screen-fullscreen' : ''}`} role="dialog" aria-modal="true" aria-label={title} onPointerMove={reveal} onPointerDown={reveal} onKeyDown={event => {
         reveal();
@@ -104,7 +110,7 @@ function WatchScreen({ source }: { source: WatchSource }) {
         }
       }}>
       <div className="watch-video" style={{ visibility: session.view === 'video' ? 'visible' : 'hidden' }} aria-hidden={session.view !== 'video'} inert={session.view !== 'video'}>
-        {playable ? (
+        {livekitPlayable ? <Suspense fallback={<div className="watch-empty">Conectando…</div>}><LivekitViewer arenaId={published!.arenaId!} muted={muted} /></Suspense> : playable ? (
           isYouTube && youTubeEmbedUrl ? (
             <iframe
               key={youTubeEmbedUrl}
@@ -161,7 +167,7 @@ function WatchScreen({ source }: { source: WatchSource }) {
         <div className={`watch-controls ${visibleControls ? '' : 'watch-controls-hidden'}`} onFocusCapture={event => { focused.current = event.target.matches(':focus-visible'); setControls(true); }} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) { focused.current = false; reveal(); } }}>
           {error && <p role="alert" className="watch-error">{error}</p>}
           <div className="flex items-center gap-2 flex-wrap">
-            <button disabled={!playable} onClick={togglePlay} className="watch-control" aria-label={paused ? 'Reproduzir' : 'Pausar'}>{paused ? <Play size={20} /> : <Pause size={20} />}</button>
+            <button disabled={!playable || isLivekit} onClick={togglePlay} className="watch-control" aria-label={paused ? 'Reproduzir' : 'Pausar'}>{paused ? <Play size={20} /> : <Pause size={20} />}</button>
             <button disabled={!playable} onClick={() => setMuted(value => !value)} className="watch-control" aria-label={muted ? 'Ativar áudio' : 'Silenciar'}>{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
             <div className="flex-1" />
             <button onClick={openTable} className="watch-control watch-table-shortcut"><Trophy size={18} /><span>Tabela ao vivo</span></button>

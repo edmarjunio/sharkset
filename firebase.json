@@ -27,5 +27,30 @@
         ]
       }
     ]
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "livekit",
+      "runtime": "nodejs22",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
+  "emulators": {
+    "functions": {
+      "host": "127.0.0.1",
+      "port": 5001
+    },
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9099
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8080
+    },
+    "singleProjectMode": true
   }
 }

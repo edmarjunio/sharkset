@@ -440,20 +440,36 @@ export const ArenasDirectory: React.FC = () => {
         })}
 
         {filteredArenas.length === 0 && (
-          <div className="aquarium-glass col-span-full bg-white border-2 border-slate-200 rounded-2xl p-12 text-center space-y-3">
-            <MapPin className="w-10 h-10 text-slate-400 mx-auto" />
-            <h3 className="text-base font-black text-slate-900">
-              Nenhuma arena encontrada para este local
+          <div className="aquarium-glass col-span-full bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-12 text-center space-y-4 text-white shadow-2xl">
+            <MapPin className="w-12 h-12 text-cyan-400 mx-auto" />
+            <h3 className="text-lg font-black text-white">
+              {availableTenants.length === 0
+                ? 'Nenhuma arena cadastrada ainda'
+                : 'Nenhuma arena encontrada para este local'}
             </h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Altere a cidade ou veja todas as arenas cadastradas.
+            <p className="text-xs text-slate-300 max-w-md mx-auto">
+              {availableTenants.length === 0
+                ? 'Você está em modo de produção 100% limpo! Cadastre a sua primeira arena oficial para liberar agendamentos, quadras e transmissões.'
+                : 'Altere a cidade no filtro acima ou veja todas as arenas cadastradas.'}
             </p>
-            <button
-              onClick={() => setLocationFilter({ ...locationFilter, mode: 'all' })}
-              className="mt-2 px-5 py-2.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer"
-            >
-              VER TODAS AS ARENAS NO SITE
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('saas_hub')}
+                className="px-6 py-3 text-xs font-black text-white bg-gradient-to-r from-[#FF6B00] to-[#FF8800] hover:brightness-110 rounded-xl transition-all cursor-pointer shadow-lg"
+              >
+                + Cadastrar Minha Arena Agora
+              </button>
+              {availableTenants.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setLocationFilter({ ...locationFilter, mode: 'all' })}
+                  className="px-5 py-2.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer"
+                >
+                  VER TODAS AS ARENAS NO SITE
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

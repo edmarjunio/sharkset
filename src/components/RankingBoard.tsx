@@ -12,6 +12,7 @@ import {
   calculateFutevoleiMatchPoints,
   extractAvailableRankingDimensions,
   filterAndRankAthletesByScope,
+  formatSharksetSince,
   getRankingPromotionSuggestion,
 } from '../services/rankingValidator';
 import { getInactivityDays, INACTIVITY_DAYS } from '../services/rankingActivity';
@@ -40,6 +41,7 @@ import {
   Flame,
   Star,
   Share2,
+  Calendar,
 } from 'lucide-react';
 
 interface RankingBoardProps {
@@ -541,9 +543,10 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                   <th className="py-3.5 px-4 w-16">#</th>
                   <th className="py-3.5 px-4">Atleta</th>
                   <th className="py-3.5 px-4">Categoria</th>
-                  <th className="py-3.5 px-4">Cidade / Arena</th>
-                  <th className="py-3.5 px-4 text-center">Jogos</th>
-                  <th className="py-3.5 px-4">Win Rate</th>
+                  <th className="py-3.5 px-4">Cidade - UF</th>
+                  <th className="py-3.5 px-4 text-center">Vitória / Derrota</th>
+                  <th className="py-3.5 px-4">WinRate</th>
+                  <th className="py-3.5 px-4">No SHARKSET desde</th>
                   <th className="py-3.5 px-4 text-right">Pts</th>
                   <th className="py-3.5 px-4 text-right">Ação</th>
                 </tr>
@@ -635,6 +638,10 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                             #{categoryRank} na categoria {ATHLETE_LEVEL_LABELS[athlete.level]}
                           </span>
 
+                          <span className="text-[10px] text-cyan-300 font-semibold bg-cyan-950/70 px-1.5 py-0.5 rounded border border-cyan-800/50">
+                            Joga no SHARKSET desde: {formatSharksetSince(athlete.createdAt)}
+                          </span>
+
                           {/* Activity / Inactivity Status */}
                           {isResetDue ? (
                             <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-950/80 text-rose-300 border border-rose-700/50">
@@ -680,30 +687,30 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                         </div>
                       </td>
 
-                      {/* City / Arena */}
+                      {/* Cidade - UF / Arena */}
                       <td className="py-3.5 px-4">
-                        <span className="font-bold text-slate-100 block">
-                          {athlete.arenaName || tenant.name}
-                        </span>
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 text-[#0987CE]" />
+                        <span className="text-[12px] text-slate-100 font-bold flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-[#0987CE] shrink-0" />
                           {(athlete.city || 'Mineiros').split(' - ')[0]} - {athlete.state || 'GO'}
                         </span>
+                        <span className="text-[11px] text-slate-400 block mt-0.5">
+                          {athlete.arenaName || tenant.name}
+                        </span>
                       </td>
 
-                      {/* Matches (W - L) */}
+                      {/* Vitória / Derrota */}
                       <td className="py-3.5 px-4 text-center">
-                        <span className="font-extrabold text-white text-sm block">
-                          {matchesPlayed}
-                        </span>
-                        <span className="text-[11px] text-slate-400">
-                          <strong className="text-emerald-400">{wins}V</strong> -{' '}
+                        <span className="text-xs font-black block">
+                          <strong className="text-emerald-400">{wins}V</strong> /{' '}
                           <strong className="text-rose-400">{losses}D</strong>
                         </span>
+                        <span className="text-[10px] text-slate-400">
+                          {matchesPlayed} jogo{matchesPlayed === 1 ? '' : 's'}
+                        </span>
                       </td>
 
-                      {/* Win Rate % with Visual Bar */}
-                      <td className="py-3.5 px-4 min-w-[140px]">
+                      {/* WinRate % with Visual Bar */}
+                      <td className="py-3.5 px-4 min-w-[130px]">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="font-extrabold text-white text-sm">
                             {winRateFormatted}%
@@ -736,6 +743,14 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
                             style={{ width: `${Math.min(100, Math.max(4, winRateNumber))}%` }}
                           />
                         </div>
+                      </td>
+
+                      {/* No SHARKSET desde */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span>{formatSharksetSince(athlete.createdAt)}</span>
+                        </span>
                       </td>
 
                       {/* Total Points */}
@@ -773,7 +788,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
 
                 {processedAthletes.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={9} className="py-12 text-center text-slate-400">
                       <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                       <p className="font-bold text-slate-200">
                         Nenhum atleta encontrado para esta seleção.
