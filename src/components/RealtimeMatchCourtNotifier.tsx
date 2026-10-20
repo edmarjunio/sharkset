@@ -3,8 +3,6 @@ import { useApp } from '../context/AppContext';
 import {
   auth,
   listenToPlayerNotifications,
-  notifyMatchScheduleEvent,
-  signInWithGooglePopup,
 } from '../lib/firebase';
 import {
   Bell,
@@ -37,7 +35,6 @@ export const RealtimeMatchCourtNotifier: React.FC = () => {
   const [historyCount, setHistoryCount] = useState<number>(0);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isListenerActive, setIsListenerActive] = useState<boolean>(false);
-  const [testStatus, setTestStatus] = useState<string | null>(null);
 
   const activeTourn = tournaments.find((t) => t.id === activeTournamentId) || tournaments[0];
 
@@ -117,34 +114,6 @@ export const RealtimeMatchCourtNotifier: React.FC = () => {
       authUnsub();
     };
   }, [soundEnabled]);
-
-  // Test triggers to simulate or test real-time match alert
-  const handleTriggerTestAlert = async (type: 'match_starting' | 'match_modified') => {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        await signInWithGooglePopup();
-      }
-
-      setTestStatus('Enviando alerta para o Firestore...');
-      const summary = await notifyMatchScheduleEvent({
-        matchNumber: 4,
-        courtName: 'Quadra 1 - Central',
-        scheduledTime: '15:15',
-        team1Names: 'Edmar Júnio & Lucas Mendes',
-        team2Names: 'Bruno & Gabriel',
-        tournamentName: activeTourn.name,
-        eventType: type,
-      });
-
-      setTestStatus(`✅ Alerta "${type === 'match_starting' ? 'Partida Chamada' : 'Horário Alterado'}" disparado no Firestore!`);
-      setTimeout(() => setTestStatus(null), 4000);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha ao disparar alerta de teste';
-      setTestStatus(`Aviso: ${msg}`);
-      setTimeout(() => setTestStatus(null), 5000);
-    }
-  };
 
   return (
     <>
@@ -266,28 +235,6 @@ export const RealtimeMatchCourtNotifier: React.FC = () => {
             </span>
           </div>
 
-          {/* Quick simulation buttons to easily verify real-time alerts */}
-          <div className="flex items-center gap-2">
-            {testStatus && <span className="text-[11px] text-amber-300 font-bold">{testStatus}</span>}
-
-            <button
-              type="button"
-              onClick={() => handleTriggerTestAlert('match_starting')}
-              className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/50 text-rose-300 font-extrabold text-[11px] cursor-pointer transition-colors"
-              title="Disparar simulação de chamada de partida no Firestore"
-            >
-              🚨 Simular Chamada de Partida
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTriggerTestAlert('match_modified')}
-              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-extrabold text-[11px] cursor-pointer transition-colors"
-              title="Disparar simulação de alteração de horário/quadra no Firestore"
-            >
-              ⚠️ Simular Alteração de Quadra
-            </button>
-          </div>
         </div>
       </div>
     </>

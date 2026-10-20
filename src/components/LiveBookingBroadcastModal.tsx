@@ -122,17 +122,15 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
   const liveState = activeBooking?.liveBroadcast || {
     isLive: false,
     streamTitle: streamTitleInput,
-    videoUrl:
-      'https://assets.mixkit.co/videos/preview/mixkit-men-playing-volleyball-on-the-beach-at-sunset-40246-large.mp4',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=900&q=80',
+    videoUrl: '',
+    thumbnailUrl: '',
     spectatorsCount: 0,
     score1: 0,
     score2: 0,
     targetPoints: 18,
     servingTeam: 1 as 1 | 2,
-    serverName: currentParticipants[0]?.name || 'Jogador 1',
-    startedAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    serverName: currentParticipants[0]?.athleteId ? currentParticipants[0].name : '',
+    startedAt: '',
     rankingPointsCredited: false,
     pointHistory: [],
     chatMessages: [],

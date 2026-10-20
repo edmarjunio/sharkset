@@ -19,7 +19,6 @@ export function ArenaScheduleModal({ arena, onClose, onViewArena, onSelect }: {
       <div className="flex gap-3"><button onClick={onViewArena} className="text-cyan-300">Ver Arena</button><button onClick={onClose} aria-label="Fechar agenda" className="rounded-xl border px-3 py-2">Fechar ×</button></div>
       <BookingDatePicker maxDate={maxDate} />
     </header>
-    {BOOKING_DEMO && <p className="mb-3 text-amber-300 text-sm">Demonstração: dados locais, sem reservas ou cobranças reais.</p>}
     <p className="text-xs text-slate-400 mb-3">Livre · Reservado · Aula · Bloqueado · Indisponível. Dados pessoais das reservas são privados.</p>
     {loading ? <p role="status">Consultando agenda…</p> : error ? <p role="alert">{error}</p> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {arena.courts.map(court => <section key={court.id} className="rounded-2xl border border-slate-700 p-3">

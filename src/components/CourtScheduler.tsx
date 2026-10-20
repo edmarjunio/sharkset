@@ -76,7 +76,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
   const {
     tenant,
     slots,
-    bookings: previewBookings,
+    bookings,
     waitlist,
     waitlistNotifications,
     joinWaitlist,
@@ -95,7 +95,6 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
     classStudents,
     enrollStudentInClass,
     toggleClassStudentPayment,
-    simulateStudentDueToday,
     notifyStudentTuitionDue,
     removeStudentFromClass,
     updateCourtConfig,
@@ -110,7 +109,6 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
     setActiveLiveBroadcastBookingId,
   } = useApp();
 
-  const bookings = BOOKING_DEMO ? previewBookings : [];
 
   const [showWhiteLabelModal, setShowWhiteLabelModal] = useState(false);
 
@@ -170,10 +168,10 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
   const [tournSport, setTournSport] = useState<SportType>('futevolei');
   const [tournCategory, setTournCategory] = useState<TournamentCategory>('iniciante_serie_c');
   const [tournSemiFormat, setTournSemiFormat] = useState<SemiFormat>('semi_direta');
-  const [tournDate, setTournDate] = useState('2026-10-24');
-  const [tournFee, setTournFee] = useState(120);
-  const [tournResponsible, setTournResponsible] = useState(userProfile.name);
-  const [tournResponsiblePhone, setTournResponsiblePhone] = useState(userProfile.phone);
+  const [tournDate, setTournDate] = useState('');
+  const [tournFee, setTournFee] = useState<number | ''>('');
+  const [tournResponsible, setTournResponsible] = useState('');
+  const [tournResponsiblePhone, setTournResponsiblePhone] = useState('');
 
   // Quick Online Tournament Registration & Payment Modal inside Arena
   const [registeringTournId, setRegisteringTournId] = useState<string | null>(null);
@@ -377,7 +375,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
     );
   };
 
-  // Cancel active booking directly from Waitlist modal to demonstrate automatic notification
+  // Online cancellation is unavailable until the arena confirmation API exists.
   const handleCancelCurrentSlotBooking = (bookingId: string) => {
     if (!BOOKING_DEMO) { triggerToast('Contate a arena para cancelar a reserva.'); return; }
     const notified = cancelBooking(bookingId);
@@ -449,25 +447,31 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
   };
 
   // Owner: Create Tournament
-  const handleCreateTournamentSubmit = (e: React.FormEvent) => {
+  const handleCreateTournamentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tournName.trim()) return;
+    if (!tournName.trim() || !tournDate || tournFee === '' || !tournResponsible.trim() || !tournResponsiblePhone.trim()) {
+      toast.error('Informe nome, data, taxa e contato real do responsável.');
+      return;
+    }
 
-    const created = createTournament({
-      name: tournName.trim(),
-      sport: tournSport,
-      category: tournCategory,
-      semiFormat: tournSemiFormat,
-      date: tournDate,
-      registrationFee: tournFee,
-      responsibleName: tournResponsible.trim() || 'Organizador',
-      responsiblePhone: tournResponsiblePhone.trim() || tenant.whatsapp,
-    });
-
-    setTournName('');
-    setShowCreateTournModal(false);
-    toast.success(`Torneio "${created.name}" criado com sucesso!`);
-    triggerToast(`Campeonato "${created.name}" criado e liberado para inscrições!`);
+    try {
+      const created = await createTournament({
+        name: tournName.trim(),
+        sport: tournSport,
+        category: tournCategory,
+        semiFormat: tournSemiFormat,
+        date: tournDate,
+        registrationFee: Number(tournFee),
+        responsibleName: tournResponsible.trim(),
+        responsiblePhone: tournResponsiblePhone.trim(),
+      });
+      setTournName('');
+      setShowCreateTournModal(false);
+      toast.success(`Torneio "${created.name}" salvo no Firestore.`);
+      triggerToast(`Campeonato "${created.name}" salvo no Firestore.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível salvar o torneio.');
+    }
   };
 
   // Client: Register & Pay for Tournament inside Arena
@@ -674,16 +678,11 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                   className="relative z-10 w-full h-full max-h-[250px] object-contain p-4 drop-shadow-2xl transition-transform duration-300 hover:scale-[1.03]"
                 />
               </>
-            ) : (
-              <img
-                src={
-                  tenant.imageUrl ||
-                  'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=1000&q=85'
-                }
+            ) : tenant.imageUrl ? <img
+                src={tenant.imageUrl}
                 alt={tenant.name}
                 className="w-full h-full object-cover opacity-85"
-              />
-            )}
+              /> : <div className="w-full h-full flex items-center justify-center text-slate-400">Sem imagem cadastrada</div>}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-slate-950/40 pointer-events-none" />
             <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between gap-2">
               <button
@@ -2374,7 +2373,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                       onClick={() => {
                         studentsDueToday.forEach((s) => notifyStudentTuitionDue(s.id));
                         triggerToast(
-                          `🔔 Notificação de vencimento enviada via Push + WhatsApp para ${studentsDueToday.length} aluno(s) que vencem hoje!`
+                          `Avisos adicionados ao painel para ${studentsDueToday.length} aluno(s). Use o botão do WhatsApp para enviar a mensagem.`
                         );
                       }}
                       className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs cursor-pointer flex items-center gap-1.5 shadow-sm"
@@ -2718,7 +2717,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                                 onClick={() => {
                                   notifyStudentTuitionDue(stu.id);
                                   triggerToast(
-                                    `🔔 Notificação de vencimento enviada para o aluno ${stu.studentName} (Push + WhatsApp)!`
+                                    `Aviso adicionado ao painel para ${stu.studentName}. Use o botão do WhatsApp para enviar a mensagem.`
                                   );
                                 }}
                                 className="px-2.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black cursor-pointer transition-colors flex items-center gap-1"
@@ -2727,21 +2726,6 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                                 <BellRing className="w-3.5 h-3.5" />
                                 Notificar Vencimento
                               </button>
-
-                              {!isDueToday && (
-                                <button
-                                  onClick={() => {
-                                    simulateStudentDueToday(stu.id);
-                                    triggerToast(
-                                      `📅 Vencimento de ${stu.studentName} simulado para HOJE (${todayStr}) e notificação enviada ao aluno!`
-                                    );
-                                  }}
-                                  className="px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold cursor-pointer transition-colors text-[11px]"
-                                  title="Simular que hoje é o dia do vencimento deste aluno e disparar notificação"
-                                >
-                                  Simular Vence Hoje
-                                </button>
-                              )}
 
                               <a
                                 href={waUrl}
@@ -3271,6 +3255,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                     <label className="block font-semibold text-slate-700 mb-1">Data do Evento:</label>
                     <input
                       type="date"
+                      required
                       value={tournDate}
                       onChange={(e) => setTournDate(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono"
@@ -3280,8 +3265,10 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                     <label className="block font-semibold text-slate-700 mb-1">Taxa por Dupla (R$):</label>
                     <input
                       type="number"
+                      required
+                      min={0}
                       value={tournFee}
-                      onChange={(e) => setTournFee(parseInt(e.target.value, 10) || 100)}
+                      onChange={(e) => setTournFee(e.target.value === '' ? '' : Number(e.target.value))}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono"
                     />
                   </div>
@@ -3294,6 +3281,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                     </label>
                     <input
                       type="text"
+                      required
                       value={tournResponsible}
                       onChange={(e) => setTournResponsible(e.target.value)}
                       placeholder="Nome de quem lançará placares"
@@ -3304,6 +3292,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                     <label className="block font-semibold text-slate-700 mb-1">WhatsApp do Responsável:</label>
                     <input
                       type="tel"
+                      required
                       value={tournResponsiblePhone}
                       onChange={(e) => setTournResponsiblePhone(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono"

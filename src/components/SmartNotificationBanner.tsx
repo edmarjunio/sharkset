@@ -1,30 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
-import { generateWeeklySlots } from '../services/courtSlotPricing';
 import type { Court, TenantConfig, TimeSlot } from '../types';
 import {
-  buildBooking15MinReminderNotification,
-  buildBracketResultPublishedNotification,
-  buildMatch10PointsRemainingNotification,
-  buildTournamentStartedNotification,
-  buildTuitionDueTodayNotification,
-  buildVacantSlot2hNotification,
-  buildWaitlistFreedPushNotification,
-  findBookingsStartingSoon,
-  findStudentsWithTuitionDueToday,
-  findVacantSlotsInNext2Hours,
   timeStrToMinutes,
 } from '../services/smartAlertEngine';
 import {
   Bell,
-  BellRing,
-  Clock,
-  Flame,
   MessageSquare,
   Sparkles,
   Trophy,
-  Users,
   X,
   CheckCheck,
   Cloud,
@@ -47,21 +32,10 @@ export const SmartNotificationBanner: React.FC = () => {
     availableTenants,
     slots,
     bookings,
-    waitlist,
-    tournaments,
-    activeTournamentId,
     setActiveTournamentId,
-    tournamentMatches,
-    classStudents,
     setActiveTab,
     setArenaSubTab,
-    userProfile,
   } = useApp();
-
-  const activeTournament = useMemo(
-    () => tournaments.find((t) => t.id === activeTournamentId) || tournaments[0],
-    [tournaments, activeTournamentId]
-  );
 
   const {
     smartNotifications,
@@ -69,7 +43,6 @@ export const SmartNotificationBanner: React.FC = () => {
     setNotificationDrawerOpen,
     pushPermission,
     enablePushNotifications,
-    pushSmartNotification,
     markNotificationAsRead,
     markAllNotificationsAsRead,
     dismissSmartNotification,
@@ -81,11 +54,6 @@ export const SmartNotificationBanner: React.FC = () => {
   const [rotatingIndex, setRotatingIndex] = useState<number>(0);
   const [isPaused] = useState<boolean>(false);
 
-  const vacantSlotsNext2h = React.useMemo(
-    () => findVacantSlotsInNext2Hours(slots, tenant.courts, referenceClockTime),
-    [slots, tenant.courts, referenceClockTime]
-  );
-
   // Gather ALL available slots across ALL nearby arenas in the upcoming hours (and fallback to all available slots if none in next 2h)
   const nearbyArenaSlots = React.useMemo(() => {
     const todayIso = new Date().toISOString().split('T')[0];
@@ -96,8 +64,7 @@ export const SmartNotificationBanner: React.FC = () => {
     const fallbackItems: NearbyAvailableSlotItem[] = [];
 
     for (const arena of sortedArenas) {
-      const rawArenaSlots =
-        arena.id === tenant.id ? slots : generateWeeklySlots(arena.courts);
+      const rawArenaSlots = arena.id === tenant.id ? slots : [];
 
       const courtMap = new Map<string, Court>(arena.courts.map((c) => [c.id, c]));
 
@@ -210,18 +177,6 @@ export const SmartNotificationBanner: React.FC = () => {
     return () => window.clearInterval(interval);
   }, [isPaused, slotsGroupedByArena.length]);
 
-  const bookingsStartingIn15m = React.useMemo(
-    () => findBookingsStartingSoon(bookings, referenceClockTime),
-    [bookings, referenceClockTime]
-  );
-
-  const studentsDueToday = React.useMemo(
-    () => findStudentsWithTuitionDueToday(classStudents),
-    [classStudents]
-  );
-
-  const primaryVacant = vacantSlotsNext2h[0];
-
   // Unread tournament / bracket alerts that should appear as an automatic top banner
   const activeTournamentBannerAlerts = useMemo(
     () =>
@@ -245,153 +200,6 @@ export const SmartNotificationBanner: React.FC = () => {
       setActiveTab('tournaments');
     }
     setNotificationDrawerOpen(false);
-  };
-
-  const handleTriggerVacant2hPush = () => {
-    if (!primaryVacant) return;
-    const notif = buildVacantSlot2hNotification(primaryVacant, tenant.name);
-    pushSmartNotification(notif);
-  };
-
-  const handleTriggerWaitlistPush = () => {
-    const candidate = waitlist[0] || {
-      id: 'wl-demo',
-      tenantId: tenant.id,
-      slotId: slots[0]?.id || 'slot-1',
-      courtId: tenant.courts[0]?.id || 'c1',
-      courtName: tenant.courts[0]?.name || 'Quadra 1 - Central SHARK SET',
-      date: new Date().toISOString().split('T')[0],
-      startTime: '19:00',
-      endTime: '20:00',
-      sport: 'futevolei',
-      customerName: userProfile.name,
-      customerPhone: userProfile.phone,
-      position: 1,
-      status: 'notified',
-      createdAt: '17:30',
-    };
-    const notif = buildWaitlistFreedPushNotification(candidate);
-    pushSmartNotification(notif);
-  };
-
-  const handleTrigger10PtsMatchPush = () => {
-    const activeMatch =
-      tournamentMatches.find((m) => m.status !== 'completed' && m.team1 && m.team2) ||
-      tournamentMatches[0];
-    if (!activeMatch) return;
-
-    const nextMatch = tournamentMatches.find(
-      (m) => m.id === activeMatch.nextMatchWinnerId || m.matchNumber === activeMatch.matchNumber + 1
-    );
-
-    const notif = buildMatch10PointsRemainingNotification(
-      activeMatch,
-      nextMatch,
-      10,
-      8,
-      8,
-      tenant.name
-    );
-    pushSmartNotification(notif);
-  };
-
-  const handleTrigger15MinBookingPush = () => {
-    const targetBooking = bookingsStartingIn15m[0] ||
-      bookings.find((b) => b.status === 'confirmed') || {
-        id: 'bk-15m',
-        tenantId: tenant.id,
-        slotId: 'slot-18',
-        courtId: tenant.courts[0]?.id || 'c1',
-        courtName: tenant.courts[0]?.name || 'Quadra 1 - Central SHARK SET',
-        date: new Date().toISOString().split('T')[0],
-        startTime: '18:00',
-        endTime: '19:00',
-        sport: 'futevolei',
-        customerName: userProfile.name,
-        customerPhone: userProfile.phone,
-        price: 90,
-        status: 'confirmed',
-        whatsappSent: true,
-      };
-    const notif = buildBooking15MinReminderNotification(targetBooking, tenant.name);
-    pushSmartNotification(notif);
-  };
-
-  const handleTriggerTuitionDuePush = () => {
-    const targetStudent =
-      studentsDueToday[0] ||
-      classStudents[0] || {
-        id: 'stu-demo',
-        tenantId: tenant.id,
-        courtId: tenant.courts[0]?.id || 'c1',
-        courtName: tenant.courts[0]?.name || 'Quadra 1 - Central SHARK SET',
-        classId: 'cls-1',
-        classTitle: 'CT SHARK SET Futevôlei Manhã',
-        classTime: '07:00 às 08:00',
-        coachName: 'Prof. Tavinho',
-        sport: 'futevolei',
-        studentName: userProfile.name,
-        studentPhone: userProfile.phone,
-        billingType: 'mensal',
-        amount: 220,
-        paymentStatus: 'pendente',
-        enrolledAt: new Date().toISOString().split('T')[0],
-      };
-    const notif = buildTuitionDueTodayNotification(targetStudent, tenant.name);
-    pushSmartNotification(notif);
-  };
-
-  const handleTriggerTournamentStartedPush = () => {
-    const targetTournament = activeTournament || tournaments[0];
-    const notif = buildTournamentStartedNotification({
-      tournamentId: targetTournament?.id || 'trn-live',
-      tournamentName: targetTournament?.name || 'Copa Shark Set Futevôlei',
-      arenaName: tenant.name,
-      pairsCount: 8,
-      isUserEnrolled: true,
-      userPairLabel: userProfile?.name || 'Atleta Inscrito',
-      recipientPhone: userProfile?.phone,
-    });
-    pushSmartNotification(notif);
-  };
-
-  const handleTriggerBracketResultPush = () => {
-    const targetTournament = activeTournament || tournaments[0];
-    const completedMatch =
-      tournamentMatches.find((m) => m.status === 'completed' && m.winnerId) ||
-      tournamentMatches[0] || {
-        id: `m-${Date.now()}`,
-        tournamentId: targetTournament?.id || 'trn-live',
-        matchNumber: 1,
-        round: 1,
-        stage: 'winners' as const,
-        stageName: 'Chave dos Vencedores · Rodada 1',
-        status: 'completed' as const,
-        score1: 18,
-        score2: 15,
-      };
-    const formatPair = (p?: { player1: string; player2: string }) =>
-      p ? `${p.player1} & ${p.player2}` : undefined;
-    const winnerName =
-      completedMatch?.winnerId && completedMatch?.winnerId === completedMatch?.team2?.id
-        ? formatPair(completedMatch?.team2)
-        : formatPair(completedMatch?.team1);
-    const loserName =
-      completedMatch?.winnerId && completedMatch?.winnerId === completedMatch?.team2?.id
-        ? formatPair(completedMatch?.team1)
-        : formatPair(completedMatch?.team2);
-
-    const notif = buildBracketResultPublishedNotification({
-      tournamentId: targetTournament?.id || 'trn-live',
-      tournamentName: targetTournament?.name || 'Copa Shark Set Futevôlei',
-      match: completedMatch,
-      winnerName: winnerName || 'Dupla Vencedora',
-      loserName: loserName || 'Dupla Adversária',
-      scoreSummary: `${completedMatch?.score1 ?? 18}x${completedMatch?.score2 ?? 15}`,
-      isUserEnvolved: true,
-      recipientPhone: userProfile?.phone,
-    });
-    pushSmartNotification(notif);
   };
 
   const getBadgeStyle = (type: string) => {
@@ -569,106 +377,6 @@ export const SmartNotificationBanner: React.FC = () => {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
-              <button
-                onClick={handleTriggerTournamentStartedPush}
-                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-amber-400/50 text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-[10px] font-black text-amber-400 uppercase mb-1">
-                  <span>Torneio Iniciado</span>
-                  <Trophy className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                </div>
-                <p className="text-xs font-bold text-white">Início do Sorteio</p>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  Alerta inscritos
-                </span>
-              </button>
-
-              <button
-                onClick={handleTriggerBracketResultPush}
-                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-emerald-400/50 text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-[10px] font-black text-emerald-400 uppercase mb-1">
-                  <span>Novo Resultado</span>
-                  <Swords className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                </div>
-                <p className="text-xs font-bold text-white">Placar na Chave</p>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  Atualização de jogo
-                </span>
-              </button>
-
-              <button
-                onClick={handleTriggerVacant2hPush}
-                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#0987CE]/50 text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-[10px] font-black text-[#0987CE] uppercase mb-1">
-                  <span>Horário Vago (2h)</span>
-                  <Flame className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                </div>
-                <p className="text-xs font-bold text-white">Alerta de Agenda</p>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  Preenche horário vago
-                </span>
-              </button>
-
-              <button
-                onClick={handleTriggerWaitlistPush}
-                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#12C7BB]/50 text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-[10px] font-black text-[#12C7BB] uppercase mb-1">
-                  <span>Push Fila Espera</span>
-                  <Users className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                </div>
-                <p className="text-xs font-bold text-white">Avisar Vaga Livre</p>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  Notifica 1º da espera
-                </span>
-              </button>
-
-              <button
-                onClick={handleTrigger10PtsMatchPush}
-                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-rose-500/50 text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-[10px] font-black text-rose-400 uppercase mb-1">
-                  <span>Jogo Ao Vivo (10 Pts)</span>
-                  <BellRing className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                </div>
-                <p className="text-xs font-bold text-white">Chamar Próxima Dupla</p>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  Jogo anterior no fim
-                </span>
-              </button>
-
-              <button
-                onClick={handleTrigger15MinBookingPush}
-                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#5BC3FA]/50 text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-[10px] font-black text-[#5BC3FA] uppercase mb-1">
-                  <span>Partida em 15 Min</span>
-                  <Clock className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                </div>
-                <p className="text-xs font-bold text-white">Lembrete 15m Antes</p>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  Aviso antes da reserva
-                </span>
-              </button>
-
-              <button
-                onClick={handleTriggerTuitionDuePush}
-                className="p-2.5 rounded-xl bg-[#030B17] hover:bg-[#0B254E] border border-[#145A9B] text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-[10px] font-black text-[#0987CE] uppercase mb-1">
-                  <span>Vencimento Aula</span>
-                  <Bell className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                </div>
-                <p className="text-xs font-bold text-white">Mensalidade Hoje</p>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  Notifica no vencimento
-                </span>
-              </button>
             </div>
 
             {/* Notification Feed */}

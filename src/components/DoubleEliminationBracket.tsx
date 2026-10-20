@@ -183,13 +183,13 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   const [formScope, setFormScope] = useState<'arena' | 'user'>('arena');
   const [formTenantId, setFormTenantId] = useState<string>(tenant.id);
   const [formName, setFormName] = useState('');
-  const [formDate, setFormDate] = useState('2026-10-25');
+  const [formDate, setFormDate] = useState('');
   const [formLocation, setFormLocation] = useState('');
   const [formModality, setFormModality] = useState<TournamentModalityFormat>('duplas');
   const [formCategory, setFormCategory] = useState<TournamentCategory>('iniciante_serie_c');
   const [formSemiFormat, setFormSemiFormat] = useState<SemiFormat>('semi_direta');
   const [formMaxParticipants, setFormMaxParticipants] = useState<number>(8);
-  const [formFee, setFormFee] = useState<number>(120);
+  const [formFee, setFormFee] = useState<number | ''>('');
   const [formRules, setFormRules] = useState('');
   const [formResponsible, setFormResponsible] = useState('');
   const tournamentSaveLock = useRef(false);
@@ -295,27 +295,6 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
 
   const knockoutOnlyMode =
     manualKnockoutToggle !== null ? manualKnockoutToggle : hasReachedSemifinalsAutomatically;
-
-  // 1-Click Helper to simulate advancing all qualifying matches to Semifinals so user can immediately see Knockout Mode
-  const handleSimulateAdvanceToSemifinals = () => {
-    const qualifying = currentMatches
-      .filter(
-        (m) =>
-          (m.stage === 'winners' || m.stage === 'losers') &&
-          !m.stageName.toLowerCase().includes('3º lugar')
-      )
-      .sort((a, b) => a.matchNumber - b.matchNumber);
-
-    if (qualifying.some(match => match.status !== 'completed')) {
-      triggerToast('Finalize os jogos classificatórios antes de abrir as semifinais.');
-      return;
-    }
-    setManualKnockoutToggle(true);
-    setBracketViewMode('chaveamento');
-    triggerToast(
-      '⚡ Fase Semifinal ativada! Jogos classificatórios passados foram minimizados e a tabela exibe o Mata-Mata (Semifinais, Grande Final e DISPUTA DE 3º).'
-    );
-  };
 
   const openStartDrawModal = () => {
     const initialIds = presentPairsInTourn.map((p) => p.id);
@@ -428,13 +407,13 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     setFormScope('arena');
     setFormTenantId(tenant.id);
     setFormName('');
-    setFormDate('2026-10-25');
+    setFormDate('');
     setFormLocation(`${tenant.name} - ${tenant.city}/${tenant.state}`);
     setFormModality('duplas');
     setFormCategory('iniciante_serie_c');
     setFormSemiFormat('semi_direta');
     setFormMaxParticipants(8);
-    setFormFee(120);
+    setFormFee('');
     setFormRules(
       'Preliminares: set único de 18 pontos, diferença de 2. Semifinais, final e 3º lugar: melhor de 3 sets (18/18/15), diferença de 2. Sem reinício da final.'
     );
@@ -460,9 +439,13 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     setShowTournamentModal('edit');
   };
 
-  const handleSaveTournamentModal = (e: React.FormEvent) => {
+  const handleSaveTournamentModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (tournamentSaveLock.current || isSavingTournament || !formName.trim()) return;
+    if (showTournamentModal === 'create' && (!formDate || formFee === '')) {
+      toast.error('Informe a data e a taxa de inscrição reais do torneio.');
+      return;
+    }
 
     tournamentSaveLock.current = true;
     setIsSavingTournament(true);
@@ -477,7 +460,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           ? `${targetTenant.name} (${targetTenant.city} - ${targetTenant.state})`
           : `${tenant.name} (${tenant.city} - ${tenant.state})`;
 
-        const created = createTournament({
+        const created = await createTournament({
           name: formName.trim(),
           sport: 'futevolei',
           category: formCategory,
@@ -489,7 +472,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           createdScope: formScope,
           specificRules: formRules.trim(),
           maxPairs: formMaxParticipants,
-          registrationFee: formFee,
+          registrationFee: Number(formFee),
           responsibleName: formResponsible.trim() || userProfile.name,
           responsiblePhone: userProfile.phone,
         });
@@ -1132,28 +1115,6 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       </div>
     );
   };
-
-  if (!activeTournament) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 space-y-6 text-white text-center">
-        <div className="aquarium-glass rounded-3xl p-8 border border-cyan-500/30 max-w-xl mx-auto space-y-4">
-          <Trophy className="w-16 h-16 text-amber-400 mx-auto" />
-          <h2 className="text-2xl font-black">Nenhum Torneio Cadastrado</h2>
-          <p className="text-sm text-slate-300">
-            Crie o primeiro torneio oficial para gerar chaves, cadastrar duplas e acompanhar as partidas em tempo real.
-          </p>
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#FF6B00] to-[#FF8800] text-white font-black text-base shadow-lg hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
-          >
-            + Criar Primeiro Torneio
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className={
@@ -1377,7 +1338,24 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         </div>
       )}
 
-      {/* Tournament Management Header — Clean Responsive Hierarchy (Never overflows horizontally) */}
+      {!activeTournament ? (
+        <div className="aquarium-glass rounded-3xl p-8 border border-cyan-500/30 max-w-xl mx-auto space-y-4 text-center my-6">
+          <Trophy className="w-16 h-16 text-amber-400 mx-auto" />
+          <h2 className="text-2xl font-black text-white">Nenhum Torneio Cadastrado</h2>
+          <p className="text-sm text-slate-300">
+            Crie o primeiro torneio oficial para gerar chaves, cadastrar duplas e acompanhar as partidas em tempo real.
+          </p>
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#FF6B00] to-[#FF8800] text-white font-black text-base shadow-lg hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            + Criar Primeiro Torneio
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Tournament Management Header — Clean Responsive Hierarchy (Never overflows horizontally) */}
       <div className="aquarium-glass bg-[#071D3D] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -1485,18 +1463,6 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                 ? 'Modo Mata-Mata Ativo (Ver Chave Completa)'
                 : 'Fase Semifinal (Minimizar Jogos Passados)'}
             </button>
-
-            {!minimalistPlayerView && !knockoutOnlyMode && (
-              <button
-                type="button"
-                onClick={handleSimulateAdvanceToSemifinals}
-                className="px-3 py-2 text-xs font-bold text-[#5BC3FA] bg-[#030B17] hover:bg-[#0B254E] border border-[#0987CE]/50 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-                title="Avança automaticamente os jogos classificatórios para demonstrar a tabela na Semifinal com jogos passados minimizados"
-              >
-                <Zap className="w-3.5 h-3.5 text-[#12C7BB]" />
-                Simular Ida p/ Semifinal
-              </button>
-            )}
 
             <button
               onClick={() => handleOpenShare()}
@@ -2100,6 +2066,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
           )}
         </div>
       )}
+        </>
+      )}
 
       {/* ===================================================================== */}
       {/* MODAL A: CREATE OR EDIT TOURNAMENT                                    */}
@@ -2376,7 +2344,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                   <input
                     type="number"
                     value={formFee}
-                    onChange={(e) => setFormFee(parseInt(e.target.value, 10) || 0)}
+                    onChange={(e) => setFormFee(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2 bg-[#030B17] border border-[#145A9B] rounded-lg font-mono text-white"
                   />
                 </div>
@@ -2909,7 +2877,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       <ShareBracketModal
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
-        tournament={activeTournament}
+        tournament={activeTournament || (tournaments[0] as any)}
         matches={currentMatches}
         selectedMatch={shareMatch}
         podium={podium}

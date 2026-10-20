@@ -127,7 +127,7 @@ export const ArenaHighlightCard: React.FC<ArenaHighlightCardProps> = ({
 
   // Take the last 4 confirmed bookings for social proof
   const latestBookings = recentBookings
-    .filter((b) => b.tenantId === tenant.id || b.courtId.includes(tenant.id) || true)
+    .filter((booking) => booking.tenantId === tenant.id)
     .slice(0, 4);
 
   return (

@@ -12,7 +12,6 @@ import {
   ATHLETE_LEVEL_LABELS,
   RANKING_SCOPE_LABELS,
   TOURNAMENT_CATEGORY_LABELS,
-  calculateFutevoleiMatchPoints,
   evaluateAthleteAntiSandbagging,
   extractAvailableRankingDimensions,
   filterAndRankAthletesByScope,
@@ -30,7 +29,6 @@ import {
   ArrowRight,
   AlertCircle,
   UserPlus,
-  Zap,
   TrendingUp,
   Globe,
   MapPin,
@@ -55,10 +53,8 @@ export const DoublesRegistration: React.FC = () => {
     setActiveTab,
     regenerateBracket,
     athletes,
-    rankingLogs,
     addOrUpdateAthlete,
     changeAthleteLevel,
-    awardAthletePoints,
     updateTournamentConfig,
   } = useApp();
 
@@ -66,7 +62,6 @@ export const DoublesRegistration: React.FC = () => {
 
   // Modals for operational actions (separated from visualization)
   const [isAddAthleteModalOpen, setIsAddAthleteModalOpen] = useState<boolean>(false);
-  const [isRecordMatchModalOpen, setIsRecordMatchModalOpen] = useState<boolean>(false);
 
   // 5 Segmented Ranking Scopes: GERAL | PAÍS | ESTADO | CIDADE | ARENA
   const [rankingScope, setRankingScope] = useState<RankingScope>('geral');
@@ -99,14 +94,8 @@ export const DoublesRegistration: React.FC = () => {
   const [newAthCity, setNewAthCity] = useState('Mineiros');
   const [newAthArenaId, setNewAthArenaId] = useState(tenant.id);
 
-  // Interactive Match Ranking Calculator / Homologator (Performance + Opponent Level)
-  const [simWinnerId, setSimWinnerId] = useState<string>(athletes[0]?.id || '');
-  const [simLoserId, setSimLoserId] = useState<string>(athletes[4]?.id || athletes[1]?.id || '');
-  const [simWinScore, setSimWinScore] = useState<number>(18);
-  const [simLoseScore, setSimLoseScore] = useState<number>(12);
-
   const activeTournament = tournaments.find((t) => t.id === activeTournamentId) || tournaments[0];
-  const isSingles = activeTournament.modalityFormat === 'simples';
+  const isSingles = activeTournament?.modalityFormat === 'simples';
 
   const selectedPlayer1 = useMemo(
     () => athletes.find((athlete) => (athlete.email || '').trim().toLowerCase() === player1) || null,
@@ -153,6 +142,7 @@ export const DoublesRegistration: React.FC = () => {
       combinedWeight: 0,
       maxAllowedWeight: 0,
     });
+    if (!activeTournament) return invalid('Nenhum torneio cadastrado para inscrição.');
     if (!selectedPlayer1) return invalid('Selecione o primeiro atleta pelo e-mail.');
 
     if (isSingles) {
@@ -178,11 +168,11 @@ export const DoublesRegistration: React.FC = () => {
       return invalid(check1.alertMessage || check2.alertMessage || 'Categoria bloqueada pelo Passaporte Único.');
     }
     return validatePairCategory(activeTournament.category, check1.effectiveLevel, check2.effectiveLevel);
-  }, [isSingles, activeTournament.category, selectedPlayer1, selectedPlayer2, tenant.city]);
+  }, [isSingles, activeTournament?.category, selectedPlayer1, selectedPlayer2, tenant.city]);
 
   const currentPairs = useMemo(() => {
-    return registeredPairs.filter((p) => p.tournamentId === activeTournament.id);
-  }, [registeredPairs, activeTournament.id]);
+    return activeTournament ? registeredPairs.filter((p) => p.tournamentId === activeTournament.id) : [];
+  }, [registeredPairs, activeTournament?.id]);
 
   const enrolledAthleteEmails = useMemo(
     () => new Set(currentPairs
@@ -203,21 +193,6 @@ export const DoublesRegistration: React.FC = () => {
         p.category.toLowerCase().includes(q)
     );
   }, [currentPairs, searchQuery]);
-
-  // Live preview of ELO/Performance calculation between selected Winner & Opponent
-  const simWinnerAth = athletes.find((a) => a.id === simWinnerId) || athletes[0];
-  const simLoserAth = athletes.find((a) => a.id === simLoserId) || athletes[1];
-
-  const simCalc = useMemo(() => {
-    if (!simWinnerAth || !simLoserAth) return null;
-    return calculateFutevoleiMatchPoints({
-      winnerLevels: [simWinnerAth.level],
-      loserLevels: [simLoserAth.level],
-      winnerScore: simWinScore,
-      loserScore: simLoseScore,
-      stage: 'winners',
-    });
-  }, [simWinnerAth, simLoserAth, simWinScore, simLoseScore]);
 
   const triggerToast = (msg: string) => {
     setSuccessToast(msg);
@@ -303,23 +278,6 @@ export const DoublesRegistration: React.FC = () => {
     );
   };
 
-  const handleApplySimulatedMatch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!simWinnerAth || !simLoserAth || !simCalc) return;
-    if (simWinnerAth.id === simLoserAth.id) {
-      triggerToast('Selecione dois jogadores diferentes para registrar o confronto.');
-      return;
-    }
-
-    awardAthletePoints(simWinnerAth.id, simCalc.winnerPoints, false);
-    awardAthletePoints(simLoserAth.id, simCalc.loserPoints, false);
-
-    setIsRecordMatchModalOpen(false);
-    triggerToast(
-      `Ranking atualizado automaticamente! ${simWinnerAth.name} ganhou +${simCalc.winnerPoints} pts (venceu oponente ${ATHLETE_LEVEL_LABELS[simLoserAth.level]} por ${simWinScore}x${simLoseScore}).`
-    );
-  };
-
   const scopeTabs: { id: RankingScope; label: string; emoji: string }[] = [
     { id: 'geral', label: 'Geral', emoji: '🌍' },
     { id: 'pais', label: 'País', emoji: '🏳️' },
@@ -327,6 +285,15 @@ export const DoublesRegistration: React.FC = () => {
     { id: 'cidade', label: 'Cidade', emoji: '🏙️' },
     { id: 'arena', label: 'Arena', emoji: '🏟️' },
   ];
+
+  if (!activeTournament) {
+    return (
+      <div className="mx-auto max-w-3xl p-8 text-center text-slate-300" role="status">
+        <h1 className="text-xl font-bold text-white">Nenhum torneio cadastrado</h1>
+        <p className="mt-2">Cadastre um torneio para abrir inscrições de atletas ou duplas.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
@@ -368,14 +335,7 @@ export const DoublesRegistration: React.FC = () => {
                 + Cadastrar Jogador
               </button>
 
-              <button
-                type="button"
-                onClick={() => setIsRecordMatchModalOpen(true)}
-                className="px-4 py-2.5 rounded-lg bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-md"
-              >
-                <Zap className="w-4 h-4 fill-white" />
-                ⚡ Registrar Partida
-              </button>
+
 
               <button
                 type="button"
@@ -932,541 +892,6 @@ export const DoublesRegistration: React.FC = () => {
         </div>
       )}
 
-      {/* ===================================================================== */}
-      {/* MODAL 2: REGISTRAR PARTIDA (CÁLCULO DINÂMICO DE PONTOS)               */}
-      {/* ===================================================================== */}
-      {isRecordMatchModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-record-match-title"
-        >
-          <div className="aquarium-glass w-full max-w-2xl bg-[#05182C] border border-[#145A9B] rounded-2xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between gap-4 pb-3 border-b border-[#145A9B]/50">
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 id="modal-record-match-title" className="text-base font-black text-white flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-[#FF6B00] fill-[#FF6B00]" />
-                    Registrar Partida · Cálculo Dinâmico de Pontos
-                  </h2>
-                  <span className="text-[11px] font-bold text-[#12C7BB]">
-                    · Atualiza todos os 5 Rankings Simultaneamente
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300">
-                  Vencer um oponente de nível superior concede bônus extra de dificuldade, somado ao saldo de pontos do placar.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRecordMatchModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60"
-                title="Fechar"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleApplySimulatedMatch} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-200 mb-1">Jogador Vencedor:</label>
-                  <select
-                    value={simWinnerId}
-                    onChange={(e) => setSimWinnerId(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-bold text-white"
-                  >
-                    {athletes.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({ATHLETE_LEVEL_LABELS[a.level]})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-200 mb-1">Oponente Enfrentado:</label>
-                  <select
-                    value={simLoserId}
-                    onChange={(e) => setSimLoserId(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-bold text-white"
-                  >
-                    {athletes.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({ATHLETE_LEVEL_LABELS[a.level]})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                <div>
-                  <label className="block font-bold text-slate-200 mb-1">Placar do Jogo:</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      max={99}
-                      value={simWinScore}
-                      onChange={(e) => setSimWinScore(parseInt(e.target.value, 10) || 18)}
-                      className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-extrabold text-sm text-center text-white"
-                    />
-                    <span className="font-bold text-slate-400">x</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={99}
-                      value={simLoseScore}
-                      onChange={(e) => setSimLoseScore(parseInt(e.target.value, 10) || 12)}
-                      className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-extrabold text-sm text-center text-white"
-                    />
-                  </div>
-                </div>
-
-                {/* Informational Preview (Simple non-clickable rectangular tag) */}
-                {simCalc && (
-                  <div className="p-3 rounded-lg bg-[#030D1A]/90 border-l-4 border-l-[#12C7BB] text-xs space-y-0.5">
-                    <span className="font-extrabold text-[#12C7BB] block text-sm">
-                      Vencedor recebe: +{simCalc.winnerPoints} pts
-                    </span>
-                    <span className="text-slate-300 block text-[11px]" title={simCalc.explanation}>
-                      Performance: <strong>+{simCalc.performanceBonus}</strong> · Dificuldade do Oponente:{' '}
-                      <strong>+{simCalc.opponentDifficultyBonus}</strong>
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#145A9B]/40">
-                <button
-                  type="button"
-                  onClick={() => setIsRecordMatchModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-lg bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold shadow-md"
-                >
-                  Registrar Resultado no Ranking
-                </button>
-              </div>
-            </form>
-
-            {/* Recent Matches Log inside the Modal */}
-            {rankingLogs.length > 0 && (
-              <div className="pt-4 border-t border-[#145A9B]/40 space-y-2.5">
-                <h3 className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#12C7BB]" />
-                  Últimos Jogos Contabilizados ({rankingLogs.length})
-                </h3>
-                <div className="space-y-2 max-h-44 overflow-y-auto pr-1 text-xs">
-                  {rankingLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="p-2.5 rounded-lg bg-[#030D1A]/80 border border-slate-800 flex items-center justify-between gap-2"
-                    >
-                      <div>
-                        <span className="font-bold text-white">
-                          {log.winnerNames}{' '}
-                          <span className="text-amber-400 font-extrabold">({log.score})</span>{' '}
-                          {log.loserNames}
-                        </span>
-                        <span className="block text-[11px] text-slate-400">
-                          Jogo #{log.matchNumber} · {log.timestamp}
-                        </span>
-                      </div>
-                      <span className="font-extrabold text-[#12C7BB] shrink-0">
-                        +{log.pointsAwardedWinner} pts
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-
-      {/* ===================================================================== */}
-      {/* SUB-VIEW 2: INSCRIÇÃO DE PARTICIPANTES / DUPLAS NO TORNEIO            */}
-      {/* ===================================================================== */}
-      {subView === 'inscricao_duplas' && (
-        <div className="space-y-6">
-          {/* Ultra-Clean Shareable Tournament Registration Link Banner */}
-          <div className="aquarium-glass bg-[#071D3D] text-[#F7FAFD] border-2 border-[#0987CE] rounded-2xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="px-2.5 py-0.5 rounded bg-[#0987CE] text-white font-black uppercase text-[10px]">
-                  LINK OFICIAL DE INSCRIÇÃO · LIMPO, CLARO E DIRETO AO PONTO
-                </span>
-                <span className="font-bold text-[#12C7BB]">
-                  Passaporte Único Anti-Sandbagging Ativo entre Cidades
-                </span>
-              </div>
-              <h2 className="text-xl font-black text-white">
-                Inscrição Rápida: {activeTournament.name} ({TOURNAMENT_CATEGORY_LABELS[activeTournament.category]})
-              </h2>
-              <p className="text-xs text-slate-300 max-w-3xl">
-                Envie o link direto no grupo de WhatsApp ou bio do Instagram. O atleta entra, digita o nome da dupla em <strong>3 passos simples</strong> e garante a vaga na hora! O sistema barra automaticamente atletas de <strong>Série A tentando jogar Iniciante em outra cidade</strong>.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  const url = `${window.location.origin}/?torneio=${activeTournament.id}&inscricao=rapida`;
-                  if (navigator.clipboard) {
-                    navigator.clipboard.writeText(url).catch(() => {});
-                  }
-                  triggerToast(
-                    `🔗 Link Direto de Inscrição copiado (${url})! Pronto para colar no WhatsApp ou Instagram da Arena.`
-                  );
-                }}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0987CE] to-[#12C7BB] hover:brightness-110 text-slate-950 font-black text-xs cursor-pointer shadow-md"
-              >
-                🔗 Copiar Link Direto de Inscrição
-              </button>
-
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="aquarium-glass bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-xs h-fit space-y-4">
-            <div className="pb-3 border-b border-slate-100 space-y-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-black text-slate-950 flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-amber-500" />
-                  Garantir Vaga em 3 Cliques
-                </h2>
-                <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-black text-[10px]">
-                  R$ {activeTournament.registrationFee} / dupla
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-[11px] space-y-1">
-                <span className="font-extrabold block uppercase text-[10px] text-amber-800">
-                  Regra Oficial de Reserva de Vaga & Pagamento:
-                </span>
-                <p>
-                  1. Ao fazer a inscrição, a dupla <strong>garante a vaga imediatamente como PENDENTE</strong>.<br />
-                  2. A vaga só muda para <strong>CONFIRMADA</strong> após o pagamento dos <strong>2 jogadores</strong>.<br />
-                  3. O Admin pode recusar a vaga a qualquer momento (com <strong>ressarcimento automático</strong> caso algum atleta já tenha pago).
-                </p>
-              </div>
-
-              <div className="text-xs">
-                <label className="block font-semibold text-slate-500 mb-1">
-                  Regra da Categoria do Torneio:
-                </label>
-                <select
-                  value={activeTournament.category}
-                  onChange={(e) =>
-                    updateTournamentConfig(activeTournament.id, {
-                      category: e.target.value as TournamentCategory,
-                    })
-                  }
-                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-slate-900"
-                >
-                  {Object.entries(TOURNAMENT_CATEGORY_LABELS).map(([k, label]) => (
-                    <option key={k} value={k}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmitPair} className="space-y-3.5 text-xs">
-              <AthleteEmailSelector
-                label={isSingles ? 'Atleta da inscrição individual' : 'Atleta 1 da dupla'}
-                athletes={athletes}
-                selectedEmail={player1}
-                enrolledEmails={enrolledAthleteEmails}
-                onSelectAthlete={(athlete) => setPlayer1((athlete?.email || '').trim().toLowerCase())}
-              />
-              {!isSingles && (
-                <AthleteEmailSelector
-                  label="Atleta 2 da dupla"
-                  athletes={athletes}
-                  selectedEmail={player2}
-                  excludeEmail={player1}
-                  enrolledEmails={enrolledAthleteEmails}
-                  onSelectAthlete={(athlete) => setPlayer2((athlete?.email || '').trim().toLowerCase())}
-                />
-              )}
-              <div className={`rounded-xl border p-3 ${validation.isValid ? 'border-emerald-300 bg-emerald-50 text-emerald-950' : 'border-rose-300 bg-rose-50 text-rose-950'}`}>
-                <strong className="block">{validation.reason}</strong>
-                <span className="mt-1 block text-[11px] opacity-80">{validation.ruleSummary}</span>
-              </div>
-              <button
-                type="submit"
-                disabled={!validation.isValid || isSubmittingPair || currentPairs.filter((pair) => pair.enrollmentStatus !== 'rejected').length >= activeTournament.maxPairs}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-xs font-extrabold text-slate-950 transition-colors enabled:hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus className="h-4 w-4" />
-                {isSubmittingPair ? 'Processando inscrição…' : 'Inscrever dupla'}
-              </button>
-            </form>
-          </div>
-
-          {/* Registered Pairs List + Individual 2-Player Payment + Admin Rejection & Refund */}
-          <div className="aquarium-glass lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-              <div className="space-y-1">
-                <h2 className="text-base font-bold text-slate-900">
-                  Controle de Vagas, Pagamento por Atleta (2/2) & Aprovação Admin
-                </h2>
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
-                    ✓ Confirmadas (2/2 Pagos):{' '}
-                    {currentPairs.filter((p) => p.enrollmentStatus === 'confirmed').length}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 font-bold">
-                    ⏳ Pendentes:{' '}
-                    {
-                      currentPairs.filter(
-                        (p) => !p.enrollmentStatus || p.enrollmentStatus === 'pending'
-                      ).length
-                    }
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200 font-bold">
-                    🚫 Recusadas / Ressarcidas:{' '}
-                    {currentPairs.filter((p) => p.enrollmentStatus === 'rejected').length}
-                  </span>
-                </div>
-              </div>
-
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filtrar inscrito..."
-                  className="pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider">
-                    <th className="py-2.5 px-2">Vaga</th>
-                    <th className="py-2.5 px-2">Atleta 1 (Pgto Individual)</th>
-                    {!isSingles && <th className="py-2.5 px-2">Atleta 2 (Pgto Individual)</th>}
-                    <th className="py-2.5 px-2 text-center">Presença</th>
-                    <th className="py-2.5 px-2">Status da Vaga</th>
-                    <th className="py-2.5 px-2 text-right">Admin</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredPairs.map((pair) => {
-                    const isRejected = pair.enrollmentStatus === 'rejected';
-                    const p1Paid = pair.player1Paid ?? pair.isPaid;
-                    const p2Paid = pair.player2Paid ?? pair.isPaid;
-                    const isConfirmed = !isRejected && p1Paid && p2Paid;
-                    const paidCount = (p1Paid ? 1 : 0) + (p2Paid ? 1 : 0);
-
-                    return (
-                      <tr
-                        key={pair.id}
-                        className={`transition-colors ${
-                          isRejected ? 'bg-rose-50/40 opacity-80' : 'hover:bg-slate-50'
-                        }`}
-                      >
-                        <td className="py-3 px-2 font-mono font-bold text-slate-900">#{pair.seed}</td>
-
-                        {/* Player 1 + Individual Payment Toggle */}
-                        <td className="py-3 px-2">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={`font-bold ${
-                                  isRejected ? 'line-through text-slate-400' : 'text-slate-900'
-                                }`}
-                              >
-                                {pair.player1}
-                              </span>
-                              <AthleteLevelBadge level={pair.player1Level || 'iniciante'} size="xs" />
-                            </div>
-                            {!isRejected && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const res = togglePairPlayerPayment(pair.id, 1);
-                                  if (res?.enrollmentStatus === 'confirmed') {
-                                    triggerToast(
-                                      `✅ Os 2 jogadores pagaram! Vaga de ${pair.player1} & ${pair.player2} CONFIRMADA!`
-                                    );
-                                  } else {
-                                    triggerToast(
-                                      `Status de pagamento de ${pair.player1} atualizado.`
-                                    );
-                                  }
-                                }}
-                                className={`px-2 py-0.5 rounded text-[10px] font-extrabold cursor-pointer transition-colors ${
-                                  p1Paid
-                                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                                    : 'bg-amber-100 text-amber-900 border border-amber-300'
-                                }`}
-                                title="Clique para alternar o pagamento do Atleta 1"
-                              >
-                                {p1Paid ? '✓ Atleta 1: PAGO' : '⏳ Atleta 1: Pendente (Marcar Pago)'}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Player 2 + Individual Payment Toggle */}
-                        {!isSingles && (
-                          <td className="py-3 px-2">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className={`font-bold ${
-                                    isRejected ? 'line-through text-slate-400' : 'text-slate-900'
-                                  }`}
-                                >
-                                  {pair.player2}
-                                </span>
-                                <AthleteLevelBadge level={pair.player2Level || 'iniciante'} size="xs" />
-                              </div>
-                              {!isRejected && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const res = togglePairPlayerPayment(pair.id, 2);
-                                    if (res?.enrollmentStatus === 'confirmed') {
-                                      triggerToast(
-                                        `✅ Os 2 jogadores pagaram! Vaga de ${pair.player1} & ${pair.player2} CONFIRMADA!`
-                                      );
-                                    } else {
-                                      triggerToast(
-                                        `Status de pagamento de ${pair.player2} atualizado.`
-                                      );
-                                    }
-                                  }}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-extrabold cursor-pointer transition-colors ${
-                                    p2Paid
-                                      ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                                      : 'bg-amber-100 text-amber-900 border border-amber-300'
-                                  }`}
-                                  title="Clique para alternar o pagamento do Atleta 2"
-                                >
-                                  {p2Paid ? '✓ Atleta 2: PAGO' : '⏳ Atleta 2: Pendente (Marcar Pago)'}
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        )}
-
-                        {/* Presence Check-in */}
-                        <td className="py-3 px-2 text-center">
-                          {!isRejected ? (
-                            <button
-                              type="button"
-                              onClick={() => togglePairPresence(pair.id)}
-                              className={`px-2 py-1 rounded-lg font-bold text-[10px] cursor-pointer ${
-                                pair.isPresent !== false
-                                  ? 'bg-slate-900 text-amber-400'
-                                  : 'bg-slate-100 text-slate-500'
-                              }`}
-                            >
-                              {pair.isPresent !== false ? '✓ Presente' : 'Ausente'}
-                            </button>
-                          ) : (
-                            <span className="text-[10px] text-slate-400">—</span>
-                          )}
-                        </td>
-
-                        {/* Enrollment & Refund Status */}
-                        <td className="py-3 px-2">
-                          {isRejected ? (
-                            <div className="space-y-0.5">
-                              <span className="inline-block px-2 py-0.5 rounded bg-rose-100 text-rose-900 font-black text-[10px] uppercase">
-                                🚫 VAGA RECUSADA PELO ADMIN
-                              </span>
-                              {pair.refundStatus === 'refunded' && (
-                                <span className="block text-[10px] font-bold text-emerald-700">
-                                  💰 Dinheiro Ressarcido aos Atletas
-                                </span>
-                              )}
-                            </div>
-                          ) : isConfirmed ? (
-                            <div className="space-y-0.5">
-                              <span className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-950 font-black text-[10px] uppercase">
-                                ✓ VAGA CONFIRMADA (2/2 PAGOS)
-                              </span>
-                              <span className="block text-[10px] text-slate-500">
-                                Garantida na chave oficial
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="space-y-0.5">
-                              <span className="inline-block px-2 py-0.5 rounded bg-amber-100 text-amber-950 font-black text-[10px] uppercase">
-                                ⏳ VAGA PENDENTE ({paidCount}/2 PAGOS)
-                              </span>
-                              <span className="block text-[10px] text-amber-800">
-                                Vaga reservada · Falta pagamento de {2 - paidCount} atleta(s)
-                              </span>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Admin Reject / Restore Action */}
-                        <td className="py-3 px-2 text-right">
-                          {!isRejected ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const rej = rejectPairEnrollment(pair.id);
-                                if (rej?.refundStatus === 'refunded') {
-                                  triggerToast(
-                                    `🚫 Vaga de ${pair.player1} & ${pair.player2} recusada pelo Admin! O valor já pago foi marcado para RESSARCIMENTO imediato.`
-                                  );
-                                } else {
-                                  triggerToast(
-                                    `🚫 Vaga pendente de ${pair.player1} & ${pair.player2} recusada pelo Admin.`
-                                  );
-                                }
-                              }}
-                              className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[11px] cursor-pointer transition-colors"
-                              title="Admin pode recusar a vaga a qualquer momento (ressarcindo valores pagos)"
-                            >
-                              Recusar Vaga
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                restorePairEnrollment(pair.id);
-                                triggerToast(
-                                  `Vaga de ${pair.player1} & ${pair.player2} restaurada pelo Admin.`
-                                );
-                              }}
-                              className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer transition-colors"
-                            >
-                              Restaurar Vaga
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

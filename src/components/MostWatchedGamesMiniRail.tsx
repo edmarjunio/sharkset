@@ -2,7 +2,7 @@ import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
 import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { BracketMatch } from '../types';
-import { Eye, Radio, Video, Crown, CheckCircle2, MapPin, Play } from 'lucide-react';
+import { Eye, Video, MapPin, Play } from 'lucide-react';
 
 interface MostWatchedGamesMiniRailProps {
   onSelectTournamentMatch?: (match: BracketMatch) => void;
@@ -20,7 +20,6 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
     setActiveLiveBroadcastBookingId,
     setActiveTab,
     setActiveTournamentId,
-    liveSpectatorsCount,
   } = useApp();
 
   // Build unified list of most-watched live games (Tournament Matches + Arena Booking Live Broadcasts)
@@ -32,13 +31,12 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
       subtitle: string;
       team1Label: string;
       team2Label: string;
-      score1: number;
-      score2: number;
-      spectators: number;
+      score1?: number;
+      score2?: number;
+      spectators?: number;
       courtLabel: string;
       refereeName: string;
-      isRankingVerified: boolean;
-      thumbnailUrl: string;
+      thumbnailUrl?: string;
       rawMatch?: BracketMatch;
       bookingId?: string;
     }[] = [];
@@ -46,7 +44,7 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
     // 1. Live Arena Booking Broadcasts
     bookings
       .filter((b) => b.status === 'confirmed' && b.liveBroadcast?.isLive)
-      .forEach((b, idx) => {
+      .forEach((b) => {
         const parts = b.participants || [];
         const t1 = parts
           .filter((p) => p.teamSlot === 1)
@@ -56,7 +54,6 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
           .filter((p) => p.teamSlot === 2)
           .map((p) => p.name.split(' ')[0])
           .join(' & ');
-        const confirmed4 = parts.filter((p) => p.confirmedPresent).length === 4;
 
         items.push({
           id: `live-bk-${b.id}`,
@@ -65,17 +62,12 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
           subtitle: `${b.arenaName || 'Arena'} · ${b.startTime}`,
           team1Label: t1 || b.customerName,
           team2Label: t2 || 'Convidados',
-          score1: b.liveBroadcast?.score1 ?? 0,
-          score2: b.liveBroadcast?.score2 ?? 0,
-          spectators: 0,
+          score1: b.liveBroadcast?.score1,
+          score2: b.liveBroadcast?.score2,
+          spectators: b.liveBroadcast?.spectatorsCount,
           courtLabel: b.courtName,
           refereeName: b.referee?.name || b.customerName,
-          isRankingVerified: confirmed4,
-          thumbnailUrl:
-            b.liveBroadcast?.thumbnailUrl ||
-            (idx % 2 === 0
-              ? 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=600&q=80'
-              : 'https://images.unsplash.com/photo-1526676037777-05a232554f77?auto=format&fit=crop&w=600&q=80'),
+          thumbnailUrl: b.liveBroadcast?.thumbnailUrl,
           bookingId: b.id,
         });
       });
@@ -84,37 +76,29 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
     tournamentMatches
       .filter((m) => m.team1 && m.team2 && m.status === 'in_progress')
       .slice(0, 4)
-      .forEach((m, idx) => {
+      .forEach((m) => {
         const tourn = tournaments.find((t) => t.id === m.tournamentId);
-        const baseSpec =
-          m.spectatorsCount || (m.status === 'in_progress' ? 210 - idx * 35 : 88 - idx * 12);
-
         items.push({
           id: `live-tm-${m.id}`,
           kind: 'tournament_match',
-          title: `${tourn?.name || 'Torneio Oficial'} · Jogo #${m.matchNumber}`,
+          title: `${tourn?.name || 'Torneio'} · Jogo #${m.matchNumber}`,
           subtitle: m.stageName,
           team1Label: `${m.team1!.player1.split(' ')[0]} & ${m.team1!.player2.split(' ')[0]}`,
           team2Label: `${m.team2!.player1.split(' ')[0]} & ${m.team2!.player2.split(' ')[0]}`,
-          score1: m.score1 ?? 0,
-          score2: m.score2 ?? 0,
-          spectators: 0,
-          courtLabel: m.courtName || 'Quadra Central',
-          refereeName: m.liveReferee?.refereeName || 'Árbitro Oficial',
-          isRankingVerified: true,
-          thumbnailUrl:
-            idx % 2 === 0
-              ? 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=600&q=80'
-              : 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+          score1: m.score1,
+          score2: m.score2,
+          spectators: m.spectatorsCount,
+          courtLabel: m.courtName || 'Quadra não informada',
+          refereeName: m.liveReferee?.refereeName || 'Não informado',
           rawMatch: m,
         });
       });
 
     return items;
-  }, [bookings, tournamentMatches, tournaments, liveSpectatorsCount]);
+  }, [bookings, tournamentMatches, tournaments]);
 
   const totalWatchingAllGames = useMemo(
-    () => miniGames.reduce((acc, g) => acc + g.spectators, 0),
+    () => miniGames.reduce((acc, g) => acc + (g.spectators ?? 0), 0),
     [miniGames]
   );
 
@@ -135,7 +119,9 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
 
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-extrabold">
             <Eye className="w-3.5 h-3.5 text-orange-500" />
-            <strong className="font-black tabular-nums">{totalWatchingAllGames}</strong> jogadores acompanhando ao vivo
+            {miniGames.some((game) => game.spectators !== undefined)
+              ? <><strong className="font-black tabular-nums">{totalWatchingAllGames}</strong> espectadores informados</>
+              : 'Audiência ao vivo não informada'}
           </span>
         </div>
 
@@ -165,12 +151,12 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
           >
             {/* Miniature Video Preview Header */}
             <div className="relative h-28 w-full bg-slate-900 overflow-hidden">
-              <img
+              {game.thumbnailUrl ? <img
                 src={game.thumbnailUrl}
                 alt={game.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90"
                 loading="lazy"
-              />
+              /> : <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">Sem imagem da transmissão</div>}
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
 
               {/* Top Left: LIVE badge + Viewer Count */}
@@ -195,7 +181,9 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
                   {game.team1Label} <span className="text-orange-400">vs</span> {game.team2Label}
                 </div>
                 <div className="px-2 py-0.5 rounded-md bg-slate-950/90 border border-white/20 text-xs font-black tabular-nums text-orange-300">
-                  {game.score1} x {game.score2}
+                  {game.score1 !== undefined && game.score2 !== undefined
+                    ? `${game.score1} x ${game.score2}`
+                    : 'Placar não informado'}
                 </div>
               </div>
             </div>
@@ -207,16 +195,9 @@ export const MostWatchedGamesMiniRail: React.FC<MostWatchedGamesMiniRailProps> =
                   <MapPin className="w-3 h-3 text-orange-500 shrink-0" />
                   {game.courtLabel}
                 </span>
-                {game.isRankingVerified && (
-                  <span className="text-emerald-700 font-black flex items-center gap-0.5 shrink-0">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Vale Ranking
-                  </span>
-                )}
               </div>
               <div className="flex items-center justify-between text-[10px] text-slate-600">
                 <span className="truncate flex items-center gap-1">
-                  <Crown className="w-3 h-3 text-orange-500 shrink-0" />
                   Árbitro: <strong>{game.refereeName}</strong>
                 </span>
                 <span className="text-orange-600 font-extrabold group-hover:underline">

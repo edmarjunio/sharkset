@@ -2,7 +2,7 @@
 
 ## Resultado e limites da execução
 
-Integração preparada para `sharkset-70de4`, sem deploy, ativação de APIs, alteração de plano ou acesso ao conteúdo dos secrets. O projeto Firebase local e `.firebaserc` correspondem ao esperado. O `gcloud` ativo apontou para **confloraai**, e as consultas de metadados do SHARKSET falharam por acesso negado à configuração de credenciais local. Portanto, **existência/versões dos secrets, faturamento remoto e IAM aplicado continuam não confirmados**. Não copiar credenciais de outro projeto para contornar isso.
+Integração preparada para `sharkset-70de4`, sem deploy, ativação de APIs, alteração de plano ou acesso ao conteúdo dos secrets. O projeto Firebase local e `.firebaserc` correspondem ao esperado. Em uma sessão anterior, o `gcloud` apontou para um projeto diferente do SHARKSET e as consultas de metadados falharam por acesso negado à configuração de credenciais local. Portanto, **existência/versões dos secrets, faturamento remoto e IAM aplicado continuam não confirmados**. Não copiar credenciais de outro projeto para contornar isso.
 
 Há alterações locais anteriores em ArenasDirectory, FreeSlotsDateTimeFilter, tenants e cache do Hosting; foram preservadas. Nenhum motor de campeonato, tabela ou ranking foi alterado.
 
@@ -111,7 +111,7 @@ O SDK oficial coloca a API key em `iss` no JWT. Esse campo é decodificável no 
 
 Para respeitar a instrução de não expor os valores dos secrets, a emissão real nas funções `start` e `viewer` fica **bloqueada por padrão** pelo parâmetro não secreto `LIVEKIT_ALLOW_JWT_ISSUER_DISCLOSURE=false`. Só configurar `true` após o responsável aceitar explicitamente que o identificador da API key aparecerá no JWT restrito, de curta duração. Não existe valor real no código e não foi gerado token de produção. O SDK cliente continua dependendo do endereço WebRTC público configurado separadamente; o backend não retorna LIVEKIT_URL.
 
-Seleção de projeto após a orientação do responsável: o comando gcloud com override de sessão confirmou `sharkset-70de4`. `scripts/use-sharkset.ps1` configura os overrides de projeto na sessão (`. ./scripts/use-sharkset.ps1`); não copia ou modifica o armazenamento de credenciais Conflora. O acesso remoto aos metadados continua pendente por permissão da configuração local.
+Seleção de projeto após a orientação do responsável: o comando gcloud com override de sessão confirmou `sharkset-70de4`. `scripts/use-sharkset.ps1` configura os overrides de projeto na sessão (`. ./scripts/use-sharkset.ps1`); não copia ou modifica o armazenamento de credenciais local. O acesso remoto aos metadados continua pendente por permissão da configuração local.
 
 ## Verificações executadas nesta alteração
 

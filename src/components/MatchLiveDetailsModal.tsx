@@ -86,7 +86,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
 
   const [selectedSkill, setSelectedSkill] = useState<PointSkillType>('normal');
   const [editingRefereeName, setEditingRefereeName] = useState<boolean>(false);
-  const [refereeNameInput, setRefereeNameInput] = useState<string>(refState.refereeName || 'Árbitro Oficial SHARK SET');
+  const [refereeNameInput, setRefereeNameInput] = useState<string>(refState.refereeName || '');
 
   // Chat state per match (persisted in localStorage so comments stay alive)
   const storageKey = `sharkset_v6_match_chat_${match.id}`;
@@ -241,7 +241,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
 
     const isRef = commentAsReferee;
     const authorLabel = isRef
-      ? refState.refereeName || 'Árbitro Oficial SHARK SET'
+      ? refState.refereeName || 'Não informado'
       : commentAuthor.trim() || 'Torcedor Shark Set';
 
     const newMsg: MatchCommentItem = {
@@ -273,7 +273,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
       ? { badge: 'Semifinal (Mata-Mata)', cls: 'bg-[#0987CE]/25 text-[#5BC3FA] border-[#0987CE]/50' }
       : { badge: 'Grande Final do Torneio', cls: 'bg-[#0987CE] text-white border-[#12C7BB]' };
 
-  const currentSpectators = match.spectatorsCount || (isLive ? 186 : 74);
+  const currentSpectators = match.spectatorsCount;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
@@ -300,13 +300,13 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
             ) : (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#030B17] text-slate-300 border border-[#145A9B] text-xs font-bold">
                 <Clock className="w-3.5 h-3.5 text-[#0987CE]" />
-                Programado: {match.scheduledTime || '14:00'}
+                {match.scheduledTime ? `Programado: ${match.scheduledTime}` : 'Horário não informado'}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-500/20 border border-orange-400/50 text-orange-300 text-xs font-black">
+            {currentSpectators !== undefined && currentSpectators > 0 && <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-500/20 border border-orange-400/50 text-orange-300 text-xs font-black">
               <Users className="w-3.5 h-3.5 text-orange-400" />
               {currentSpectators} jogadores acompanhando agora
-            </span>
+            </span>}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -369,7 +369,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                   QUADRA DA PARTIDA
                 </span>
                 <span className="text-xs sm:text-sm font-black text-white truncate block">
-                  {match.courtName || 'Quadra 1 - Central SHARK SET'}
+                  {match.courtName || 'Quadra não informada'}
                 </span>
                 <span className="text-[11px] text-[#12C7BB] font-semibold block">
                   {arenaName} · Horário: {match.scheduledTime || 'Ao Vivo'}
@@ -415,7 +415,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                 ) : (
                   <>
                     <span className="text-xs sm:text-sm font-black text-white truncate block">
-                      {refState.refereeName || 'Árbitro Oficial SHARK SET'}
+                      {refState.refereeName || 'Não informado'}
                     </span>
                     <span className="text-[11px] text-slate-300 block">
                       Set até {targetPoints} pts (dif. 2 pts)
@@ -742,7 +742,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
                 </div>
                 <span className="px-2.5 py-1 rounded-full bg-[#030B17] border border-[#145A9B] text-[#12C7BB] font-mono text-[11px] font-bold flex items-center gap-1">
                   <Users className="w-3 h-3" />
-                  {match.spectatorsCount || 48} online
+                  {match.spectatorsCount ? `${match.spectatorsCount} online` : 'Audiência não informada'}
                 </span>
               </div>
 

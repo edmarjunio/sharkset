@@ -918,7 +918,7 @@ export const MyBookings: React.FC = () => {
                 required
                 value={achTourn}
                 onChange={(e) => setAchTourn(e.target.value)}
-                placeholder="Torneio (ex: Open Conflora)"
+                placeholder="Nome do campeonato"
                 className="px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg"
               />
               <button

@@ -48,11 +48,6 @@ export const TenantSelectorModal: React.FC = () => {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-sm text-white">{t.name}</span>
-                    {t.id === 'conflora' && (
-                      <span className="text-[10px] font-extrabold text-white bg-[#0987CE] px-2 py-0.5 rounded">
-                        Matriz Oficial
-                      </span>
-                    )}
                   </div>
                   <div className="text-xs text-slate-300 flex items-center gap-1.5">
                     <MapPin className="w-3 h-3 text-[#0987CE]" />

@@ -589,7 +589,7 @@ export function extractAvailableRankingDimensions(athletes: AthleteProfile[]) {
   const cities = Array.from(new Set(athletes.map((a) => (a.city || 'Mineiros').split(' - ')[0].trim())));
   const arenasMap = new Map<string, string>();
   athletes.forEach((a) => {
-    const id = a.arenaId || 'conflora';
+    const id = a.arenaId || '';
     const name = a.arenaName || 'SHARK SET Arena Matriz';
     arenasMap.set(id, name);
   });
@@ -638,7 +638,7 @@ export function filterAndRankAthletesByScope(
     const athCountry = ath.country || 'Brasil';
     const athState = ath.state || 'GO';
     const athCityClean = (ath.city || 'Mineiros').split(' - ')[0].trim();
-    const athArenaId = ath.arenaId || 'conflora';
+    const athArenaId = ath.arenaId || '';
 
     if (params.scope === 'pais' && params.country && params.country !== 'all') {
       if (athCountry !== params.country) return false;

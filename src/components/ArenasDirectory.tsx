@@ -9,7 +9,6 @@ import { SportType, TenantConfig } from '../types';
 import { RegionalAvailabilityFinder } from './RegionalAvailabilityFinder';
 import { FreeSlotsDateTimeFilter } from './FreeSlotsDateTimeFilter';
 import { CreateArenaModal } from './CreateArenaModal';
-import { ARENA_BRAND_PRESETS } from '../services/logoPaletteExtractor';
 import {
   calculateHaversineDistanceKm,
   calculateArenaDistanceFromUser,
@@ -329,9 +328,7 @@ export const ArenasDirectory: React.FC = () => {
           const isCurrent = arena.id === tenant.id;
           const uniqueSports = Array.from(new Set(arena.courts.flatMap((c) => c.sports)));
           const minPrice = Math.min(...arena.courts.map((c) => c.hourlyRate));
-          const coverImg =
-            arena.imageUrl ||
-            'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=1000&q=85';
+          const coverImg = arena.imageUrl;
 
           return (
             <div
@@ -343,12 +340,12 @@ export const ArenasDirectory: React.FC = () => {
             >
               <div>
                 <div className="relative h-48 w-full overflow-hidden bg-slate-900">
-                  <img
+                  {coverImg ? <img
                     src={coverImg}
                     alt={arena.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
-                  />
+                  /> : <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Sem imagem cadastrada</div>}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
 
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-xs">
@@ -424,25 +421,7 @@ export const ArenasDirectory: React.FC = () => {
                     Horários
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const presetIdx =
-                        availableTenants.findIndex((a) => a.id === arena.id) %
-                        ARENA_BRAND_PRESETS.length;
-                      const preset = ARENA_BRAND_PRESETS[Math.max(0, presetIdx)];
-                      updateArenaBranding(arena.id, {
-                        logoUrl: arena.logoUrl || preset.logoUrl,
-                        brandPalette: arena.brandPalette || preset.palette,
-                        whiteLabelEnabled: true,
-                      });
-                      handleSelectArena(arena, 'agendamentos');
-                    }}
-                    className="px-3 py-2 text-xs font-extrabold text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Palette className="w-3.5 h-3.5 text-orange-600" />
-                    Página Oficial
-                  </button>
+
                 </div>
 
                 <button

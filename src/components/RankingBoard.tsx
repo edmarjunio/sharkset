@@ -9,7 +9,6 @@ import {
 } from '../lib/firebase';
 import {
   ATHLETE_LEVEL_LABELS,
-  calculateFutevoleiMatchPoints,
   extractAvailableRankingDimensions,
   filterAndRankAthletesByScope,
   formatSharksetSince,
@@ -61,7 +60,6 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
     availableTenants,
     setActiveTab,
     addOrUpdateAthlete,
-    awardAthletePoints,
     rankingLogs,
   } = useApp();
 
@@ -76,7 +74,6 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
 
   // Operational Modals (separated from visualization)
   const [isAddAthleteModalOpen, setIsAddAthleteModalOpen] = useState<boolean>(false);
-  const [isRecordMatchModalOpen, setIsRecordMatchModalOpen] = useState<boolean>(false);
   const [isShareTop10Open, setIsShareTop10Open] = useState<boolean>(false);
   const [reportTarget, setReportTarget] = useState<{ id: string; name: string } | null>(null);
 
@@ -108,12 +105,6 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
   const [newAthState, setNewAthState] = useState('GO');
   const [newAthCity, setNewAthCity] = useState('Mineiros');
   const [newAthArenaId, setNewAthArenaId] = useState(tenant.id);
-
-  // Record Match Modal Form State
-  const [simWinnerId, setSimWinnerId] = useState<string>(localAthletes[0]?.id || '');
-  const [simLoserId, setSimLoserId] = useState<string>(localAthletes[4]?.id || localAthletes[1]?.id || '');
-  const [simWinScore, setSimWinScore] = useState<number>(18);
-  const [simLoseScore, setSimLoseScore] = useState<number>(12);
 
   // Handle 1-Click Sync to Firestore
   const handleSyncToFirestore = async () => {
@@ -221,20 +212,6 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
     sortDirection,
   ]);
 
-  const simWinnerAth = sourceAthletes.find((a) => a.id === simWinnerId) || sourceAthletes[0];
-  const simLoserAth = sourceAthletes.find((a) => a.id === simLoserId) || sourceAthletes[1];
-
-  const simCalc = useMemo(() => {
-    if (!simWinnerAth || !simLoserAth) return null;
-    return calculateFutevoleiMatchPoints({
-      winnerLevels: [simWinnerAth.level],
-      loserLevels: [simLoserAth.level],
-      winnerScore: simWinScore,
-      loserScore: simLoseScore,
-      stage: 'winners',
-    });
-  }, [simWinnerAth, simLoserAth, simWinScore, simLoseScore]);
-
   const handleAddAthlete = (e: React.FormEvent) => {
     e.preventDefault();
     const normalizedEmail = newAthEmail.trim().toLowerCase();
@@ -270,23 +247,6 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
     setIsAddAthleteModalOpen(false);
     setStatusMessage(
       `✅ Jogador ${addedName} homologado no Ranking (${newAthCountry} · ${newAthState} · ${newAthCity})!`
-    );
-  };
-
-  const handleApplySimulatedMatch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!simWinnerAth || !simLoserAth || !simCalc) return;
-    if (simWinnerAth.id === simLoserAth.id) {
-      setStatusMessage('Selecione dois jogadores diferentes para registrar o confronto.');
-      return;
-    }
-
-    awardAthletePoints(simWinnerAth.id, simCalc.winnerPoints, false);
-    awardAthletePoints(simLoserAth.id, simCalc.loserPoints, false);
-
-    setIsRecordMatchModalOpen(false);
-    setStatusMessage(
-      `✅ Partida registrada! ${simWinnerAth.name} recebeu +${simCalc.winnerPoints} pts (${simWinScore}x${simLoseScore} contra ${simLoserAth.name}).`
     );
   };
 
@@ -389,7 +349,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
             <button onClick={loadAthletesFromFirestore} disabled={isLoading} title="Atualizar ranking" aria-label="Atualizar ranking"><RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} /></button>
             <details className="relative"><summary className="cursor-pointer rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold">Gerenciar</summary>
               <div className="ranking-management absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-slate-600 bg-slate-950 p-2 shadow-xl space-y-1">
-                <button onClick={() => setIsRecordMatchModalOpen(true)}><Zap size={16} />Registrar partida</button>
+
                 <button onClick={() => setIsAddAthleteModalOpen(true)}><UserPlus size={16} />Cadastrar atleta</button>
                 <button onClick={exportRankingCSV}><Download size={16} />Exportar CSV</button>
                 <button onClick={handleSyncToFirestore} disabled={isSyncing}><Database size={16} />{isSyncing ? 'Sincronizando…' : 'Sincronizar'}</button>
@@ -1118,162 +1078,6 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
       )}
 
       {/* ===================================================================== */}
-      {/* MODAL 2: REGISTRAR PARTIDA (CÁLCULO DINÂMICO DE PONTOS)               */}
-      {/* ===================================================================== */}
-      {isRecordMatchModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="rb-modal-record-match-title"
-        >
-          <div className="aquarium-glass w-full max-w-2xl bg-[#05182C] border border-[#145A9B] rounded-2xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between gap-4 pb-3 border-b border-[#145A9B]/50">
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 id="rb-modal-record-match-title" className="text-base font-black text-white flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-[#FF6B00] fill-[#FF6B00]" />
-                    Registrar Partida · Cálculo Dinâmico de Pontos
-                  </h2>
-                  <span className="text-[11px] font-bold text-[#12C7BB]">
-                    · Atualiza todos os 5 Rankings Simultaneamente
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300">
-                  Vencer um oponente de nível superior concede bônus extra de dificuldade, somado ao saldo de pontos do placar.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRecordMatchModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60"
-                title="Fechar"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleApplySimulatedMatch} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-200 mb-1">Jogador Vencedor:</label>
-                  <select
-                    value={simWinnerId}
-                    onChange={(e) => setSimWinnerId(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-bold text-white"
-                  >
-                    {sourceAthletes.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({ATHLETE_LEVEL_LABELS[a.level]})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-200 mb-1">Oponente Enfrentado:</label>
-                  <select
-                    value={simLoserId}
-                    onChange={(e) => setSimLoserId(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-bold text-white"
-                  >
-                    {sourceAthletes.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({ATHLETE_LEVEL_LABELS[a.level]})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                <div>
-                  <label className="block font-bold text-slate-200 mb-1">Placar do Jogo:</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      max={99}
-                      value={simWinScore}
-                      onChange={(e) => setSimWinScore(parseInt(e.target.value, 10) || 18)}
-                      className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-extrabold text-sm text-center text-white"
-                    />
-                    <span className="font-bold text-slate-400">x</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={99}
-                      value={simLoseScore}
-                      onChange={(e) => setSimLoseScore(parseInt(e.target.value, 10) || 12)}
-                      className="w-full px-3 py-2 bg-[#030D1A] border border-[#145A9B]/60 rounded-lg font-extrabold text-sm text-center text-white"
-                    />
-                  </div>
-                </div>
-
-                {simCalc && (
-                  <div className="p-3 rounded-lg bg-[#030D1A]/90 border-l-4 border-l-[#12C7BB] text-xs space-y-0.5">
-                    <span className="font-extrabold text-[#12C7BB] block text-sm">
-                      Vencedor recebe: +{simCalc.winnerPoints} pts
-                    </span>
-                    <span className="text-slate-300 block text-[11px]" title={simCalc.explanation}>
-                      Performance: <strong>+{simCalc.performanceBonus}</strong> · Dificuldade do Oponente:{' '}
-                      <strong>+{simCalc.opponentDifficultyBonus}</strong>
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#145A9B]/40">
-                <button
-                  type="button"
-                  onClick={() => setIsRecordMatchModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-lg bg-[#FF6B00] hover:bg-[#e66000] text-white font-extrabold shadow-md"
-                >
-                  Registrar Resultado no Ranking
-                </button>
-              </div>
-            </form>
-
-            {rankingLogs.length > 0 && (
-              <div className="pt-4 border-t border-[#145A9B]/40 space-y-2.5">
-                <h3 className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#12C7BB]" />
-                  Últimos Jogos Contabilizados ({rankingLogs.length})
-                </h3>
-                <div className="space-y-2 max-h-44 overflow-y-auto pr-1 text-xs">
-                  {rankingLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="p-2.5 rounded-lg bg-[#030D1A]/80 border border-slate-800 flex items-center justify-between gap-2"
-                    >
-                      <div>
-                        <span className="font-bold text-white">
-                          {log.winnerNames}{' '}
-                          <span className="text-amber-400 font-extrabold">({log.score})</span>{' '}
-                          {log.loserNames}
-                        </span>
-                        <span className="block text-[11px] text-slate-400">
-                          Jogo #{log.matchNumber} · {log.timestamp}
-                        </span>
-                      </div>
-                      <span className="font-extrabold text-[#12C7BB] shrink-0">
-                        +{log.pointsAwardedWinner} pts
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Official Top 10 WhatsApp Share & High-Res Image Modal */}
       <Top10WhatsAppShareModal
         isOpen={isShareTop10Open}

@@ -271,7 +271,7 @@ export const SharkAcademyCommunity: React.FC = () => {
   const [newSummary, setNewSummary] = useState<string>('');
   const [newKeyPointsText, setNewKeyPointsText] = useState<string>('');
   const [newLevel, setNewLevel] = useState<'iniciante' | 'intermediario' | 'avancado' | 'todos'>('todos');
-  const [newAuthor, setNewAuthor] = useState<string>(userProfile.name || 'Atleta SHARK SET');
+  const [newAuthor, setNewAuthor] = useState<string>(userProfile.name || '');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Selected post for full preview
@@ -311,7 +311,7 @@ export const SharkAcademyCommunity: React.FC = () => {
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newSummary.trim()) return;
+    if (!newTitle.trim() || !newSummary.trim() || !newAuthor.trim()) return;
 
     const points = newKeyPointsText
       .split('\n')
@@ -323,22 +323,14 @@ export const SharkAcademyCommunity: React.FC = () => {
       title: newTitle.trim(),
       category: newCategory,
       mediaType: newMediaType,
-      mediaUrl:
-        newMediaUrl.trim() ||
-        (newMediaType === 'image'
-          ? 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=900&auto=format&fit=crop&q=80'
-          : '#conteudo-sharkset'),
+      mediaUrl: newMediaUrl.trim() || undefined,
       summary: newSummary.trim(),
-      tacticalKeyPoints:
-        points.length > 0
-          ? points
-          : ['Posicionamento equilibrado', 'Leitura corporal antecipada', 'Base direcionada pro centro'],
-      authorName: newAuthor.trim() || 'Membro Comunidade SHARK SET',
-      authorRole: 'Treinador / Atleta Verificado',
+      tacticalKeyPoints: points,
+      authorName: newAuthor.trim(),
       arenaName: tenant.name,
       level: newLevel,
-      likesCount: 1,
-      createdAt: 'Agora mesmo',
+      likesCount: 0,
+      createdAt: new Date().toISOString(),
     };
 
     const nextPosts = [created, ...posts];

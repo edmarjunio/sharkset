@@ -437,7 +437,7 @@ export async function fetchTopAthletesFromFirestore(
         country: data.country || 'Brasil',
         state: data.state || 'GO',
         city: data.city || 'Mineiros',
-        arenaId: data.arenaId || 'conflora',
+        arenaId: data.arenaId || '',
         arenaName: data.arenaName || 'SHARK SET Arena',
         preferredSport: 'futevolei',
       });
@@ -478,7 +478,7 @@ export async function persistAthleteToFirestore(athlete: AthleteProfile): Promis
       country: (athlete.country || 'Brasil').slice(0, 60),
       state: (athlete.state || 'GO').slice(0, 10),
       city: (athlete.city || 'Mineiros').slice(0, 80),
-      arenaId: (athlete.arenaId || 'conflora').slice(0, 64),
+      arenaId: (athlete.arenaId || '').slice(0, 64),
       arenaName: (athlete.arenaName || 'SHARK SET Arena Matriz').slice(0, 120),
       ownerId: currentUser.uid,
     });
@@ -504,7 +504,7 @@ export async function seedAthletesToFirestore(athletes: AthleteProfile[]): Promi
   return count;
 }
 
-const LOCAL_MVP_VOTES_KEY = 'sharkset_v1_mvp_votes';
+const LOCAL_MVP_VOTES_KEY = 'sharkset_v2_mvp_votes';
 
 const EMPTY_LOCAL_MVP_VOTES: MatchMvpVoteRecord[] = [];
 
@@ -691,7 +691,7 @@ export async function persistFullAthleteProfileToFirestore(
       tournamentTokens:
         athlete.tournamentTokens !== undefined
           ? athlete.tournamentTokens
-          : (existingData.tournamentTokens ?? 1),
+          : (existingData.tournamentTokens ?? 0),
       preferredSport: athlete.preferredSport || 'futevolei',
       country: athlete.country || 'Brasil',
       state: athlete.state || 'GO',
@@ -723,7 +723,7 @@ export async function persistFullAthleteProfileToFirestore(
         country: athlete.country || 'Brasil',
         state: athlete.state || 'GO',
         city: athlete.city || 'Mineiros',
-        arenaId: athlete.arenaId || 'conflora',
+        arenaId: athlete.arenaId || '',
         arenaName: athlete.arenaName || 'Arena',
         ownerId: uid,
       },
@@ -768,12 +768,13 @@ export async function spendTournamentTokenInFirestore(uid: string): Promise<bool
 export async function persistArenaToFirestore(arena: TenantConfig): Promise<void> {
   const currentUser = auth.currentUser;
   const path = `arenas/${arena.id}`;
+  if (!currentUser) throw new Error('Entre com sua conta para salvar a arena.');
   try {
     await setDoc(
       doc(db, 'arenas', arena.id),
       {
         ...arena,
-        ownerId: arena.ownerId || currentUser?.uid || 'admin',
+        ownerId: currentUser.uid,
         managers: arena.managers || [],
         updatedAt: new Date().toISOString(),
       },
@@ -848,12 +849,13 @@ export async function removeManagerFromArenaInFirestore(
 export async function persistTournamentToFirestore(tourn: Tournament): Promise<void> {
   const currentUser = auth.currentUser;
   const path = `tournaments/${tourn.id}`;
+  if (!currentUser?.emailVerified) throw new Error('Entre com uma conta verificada para salvar o torneio.');
   try {
     await setDoc(
       doc(db, 'tournaments', tourn.id),
       {
         ...tourn,
-        ownerId: tourn.creatorUid || currentUser?.uid || 'admin',
+        ownerId: currentUser.uid,
         updatedAt: new Date().toISOString(),
       },
       { merge: true }

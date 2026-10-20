@@ -5,7 +5,7 @@ import {
   requestBrowserPushPermission,
 } from '../services/smartAlertEngine';
 
-const NOTIFICATIONS_STORAGE_KEY = 'sharkset_v6_smart_notifications';
+const NOTIFICATIONS_STORAGE_KEY = 'sharkset_v7_smart_notifications';
 
 interface SharkStoreState {
   smartNotifications: SmartNotificationItem[];
@@ -47,7 +47,12 @@ export const useSharkStore = create<SharkStoreState>((set, get) => ({
     typeof window !== 'undefined' && 'Notification' in window
       ? window.Notification.permission
       : 'default',
-  referenceClockTime: '17:45',
+  referenceClockTime: new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date()),
   firebaseUserEmail: null,
 
   setNotificationDrawerOpen: (open) => set({ notificationDrawerOpen: open }),

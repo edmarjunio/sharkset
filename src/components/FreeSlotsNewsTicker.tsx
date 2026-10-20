@@ -51,7 +51,7 @@ const MemoizedTickerCard = React.memo(function MemoizedTickerCard({
       className={`absolute top-0 flex items-center justify-between gap-1.5 rounded-xl border text-left cursor-pointer active:scale-[0.98] group/card select-none ${
         isFloating
           ? 'h-9 px-2.5 py-1 bg-slate-900/85 hover:bg-[#072445] border-cyan-500/30 hover:border-cyan-300 shadow-sm'
-          : 'h-[30px] px-2 py-0.5 bg-[#051c36]/85 hover:bg-[#07264a] border-cyan-500/30 hover:border-cyan-400 shadow-xs'
+          : 'h-[32px] pl-1.5 pr-2 py-0.5 bg-[#051c36]/90 hover:bg-[#07264a] border-cyan-500/35 hover:border-cyan-400 shadow-xs'
       }`}
       title={`Clique para agendar às ${item.shortHour} na ${item.court.name} (${item.arena.name})`}
     >
@@ -92,10 +92,10 @@ const MemoizedTickerCard = React.memo(function MemoizedTickerCard({
 
         {/* Ícone 3D com Raio de Agendamento */}
         <div
-          className="w-5 h-5 rounded-full btn-3d-zap flex items-center justify-center shrink-0 border border-amber-300/80 shadow-xs"
+          className="w-5 h-5 rounded-full bg-gradient-to-b from-[#FFA500] via-[#FF6A00] to-[#D94E00] flex items-center justify-center shrink-0 border border-amber-200/90 shadow-[0_1px_3px_rgba(0,0,0,0.5),0_0_8px_rgba(255,106,0,0.45)] group-hover/card:scale-105 active:scale-95 transition-transform"
           title="Agendar horário"
         >
-          <Zap size={10} className="fill-slate-950 text-slate-950 stroke-[2.5]" />
+          <Zap size={11} className="fill-white text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]" />
         </div>
       </div>
     </button>
@@ -276,7 +276,7 @@ export function FreeSlotsNewsTicker({ onSlotClick, variant = 'topbar', className
       <div
         ref={containerRef}
         className={`flex-1 min-w-0 overflow-hidden relative ${
-          isFloating ? 'h-9' : 'h-[30px]'
+          isFloating ? 'h-9' : 'h-[32px]'
         }`}
       >
         {visibleWindow.map(({ virtualIndex, item }) => {

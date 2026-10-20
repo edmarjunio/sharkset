@@ -32,6 +32,28 @@ const INITIAL_ARENA_VIDEOS: Record<string, ArenaVideoItem[]> = {
   default: [],
 };
 
+function getPlayableVideoSource(url: string): { kind: 'youtube' | 'file'; src: string } | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+
+    const host = parsed.hostname.toLowerCase();
+    const isYouTube = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com'].includes(host);
+    if (isYouTube || host === 'youtu.be' || host === 'www.youtu.be') {
+      const id = host.includes('youtu.be')
+        ? parsed.pathname.split('/').filter(Boolean)[0]
+        : parsed.searchParams.get('v') || parsed.pathname.match(/^\/(?:embed|shorts)\/([^/]+)/)?.[1];
+      if (!id || !/^[\w-]{11}$/.test(id)) return null;
+      return { kind: 'youtube', src: `https://www.youtube-nocookie.com/embed/${id}` };
+    }
+
+    if (/\.(mp4|webm|ogg)$/i.test(parsed.pathname)) return { kind: 'file', src: parsed.href };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 interface ArenaCommunityLearningProps {
   tenant: TenantConfig;
 }
@@ -48,7 +70,7 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
   // New Video Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newCoach, setNewCoach] = useState('Prof. da Arena');
+  const [newCoach, setNewCoach] = useState('');
   const [newCategory, setNewCategory] = useState<'fundamentos' | 'ataque' | 'defesa' | 'tatico' | 'regras'>('fundamentos');
   const [newVideoUrl, setNewVideoUrl] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -72,7 +94,8 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
 
   const handleAddVideo = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    const playableSource = getPlayableVideoSource(newVideoUrl.trim());
+    if (!newTitle.trim() || !newCoach.trim() || !playableSource) return;
 
     const newVid: ArenaVideoItem = {
       id: `vid-${Date.now()}`,
@@ -81,17 +104,17 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
       category: newCategory,
       sport: 'futevolei',
       duration: '4:00',
-      videoUrl: newVideoUrl || 'https://www.youtube.com',
-      thumbnailUrl:
-        'https://images.unsplash.com/photo-1544919982-b61976f0ba43?auto=format&fit=crop&w=800&q=80',
-      description: newDesc || 'Vídeo de instrução enviado pelos professores da arena.',
-      views: 1,
-      uploadedAt: 'Agora mesmo',
+      videoUrl: playableSource.src,
+      thumbnailUrl: '',
+      description: newDesc.trim(),
+      views: 0,
+      uploadedAt: new Date().toISOString(),
     };
 
     setVideos((prev) => [newVid, ...prev]);
     setShowAddModal(false);
     setNewTitle('');
+    setNewCoach('');
     setNewDesc('');
     setNewVideoUrl('');
   };
@@ -169,19 +192,19 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
               className="relative aspect-video w-full bg-slate-900 cursor-pointer overflow-hidden"
               onClick={() => setSelectedVideo(video)}
             >
-              <img
-                src={video.thumbnailUrl}
-                alt={video.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
+              {video.thumbnailUrl ? (
+                <img
+                  src={video.thumbnailUrl}
+                  alt={video.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              ) : <div className="w-full h-full flex items-center justify-center text-slate-500" aria-label="Sem miniatura"><Play className="w-8 h-8" /></div>}
               <div className="absolute inset-0 bg-slate-950/40 group-hover:bg-slate-950/20 transition-colors flex items-center justify-center">
                 <div className="w-12 h-12 rounded-full bg-cyan-500/90 text-slate-950 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                   <Play className="w-6 h-6 fill-slate-950 translate-x-0.5" />
                 </div>
               </div>
-              <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/80 text-white font-mono font-bold text-[10px]">
-                {video.duration}
-              </span>
+              {video.duration && <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/80 text-white font-mono font-bold text-[10px]">{video.duration}</span>}
               <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-black text-[10px] uppercase">
                 {video.category}
               </span>
@@ -251,14 +274,18 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
           <div className="bg-slate-950 border border-cyan-500/40 rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl space-y-4">
             <div className="relative aspect-video w-full bg-black">
-              {/* Responsive Embedded Player Demo */}
-              <iframe
-                src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1"
-                title={selectedVideo.title}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+              {/* Responsive embedded media player */}
+              {getPlayableVideoSource(selectedVideo.videoUrl)?.kind === 'youtube' ? (
+                <iframe
+                  src={getPlayableVideoSource(selectedVideo.videoUrl)!.src}
+                  title={selectedVideo.title}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : getPlayableVideoSource(selectedVideo.videoUrl)?.kind === 'file' ? (
+                <video src={getPlayableVideoSource(selectedVideo.videoUrl)!.src} controls className="w-full h-full" />
+              ) : <p className="p-8 text-center text-slate-300">O endereço deste vídeo não é compatível.</p>}
             </div>
 
             <div className="p-5 pt-0 space-y-3">
@@ -375,6 +402,7 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
                 </label>
                 <input
                   type="url"
+                  required
                   placeholder="https://www.youtube.com/watch?v=..."
                   value={newVideoUrl}
                   onChange={(e) => setNewVideoUrl(e.target.value)}

@@ -1,10 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { ArenaBrandPalette } from '../types';
-import {
-  ARENA_BRAND_PRESETS,
-  extractPaletteFromLogoImage,
-} from '../services/logoPaletteExtractor';
+import { extractPaletteFromLogoImage } from '../services/logoPaletteExtractor';
 import {
   X,
   Upload,
@@ -30,12 +27,11 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
   const [arenaTagline, setArenaTagline] = useState(
     tenant.tagline || 'Site Oficial de Agendamentos, Aulas e Torneios'
   );
-  const [logoUrl, setLogoUrl] = useState(
-    tenant.logoUrl || ARENA_BRAND_PRESETS[0].logoUrl
-  );
-  const [palette, setPalette] = useState<ArenaBrandPalette>(
-    tenant.brandPalette || ARENA_BRAND_PRESETS[0].palette
-  );
+  const [logoUrl, setLogoUrl] = useState(tenant.logoUrl || '');
+  const [palette, setPalette] = useState<ArenaBrandPalette>(tenant.brandPalette || {
+    primary: '#0987CE', secondary: '#12C7BB', accent: '#FF6B00', headerBg: '#071D3D',
+    surfaceBg: '#FFFFFF', textOnPrimary: '#FFFFFF', paletteName: 'SHARK SET',
+  });
   const [whiteLabelEnabled, setWhiteLabelEnabled] = useState<boolean>(
     tenant.whiteLabelEnabled ?? true
   );
@@ -70,12 +66,6 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
     setExtracting(false);
   };
 
-  const handleSelectPreset = (preset: (typeof ARENA_BRAND_PRESETS)[0]) => {
-    setLogoUrl(preset.logoUrl);
-    setPalette(preset.palette);
-    setWhiteLabelEnabled(true);
-  };
-
   const handleSaveWhiteLabel = (e: React.FormEvent) => {
     e.preventDefault();
     updateArenaBranding(tenant.id, {
@@ -106,11 +96,11 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
           }}
         >
           <div className="flex items-center gap-3">
-            <img
+            {logoUrl ? <img
               src={logoUrl}
               alt="Logo da Arena"
               className="w-14 h-14 rounded-2xl object-contain bg-white/10 p-1 border border-white/25 shadow-md"
-            />
+            /> : <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/25 flex items-center justify-center font-black">{arenaName.slice(0, 1).toUpperCase()}</div>}
             <div>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black uppercase tracking-wider">
                 <Sparkles className="w-3 h-3" />
@@ -152,7 +142,7 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
             </label>
           </div>
 
-          {/* Upload Arena Logo or Pick Instant Preset */}
+          {/* Upload the arena's own logo */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-3">
               <label className="block text-xs font-black uppercase text-slate-700">
@@ -195,47 +185,6 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
               </div>
             </div>
 
-            {/* Instant Presets to Test */}
-            <div className="space-y-2.5">
-              <label className="block text-xs font-black uppercase text-slate-700">
-                Ou teste com um modelo de Logo + Paleta de Arena:
-              </label>
-              <div className="grid grid-cols-2 gap-2.5">
-                {ARENA_BRAND_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleSelectPreset(preset)}
-                    className="aquarium-glass p-2.5 rounded-2xl border border-slate-200 hover:border-slate-900 bg-white text-left flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs"
-                  >
-                    <img
-                      src={preset.logoUrl}
-                      alt={preset.arenaSampleName}
-                      className="w-10 h-10 rounded-xl shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <div className="text-xs font-black text-slate-900 truncate">
-                        {preset.palette.paletteName}
-                      </div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <span
-                          className="w-3.5 h-3.5 rounded-full border border-black/10"
-                          style={{ backgroundColor: preset.palette.primary }}
-                        />
-                        <span
-                          className="w-3.5 h-3.5 rounded-full border border-black/10"
-                          style={{ backgroundColor: preset.palette.secondary }}
-                        />
-                        <span
-                          className="w-3.5 h-3.5 rounded-full border border-black/10"
-                          style={{ backgroundColor: preset.palette.headerBg }}
-                        />
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* Arena Name, Tagline & Fine-tune Extracted Colors */}
@@ -337,11 +286,11 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
               }}
             >
               <div className="flex items-center gap-3">
-                <img
+                {logoUrl ? <img
                   src={logoUrl}
                   alt={arenaName}
                   className="w-14 h-14 rounded-2xl object-contain bg-white/10 p-1 border border-white/20"
-                />
+                /> : <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center font-black">{arenaName.slice(0, 1).toUpperCase()}</div>}
                 <div>
                   <div className="text-base font-black tracking-tight">{arenaName}</div>
                   <div className="text-xs opacity-85">{arenaTagline}</div>

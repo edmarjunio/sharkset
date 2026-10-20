@@ -41,7 +41,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
         if (m.status === 'in_progress') {
           list.push({
             match: m,
-            tournamentName: tourn?.name || 'Copa Shark Set',
+            tournamentName: tourn?.name || 'Torneio',
           });
         }
       });
@@ -152,7 +152,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
     if (isMinimized) return null;
 
     const title = streamMode === 'live' && activeLiveEntry
-      ? `Jogo ${activeLiveEntry.match.matchNumber} · ${activeLiveEntry.match.courtName || 'Quadra Central'}`
+      ? `Jogo ${activeLiveEntry.match.matchNumber} · ${activeLiveEntry.match.courtName || 'Quadra não informada'}`
       : activeLegend?.title || 'Transmissão Ao Vivo';
     const expandPlayer = () => {
       setIsTheaterExpanded(false);
@@ -163,13 +163,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
     return (
       <section className="shark-miniplayer" aria-label="Miniplayer da transmissão">
         <div className="shark-miniplayer-screen">
-          <img
-            src={streamMode === 'live'
-              ? 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=900&auto=format&fit=crop&q=80'
-              : activeLegend.thumbnailUrl}
-            alt="Prévia da transmissão"
-            className="broadcast-media w-full h-full object-cover"
-          />
+          {streamMode === 'live' ? <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Imagem da transmiss?o n?o dispon?vel</div> : activeLegend.thumbnailUrl ? <img src={activeLegend.thumbnailUrl} alt={activeLegend.title} className="broadcast-media w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Sem imagem cadastrada</div>}
           <div className="shark-miniplayer-shade" />
           <div className="shark-miniplayer-top">
             <button type="button" onClick={expandPlayer} aria-label="Expandir transmissão"
@@ -187,7 +181,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
                 <p className="truncate">{activeLiveEntry.match.team1?.player1} / {activeLiveEntry.match.team1?.player2}</p>
                 <p className="truncate">{activeLiveEntry.match.team2?.player1} / {activeLiveEntry.match.team2?.player2}</p>
               </div>
-              <strong className="shrink-0 tabular-nums">{activeLiveEntry.match.score1 ?? 0} × {activeLiveEntry.match.score2 ?? 0}</strong>
+              <strong className="shrink-0 tabular-nums">{activeLiveEntry.match.score1 !== undefined && activeLiveEntry.match.score2 !== undefined ? `${activeLiveEntry.match.score1} × ${activeLiveEntry.match.score2}` : 'Placar não informado'}</strong>
             </div>
           )}
           <div className="shark-miniplayer-bottom">
@@ -293,15 +287,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
           <div className="lg:col-span-8 p-4 sm:p-6 space-y-4 border-b lg:border-b-0 lg:border-r border-[#145A9B]">
             {/* Main Video Stage */}
             <div className="aquarium-glass relative rounded-2xl overflow-hidden bg-[#071D3D] border border-[#145A9B] aspect-video group">
-              <img
-                src={
-                  streamMode === 'live'
-                    ? 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=1400&auto=format&fit=crop&q=80'
-                    : activeLegend.thumbnailUrl
-                }
-                alt="Quadra Central Ao Vivo"
-                className="w-full h-full object-cover broadcast-media group-hover:scale-[1.01] transition-transform duration-500"
-              />
+              {streamMode === 'live' ? <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Imagem da transmiss?o n?o dispon?vel</div> : activeLegend.thumbnailUrl ? <img src={activeLegend.thumbnailUrl} alt={activeLegend.title} className="w-full h-full object-cover broadcast-media group-hover:scale-[1.01] transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Sem imagem cadastrada</div>}
               <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#030B17]/25 via-transparent to-transparent" />
 
               {/* Top Overlay: Viewers Count + Camera Label */}
@@ -376,7 +362,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
                           </span>
                         </div>
                         <span className="px-3 py-1 rounded-xl bg-[#0987CE] text-white font-mono font-black text-base sm:text-lg tabular-nums shadow-xs">
-                          {activeLiveEntry.match.score1 ?? 0} x {activeLiveEntry.match.score2 ?? 0}
+                          {activeLiveEntry.match.score1 !== undefined && activeLiveEntry.match.score2 !== undefined ? `${activeLiveEntry.match.score1} x ${activeLiveEntry.match.score2}` : 'Placar não informado'}
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="text-sm sm:text-base font-black text-white">
@@ -388,7 +374,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
                       {/* Discipline Cards & Timeouts Indicator */}
                       <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-300 pt-0.5">
                         <span>
-                          Juiz: <strong className="text-white">{activeLiveEntry.match.liveReferee?.refereeName || 'Oficial SHARK SET'}</strong> · Tempos: {activeLiveEntry.match.liveReferee?.team1TimeoutsUsed ?? 0}/1 ·{' '}
+                          Juiz: <strong className="text-white">{activeLiveEntry.match.liveReferee?.refereeName || 'Não informado'}</strong> · Tempos: {activeLiveEntry.match.liveReferee?.team1TimeoutsUsed ?? 0}/1 ·{' '}
                           {activeLiveEntry.match.liveReferee?.team2TimeoutsUsed ?? 0}/1
                         </span>
                       </div>
@@ -453,11 +439,11 @@ export const PersistentLiveStreamDock: React.FC = () => {
                             {match.team2?.player2}
                           </div>
                           <div className="text-[11px] text-slate-400 truncate">
-                            {tournamentName} · {match.courtName || 'Quadra Central'}
+                            {tournamentName} · {match.courtName || 'Quadra não informada'}
                           </div>
                         </div>
                         <div className="px-2.5 py-1 rounded-xl bg-[#0987CE] text-white font-mono font-black text-xs shrink-0">
-                          {match.score1 ?? 0}x{match.score2 ?? 0}
+                          {match.score1 !== undefined && match.score2 !== undefined ? `${match.score1}x${match.score2}` : 'Placar não informado'}
                         </div>
                       </button>
                     );

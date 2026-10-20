@@ -1,12 +1,5 @@
 import { ArenaBrandPalette } from '../types';
 
-export interface ArenaBrandPreset {
-  id: string;
-  arenaSampleName: string;
-  logoUrl: string;
-  palette: ArenaBrandPalette;
-}
-
 function rgbToHex(r: number, g: number, b: number): string {
   const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
   return (
@@ -184,86 +177,3 @@ export async function extractPaletteFromLogoImage(imageUrl: string): Promise<Are
     }
   });
 }
-
-function createArenaSvgDataUri(
-  bgHex1: string,
-  bgHex2: string,
-  accentHex: string,
-  shortTitle: string,
-  subLabel: string
-): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="${bgHex1}"/>
-        <stop offset="100%" stop-color="${bgHex2}"/>
-      </linearGradient>
-    </defs>
-    <circle cx="100" cy="100" r="95" fill="url(#g)" stroke="${accentHex}" stroke-width="6"/>
-    <circle cx="100" cy="78" r="34" fill="${accentHex}" opacity="0.9"/>
-    <path d="M 30 112 Q 100 94 170 112" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
-    <path d="M 38 128 Q 100 114 162 128" stroke="${accentHex}" stroke-width="4" stroke-linecap="round"/>
-    <text x="100" y="154" text-anchor="middle" fill="#FFFFFF" font-family="Plus Jakarta Sans, Arial, sans-serif" font-weight="900" font-size="24" letter-spacing="2">${shortTitle}</text>
-    <text x="100" y="174" text-anchor="middle" fill="${accentHex}" font-family="Plus Jakarta Sans, Arial, sans-serif" font-weight="800" font-size="11" letter-spacing="3">${subLabel}</text>
-  </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
-
-export const ARENA_BRAND_PRESETS: ArenaBrandPreset[] = [
-  {
-    id: 'sunset_coral',
-    arenaSampleName: 'Sunset Beach Club',
-    logoUrl: createArenaSvgDataUri('#7C2D12', '#EA580C', '#FDBA74', 'SUNSET', 'BEACH ARENA'),
-    palette: {
-      primary: '#EA580C',
-      secondary: '#F97316',
-      accent: '#FB923C',
-      headerBg: '#1C1917',
-      surfaceBg: '#FFF7ED',
-      textOnPrimary: '#FFFFFF',
-      paletteName: 'Sunset Laranja & Areia',
-    },
-  },
-  {
-    id: 'tropical_emerald',
-    arenaSampleName: 'Arena Palmas Tropical',
-    logoUrl: createArenaSvgDataUri('#064E3B', '#059669', '#6EE7B7', 'TROPICAL', 'FUTEVOLEI CLUB'),
-    palette: {
-      primary: '#059669',
-      secondary: '#10B981',
-      accent: '#34D399',
-      headerBg: '#022C22',
-      surfaceBg: '#ECFDF5',
-      textOnPrimary: '#FFFFFF',
-      paletteName: 'Verde Esmeralda Tropical',
-    },
-  },
-  {
-    id: 'copacabana_gold',
-    arenaSampleName: 'Arena Imperial Posto 6',
-    logoUrl: createArenaSvgDataUri('#1E1B4B', '#4338CA', '#FACC15', 'POSTO 6', 'ARENA RIO'),
-    palette: {
-      primary: '#4338CA',
-      secondary: '#6366F1',
-      accent: '#EAB308',
-      headerBg: '#0F172A',
-      surfaceBg: '#EEF2FF',
-      textOnPrimary: '#FFFFFF',
-      paletteName: 'Royal Indigo & Sol',
-    },
-  },
-  {
-    id: 'crimson_sand',
-    arenaSampleName: 'Arena Red Foot',
-    logoUrl: createArenaSvgDataUri('#4C0519', '#E11D48', '#FDA4AF', 'REDFOOT', 'CT AREIA'),
-    palette: {
-      primary: '#E11D48',
-      secondary: '#F43F5E',
-      accent: '#FB7185',
-      headerBg: '#1F0910',
-      surfaceBg: '#FFF1F2',
-      textOnPrimary: '#FFFFFF',
-      paletteName: 'Vermelho Rubi & Coral',
-    },
-  },
-];

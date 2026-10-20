@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { auth, db } from '../lib/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
 import { Court, SportType, TenantConfig } from '../types';
 import { toast } from '../store/useToastStore';
 import { Building2, MapPin, Phone, Clock, DollarSign, X, Check, Plus, Shield } from 'lucide-react';
@@ -16,19 +15,18 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
   const { addArena, setTenantId, setActiveTab, setArenaSubTab } = useApp();
 
   const [name, setName] = useState('');
-  const [city, setCity] = useState('Mineiros');
-  const [state, setState] = useState('GO');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [address, setAddress] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [openTime, setOpenTime] = useState('06:00');
-  const [closeTime, setCloseTime] = useState('23:00');
-  const [courtCount, setCourtCount] = useState(2);
-  const [hourlyRate, setHourlyRate] = useState(80);
-  const [selectedSports, setSelectedSports] = useState<SportType[]>([
-    'futevolei',
-    'beach_tennis',
-    'volei_praia',
-  ]);
+  const [openTime, setOpenTime] = useState('');
+  const [closeTime, setCloseTime] = useState('');
+  const [courtCount, setCourtCount] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('');
+  const [selectedSports, setSelectedSports] = useState<SportType[]>([]);
+  const [surface, setSurface] = useState<Court['surface'] | ''>('');
+  const [isCovered, setIsCovered] = useState<boolean | null>(null);
+  const [hasLighting, setHasLighting] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -41,26 +39,33 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!auth.currentUser) {
+      toast.error('Entre com sua conta antes de cadastrar uma arena.');
+      return;
+    }
+    const courtTotal = Number(courtCount);
+    const hourlyRateValue = Number(hourlyRate);
+    if (!name.trim() || !city.trim() || !state.trim() || !address.trim() || !whatsapp.trim() ||
+      !openTime || !closeTime || !Number.isInteger(courtTotal) || courtTotal < 1 || courtTotal > 12 ||
+      !Number.isFinite(hourlyRateValue) || hourlyRateValue < 0 || selectedSports.length === 0 ||
+      !surface || isCovered === null || hasLighting === null) {
+      toast.error('Preencha os dados reais da arena, das quadras, dos horários e do preço.');
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      const arenaId = `arena-${Date.now()}`;
-      const courts: Court[] = Array.from({ length: Math.max(1, courtCount) }, (_, i) => ({
+      const arenaId = `arena-${auth.currentUser.uid}-${Date.now()}`;
+      const courts: Court[] = Array.from({ length: courtTotal }, (_, i) => ({
         id: `court-${i + 1}`,
         name: `Quadra ${i + 1}`,
-        description: `Quadra ${i + 1} oficial de areia quartzosa com iluminaÃ§Ã£o LED`,
+        description: '',
         sports: selectedSports,
-        surface: 'Areia Quartzosa Premium',
-        isCovered: i === 0,
-        hasLighting: true,
-        hourlyRate: hourlyRate || 80,
-        peakHourlyRate: (hourlyRate || 80) + 20,
-        weekendNormalRate: hourlyRate || 80,
-        weekendPeakRate: (hourlyRate || 80) + 20,
-        peakStartTime: '18:00',
-        peakEndTime: '22:00',
+        surface,
+        isCovered,
+        hasLighting,
+        hourlyRate: hourlyRateValue,
         openTime,
         closeTime,
       }));
@@ -68,49 +73,27 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
       const newArena: TenantConfig = {
         id: arenaId,
         name: name.trim(),
-        tagline: 'GestÃ£o Esportiva & Agendamento Inteligente',
+        tagline: '',
         city: city.trim(),
         state: state.trim().toUpperCase(),
-        address: address.trim() || `${city.trim()} - ${state.trim().toUpperCase()}`,
-        distanceKm: 2.5,
-        rating: 5.0,
-        whatsapp: whatsapp.replace(/\D/g, '') || '5564999990000',
+        address: address.trim(),
+        distanceKm: 0,
+        rating: 0,
+        whatsapp: whatsapp.replace(/\D/g, ''),
         primaryColor: '#0987CE',
         accentColor: '#FF6B00',
         sandBg: 'linear-gradient(180deg, #0987CE 0%, #031526 100%)',
-        amenities: [
-          'Ducha aquecida',
-          'VestiÃ¡rio completo',
-          'Churrasqueira',
-          'Bar e lanchonete',
-          'IluminaÃ§Ã£o LED noturna',
-          'Wi-Fi gratuito',
-        ],
+        amenities: [],
         courts,
         operatingHours: {
           open: openTime,
           close: closeTime,
         },
-        subscriptionPlan: 'arena_pro_99',
-        monthlyPlanPrice: 99,
-        ownerName: auth.currentUser?.displayName || 'Administrador',
+        ownerId: auth.currentUser.uid,
+        ownerName: auth.currentUser.displayName || '',
       };
 
-      // Persist in Firestore if online
-      if (auth.currentUser) {
-        try {
-          await setDoc(doc(collection(db, 'arenas'), arenaId), {
-            ...newArena,
-            ownerId: auth.currentUser.uid,
-            createdAt: new Date().toISOString(),
-          });
-        } catch {
-          // If offline or permission fallback, continue with local state
-        }
-      }
-
-      // Update state in AppContext
-      addArena(newArena);
+      await addArena(newArena);
       setTenantId(newArena.id);
       setArenaSubTab('agendamentos');
       setActiveTab('scheduler');
@@ -118,10 +101,10 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
       if (onCreated) onCreated(newArena);
 
       // Trigger Global Toast and automatically close dialog
-      toast.success(`Arena "${newArena.name}" cadastrada com sucesso!`);
+      toast.success(`Arena "${newArena.name}" salva no Firestore.`);
       onClose();
-    } catch {
-      toast.error('Erro ao cadastrar arena. Tente novamente.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível salvar a arena no Firestore.');
     } finally {
       setIsSubmitting(false);
     }
@@ -145,7 +128,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
                 Cadastrar Nova Arena
               </h3>
               <p className="text-[11px] text-slate-300">
-                Adicione sua arena Ã  plataforma oficial SHARKSET
+                Adicione sua arena à plataforma oficial SHARKSET
               </p>
             </div>
           </div>
@@ -166,7 +149,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: SHARK SET Arena Prime"
+              placeholder="Nome usado oficialmente pela arena"
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#030D1A] border border-cyan-800/60 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400"
             />
           </div>
@@ -179,7 +162,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
                 required
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="Ex: Mineiros"
+                placeholder="Cidade da arena"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#030D1A] border border-cyan-800/60 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400"
               />
             </div>
@@ -191,35 +174,37 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
                 maxLength={2}
                 value={state}
                 onChange={(e) => setState(e.target.value.toUpperCase())}
-                placeholder="Ex: GO"
+                placeholder="UF"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#030D1A] border border-cyan-800/60 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 mb-1">EndereÃ§o Completo</label>
+              <label className="block text-slate-300 mb-1">Endereço Completo *</label>
             <div className="relative">
               <MapPin className="w-4 h-4 text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
+                required
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Ex: Av. das Palmeiras, 1200 - Centro"
+                placeholder="Endereço real da arena"
                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#030D1A] border border-cyan-800/60 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 mb-1">WhatsApp de Contato da Arena</label>
+              <label className="block text-slate-300 mb-1">WhatsApp de Contato da Arena *</label>
             <div className="relative">
               <Phone className="w-4 h-4 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="tel"
+                required
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="Ex: (64) 99999-1234"
+                placeholder="WhatsApp real para contato"
                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#030D1A] border border-cyan-800/60 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400"
               />
             </div>
@@ -227,26 +212,28 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 mb-1">NÃºmero de Quadras</label>
+              <label className="block text-slate-300 mb-1">Número de Quadras</label>
               <input
                 type="number"
                 min={1}
                 max={12}
+                required
                 value={courtCount}
-                onChange={(e) => setCourtCount(Number(e.target.value))}
+                onChange={(e) => setCourtCount(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#030D1A] border border-cyan-800/60 text-white text-xs focus:outline-none focus:border-cyan-400"
               />
             </div>
             <div>
-              <label className="block text-slate-300 mb-1">Valor MÃ©dio / Hora (R$)</label>
+              <label className="block text-slate-300 mb-1">Valor Médio / Hora (R$)</label>
               <div className="relative">
                 <DollarSign className="w-4 h-4 text-amber-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="number"
-                  min={20}
+                  required
+                  min={0}
                   step={5}
                   value={hourlyRate}
-                  onChange={(e) => setHourlyRate(Number(e.target.value))}
+                  onChange={(e) => setHourlyRate(e.target.value)}
                   className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#030D1A] border border-cyan-800/60 text-white text-xs focus:outline-none focus:border-cyan-400"
                 />
               </div>
@@ -255,18 +242,20 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 mb-1">HorÃ¡rio de Abertura</label>
+              <label className="block text-slate-300 mb-1">Horário de Abertura *</label>
               <input
                 type="time"
+                required
                 value={openTime}
                 onChange={(e) => setOpenTime(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl bg-[#030D1A] border border-cyan-800/60 text-white text-xs"
               />
             </div>
             <div>
-              <label className="block text-slate-300 mb-1">HorÃ¡rio de Fechamento</label>
+              <label className="block text-slate-300 mb-1">Horário de Fechamento *</label>
               <input
                 type="time"
+                required
                 value={closeTime}
                 onChange={(e) => setCloseTime(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl bg-[#030D1A] border border-cyan-800/60 text-white text-xs"
@@ -275,12 +264,12 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
           </div>
 
           <div>
-            <label className="block text-slate-300 mb-1.5">Modalidades DisponÃ­veis</label>
+            <label className="block text-slate-300 mb-1.5">Modalidades Disponíveis *</label>
             <div className="flex flex-wrap gap-2">
               {[
-                { id: 'futevolei' as SportType, label: 'âš½ FutevÃ´lei' },
-                { id: 'beach_tennis' as SportType, label: 'ðŸŽ¾ Beach Tennis' },
-                { id: 'volei_praia' as SportType, label: 'ðŸ VÃ´lei de Praia' },
+                { id: 'futevolei' as SportType, label: 'âš½ Futevôlei' },
+                { id: 'beach_tennis' as SportType, label: '🎾 Beach Tennis' },
+                { id: 'volei_praia' as SportType, label: '🏐 Vôlei de Praia' },
               ].map((sport) => {
                 const isSelected = selectedSports.includes(sport.id);
                 return (
@@ -302,6 +291,34 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
             </div>
           </div>
 
+          <div className="grid grid-cols-3 gap-3">
+            <label className="text-slate-300">
+              Tipo de areia *
+              <select required value={surface} onChange={(event) => setSurface(event.target.value as Court['surface'] | '')}
+                className="mt-1 block w-full rounded-xl bg-[#030D1A] border border-cyan-800/60 p-2 text-white">
+                <option value="">Selecione</option>
+                <option value="Areia Fina">Areia Fina</option>
+                <option value="Areia Quartzosa Premium">Areia Quartzosa Premium</option>
+              </select>
+            </label>
+            <label className="text-slate-300">
+              Coberta? *
+              <select required value={isCovered === null ? '' : String(isCovered)}
+                onChange={(event) => setIsCovered(event.target.value === '' ? null : event.target.value === 'true')}
+                className="mt-1 block w-full rounded-xl bg-[#030D1A] border border-cyan-800/60 p-2 text-white">
+                <option value="">Selecione</option><option value="true">Sim</option><option value="false">Não</option>
+              </select>
+            </label>
+            <label className="text-slate-300">
+              Tem iluminação? *
+              <select required value={hasLighting === null ? '' : String(hasLighting)}
+                onChange={(event) => setHasLighting(event.target.value === '' ? null : event.target.value === 'true')}
+                className="mt-1 block w-full rounded-xl bg-[#030D1A] border border-cyan-800/60 p-2 text-white">
+                <option value="">Selecione</option><option value="true">Sim</option><option value="false">Não</option>
+              </select>
+            </label>
+          </div>
+
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
             <button
               type="button"
@@ -317,7 +334,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:brightness-110 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
               <Building2 size={14} />
-              <span>{isSubmitting ? 'Cadastrandoâ€¦' : 'Cadastrar Arena'}</span>
+              <span>{isSubmitting ? 'Cadastrando…' : 'Cadastrar Arena'}</span>
             </button>
           </div>
         </form>

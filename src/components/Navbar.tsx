@@ -39,7 +39,7 @@ import {
 } from './icons/NavIcons';
 import type { UpcomingSlotItem } from '../hooks/useUpcomingFreeSlots';
 import type { AvailabilityCell } from '../services/bookingAvailability';
-import type { Court, TenantConfig } from '../types';
+import type { TenantConfig } from '../types';
 
 const NavIconPlans: React.FC<{ size?: number; className?: string; isActive?: boolean }> = ({
   size = 20,
@@ -74,7 +74,11 @@ export const Navbar: React.FC = () => {
   const [selectedSlotModal, setSelectedSlotModal] = useState<UpcomingSlotItem | null>(null);
   const [checkoutSlotData, setCheckoutSlotData] = useState<QuickBookingSlotData | null>(null);
 
-  const handleSelectBookingFromModal = (arena: TenantConfig, slot: AvailabilityCell, court: Court) => {
+  const handleSelectBookingFromModal = (
+    arena: TenantConfig,
+    slot: AvailabilityCell,
+    court: { id: string; name: string; sports?: TenantConfig['courts'][number]['sports'] }
+  ) => {
     setSelectedSlotModal(null);
     setCheckoutSlotData({
       arena,
@@ -84,7 +88,7 @@ export const Navbar: React.FC = () => {
       time: slot.startTime,
       endTime: slot.endTime,
       price: slot.price,
-      sport: court.sports[0] || 'futevolei',
+      sport: court.sports?.[0],
     });
   };
 
@@ -593,11 +597,6 @@ export const Navbar: React.FC = () => {
                     </div>
                   )}
                 </button>
-                {/* Bolinha de usuário online NA FRENTE da foto e do entorno */}
-                <span
-                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#030B17] shadow-[0_0_8px_rgba(16,185,129,0.95)] z-20 pointer-events-none"
-                  aria-label="Usuário online"
-                />
               </div>
             )}
           </div>

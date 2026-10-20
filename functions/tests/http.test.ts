@@ -28,7 +28,7 @@ async function invoke(handler: any, body: any, authorization = '', webhook = fal
 test('HTTP denies unauthenticated token issuance and wrong-project operation without reading secrets', async () => {
   const unauthenticated = await invoke(livekitSession, { arenaId: 'arena' });
   assert.equal(unauthenticated.status, 401); assert.equal(unauthenticated.data.error, 'AUTH_REQUIRED');
-  process.env.GCLOUD_PROJECT = 'confloraai';
+  process.env.GCLOUD_PROJECT = 'other-project-test';
   try {
     const wrongProject = await invoke(livekitSession, {});
     assert.equal(wrongProject.status, 503); assert.equal(wrongProject.data.error, 'PROJECT_MISMATCH');

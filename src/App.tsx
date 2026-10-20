@@ -200,8 +200,8 @@ const MainContent: React.FC = () => {
             {/* Top Row: Brand & Sports & Badges */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-cyan-100/10">
               {/* Brand Info */}
-              <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-3.5">
-                <div className="p-1.5 rounded-2xl bg-[#062b45]/75 border border-cyan-300/25 shadow-md">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3.5">
+                <div className="p-1.5 rounded-2xl bg-[#062b45]/75 border border-cyan-300/25 shadow-md shrink-0 sm:mt-0.5">
                   <SharksetLogo size="sm" />
                 </div>
                 <div className="min-w-0">
@@ -221,14 +221,14 @@ const MainContent: React.FC = () => {
 
               {/* Sports Modalities Pills */}
               <div className="flex flex-wrap justify-center items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs hover:border-cyan-400/40 transition-colors">
                   <SportBallIcon sport="futevolei" /> Futevôlei
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
-                  <SportBallIcon sport="beach-tennis" /> Beach Tennis
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs hover:border-cyan-400/40 transition-colors">
                   <SportBallIcon sport="volei-praia" /> Vôlei de Praia
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs hover:border-cyan-400/40 transition-colors">
+                  <SportBallIcon sport="beach-tennis" /> Beach Tennis
                 </span>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { arenaDate, buildArenaAvailability, type AvailabilityCell } from '../services/bookingAvailability';
+import { arenaDate, type AvailabilityCell } from '../services/bookingAvailability';
 import { slotsInWindow } from '../services/nearbySlots';
 import { useBookingLocation, validCoordinates } from '../store/useBookingLocation';
 import type { Court, TenantConfig } from '../types';
@@ -52,10 +52,10 @@ export function useUpcomingFreeSlots() {
         // Still allow if nearby or fallback distance
       }
 
-      // Calculate availability cells for this arena today
-      const cells = buildArenaAvailability(arena, today, bookings, {
-        slots: tenant.id === arena.id ? slots : undefined,
-      });
+      // Upcoming slots require records loaded from the real availability service.
+      const cells: AvailabilityCell[] = tenant.id === arena.id
+        ? slots.map((slot) => ({ ...slot, state: slot.isAvailable ? 'free' : 'blocked' }))
+        : [];
 
       const freeCells = slotsInWindow(cells, now);
 

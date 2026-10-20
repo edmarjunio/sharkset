@@ -31,16 +31,13 @@ export const timeStrToMinutes = parseTimeToMinutes;
 
 /**
  * Returns a clean "HH:mm" string for the current local time,
- * or falls back to a prime evening hour (17:15) if current time is late night so the 2h window is always demonstrable.
+ * Uses the actual current local time unless a reference time is supplied.
  */
 export function getEffectiveReferenceTime(customTime?: string): string {
   if (customTime) return customTime;
   const now = new Date();
   const h = now.getHours();
   const m = now.getMinutes();
-  if (h < 6 || h >= 22) {
-    return '17:15';
-  }
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 

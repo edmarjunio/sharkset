@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useApp } from '../context/AppContext';
 import type { TenantConfig } from '../types';
-import { addDays, arenaDate, buildArenaAvailability, type AvailabilityCell } from '../services/bookingAvailability';
+import { addDays, arenaDate, type AvailabilityCell } from '../services/bookingAvailability';
 
-// Demo data must be explicitly enabled; never fall back after a server error.
+// Return only availability received from the server; never synthesize free slots.
 import { BOOKING_DEMO } from '../services/bookingMode';
 export { BOOKING_DEMO };
 const EMPTY_CELLS: AvailabilityCell[] = [];
 
 export function useArenaAvailability(arena: TenantConfig, date: string, refreshKey = 0) {
-  const { bookings, slots, tenant } = useApp();
   const queryKey = `${arena.id}:${date}`;
   const [state, setState] = useState<{ queryKey: string; cells: AvailabilityCell[]; loading: boolean; error: string; maxDate: string }>({
     queryKey: '',
@@ -20,16 +18,6 @@ export function useArenaAvailability(arena: TenantConfig, date: string, refreshK
   });
 
   useEffect(() => {
-    if (BOOKING_DEMO) {
-      setState({
-        queryKey,
-        cells: buildArenaAvailability(arena, date, bookings, { slots: tenant.id === arena.id ? slots : undefined }),
-        loading: false,
-        error: '',
-        maxDate: addDays(arenaDate(), 6),
-      });
-      return;
-    }
     const controller = new AbortController();
     let sequence = 0;
     let stream: EventSource | null = null;
@@ -75,10 +63,8 @@ export function useArenaAvailability(arena: TenantConfig, date: string, refreshK
         );
         const contentType = response.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
-          // Quando estiver em ambiente de hosting estático (sem API backend), usa cálculo de agenda local sem quebrar
-          const localCells = buildArenaAvailability(arena, date, bookings, { slots: tenant.id === arena.id ? slots : undefined });
           if (!controller.signal.aborted && requestSequence === sequence) {
-            setState({ queryKey, cells: localCells, loading: false, error: '', maxDate: addDays(arenaDate(), 6) });
+            setState({ queryKey, cells: [], loading: false, error: 'Agenda indisponível: servidor não retornou dados reais.', maxDate: addDays(arenaDate(), 6) });
           }
           return;
         }
@@ -89,10 +75,8 @@ export function useArenaAvailability(arena: TenantConfig, date: string, refreshK
           connectStream();
         }
       } catch {
-        // Fallback local seguro para nunca quebrar a interface do usuário
-        const localCells = buildArenaAvailability(arena, date, bookings, { slots: tenant.id === arena.id ? slots : undefined });
         if (!controller.signal.aborted && requestSequence === sequence) {
-          setState({ queryKey, cells: localCells, loading: false, error: '', maxDate: addDays(arenaDate(), 6) });
+          setState({ queryKey, cells: [], loading: false, error: 'Não foi possível consultar a agenda real. Tente novamente mais tarde.', maxDate: addDays(arenaDate(), 6) });
         }
       }
     };
@@ -107,7 +91,7 @@ export function useArenaAvailability(arena: TenantConfig, date: string, refreshK
       window.clearInterval(timer);
       window.removeEventListener('focus', onFocus);
     };
-  }, [arena, date, bookings, slots, tenant.id, refreshKey]);
+  }, [arena, date, refreshKey]);
 
   return state.queryKey === queryKey ? state : { ...state, cells: EMPTY_CELLS, loading: true, error: '' };
 }

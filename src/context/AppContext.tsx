@@ -55,7 +55,6 @@ import {
   INITIAL_RANKING_LOGS,
   INITIAL_TOURNAMENTS,
   INITIAL_WAITLIST,
-  generateWeeklySlots,
   getInitialTournamentMatches,
 } from '../data/initialData';
 import {
@@ -235,7 +234,6 @@ interface AppContextType {
     enrolledByName?: string;
   }) => ClassStudent;
   toggleClassStudentPayment: (studentId: string) => void;
-  simulateStudentDueToday: (studentId: string) => ClassStudent | null;
   notifyStudentTuitionDue: (studentId: string) => void;
   removeStudentFromClass: (studentId: string) => void;
   createTournament: (data: {
@@ -253,7 +251,7 @@ interface AppContextType {
     responsiblePhone: string;
     tenantId?: string;
     createdScope?: 'arena' | 'user';
-  }) => Tournament;
+  }) => Promise<Tournament>;
   updateTournamentConfig: (
     tournamentId: string,
     updates: Partial<
@@ -380,26 +378,18 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 
-const isCleanSlate = () => {
-  try {
-    // Modo de produÃ§Ã£o limpo: se o usuÃ¡rio limpou ou nÃ£o tem demo explÃ­cito, inicia 100% zerado
-    return localStorage.getItem('sharkset_seed_demo') !== 'true';
-  } catch {
-    return true;
-  }
-};
 
 const STORAGE_KEYS = {
-  ARENAS: 'sharkset_v3_arenas',
-  TENANT: 'sharkset_v1_tenant_id',
-  BOOKINGS: 'sharkset_v2_bookings',
-  WAITLIST: 'sharkset_v1_waitlist',
-  TOURNAMENTS: 'sharkset_v5_tournaments',
-  PAIRS: 'sharkset_v5_pairs',
-  MATCHES: 'sharkset_v5_matches',
-  ATHLETES: 'sharkset_v2_athletes',
-  RANKING_LOGS: 'sharkset_v1_ranking_logs',
-  CLASS_STUDENTS: 'sharkset_v2_class_students',
+  ARENAS: 'sharkset_v4_arenas',
+  TENANT: 'sharkset_v2_tenant_id',
+  BOOKINGS: 'sharkset_v3_bookings',
+  WAITLIST: 'sharkset_v2_waitlist',
+  TOURNAMENTS: 'sharkset_v6_tournaments',
+  PAIRS: 'sharkset_v6_pairs',
+  MATCHES: 'sharkset_v6_matches',
+  ATHLETES: 'sharkset_v3_athletes',
+  RANKING_LOGS: 'sharkset_v2_ranking_logs',
+  CLASS_STUDENTS: 'sharkset_v3_class_students',
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -424,7 +414,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [arenasMap]);
 
   const [tenantId, setTenantIdState] = useState<string>(() => {
-    return localStorage.getItem(STORAGE_KEYS.TENANT) || 'conflora';
+    return localStorage.getItem(STORAGE_KEYS.TENANT) || '';
   });
 
   const tenant = useMemo(() => {
@@ -442,14 +432,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const availableTenants = useMemo(() => Object.values(arenasMap), [arenasMap]);
 
-  const addArena = (arena: TenantConfig) => {
+  const addArena = async (arena: TenantConfig) => {
+    await persistArenaToFirestore(arena);
     setArenasMap((prev) => ({
       ...prev,
       [arena.id]: arena,
     }));
-    void persistArenaToFirestore(arena).catch((err) =>
-      console.warn('Erro ao salvar arena no Firestore:', err)
-    );
   };
 
   const addArenaManager = async (arenaId: string, emailOrUid: string) => {
@@ -477,21 +465,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Coupons state
-  const [coupons, setCoupons] = useState<DiscountCoupon[]>([
-    {
-      id: 'coupon-shark10',
-      code: 'SHARK10',
-      description: 'Cupom Global de Lançamento SHARK SET (R$ 10 OFF em qualquer arena)',
-      discountType: 'fixed',
-      discountValue: 10,
-      scope: 'global',
-      minBookingValue: 50,
-      maxUses: 500,
-      usedCount: 0,
-      active: true,
-      createdAt: '2026-10-20',
-    },
-  ]);
+  const [coupons, setCoupons] = useState<DiscountCoupon[]>([]);
 
   const createCoupon = async (
     couponData: Omit<DiscountCoupon, 'id' | 'createdAt' | 'usedCount'>
@@ -556,7 +530,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       phone: '',
       level: null,
       photoURL: '',
-      tournamentTokens: 1,
+      tournamentTokens: 0,
       points: 0,
       wins: 0,
       titlesCount: 0,
@@ -614,12 +588,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       titlesCount: profile.titlesCount ?? userProfile.titlesCount,
       matchesPlayed: profile.matchesPlayed ?? userProfile.matchesPlayed,
       tournamentsPlayed: profile.tournamentsPlayed ?? userProfile.tournamentsPlayed,
-      city: profile.city || tenant.city || 'Mineiros',
-      state: profile.state || tenant.state || 'GO',
-      country: profile.country || 'Brasil',
+      city: profile.city || tenant.city || '',
+      state: profile.state || tenant.state || '',
+      country: profile.country || '',
       arenaId: profile.arenaId || tenant.id,
       arenaName: profile.arenaName || tenant.name,
-      preferredSport: profile.preferredSport || 'futevolei',
+      preferredSport: profile.preferredSport,
       bio: profile.bio,
       courtSide: profile.courtSide,
       dominantFoot: profile.dominantFoot,
@@ -650,7 +624,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (!isCurrent || auth.currentUser?.uid !== user.uid) return;
 
           const cloudData = (cloudProfile || {}) as Record<string, unknown>;
-          const tokenBal = typeof cloudData.tournamentTokens === 'number' ? cloudData.tournamentTokens : 1;
+          const tokenBal = typeof cloudData.tournamentTokens === 'number' ? cloudData.tournamentTokens : 0;
           const profile = {
             name: cloudProfile?.displayName || user.displayName || user.email?.split('@')[0] || 'Atleta',
             phone: cloudProfile?.phone || user.phoneNumber || '',
@@ -680,7 +654,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               phone: profile.phone,
               level: profile.level || 'iniciante',
               photoURL: profile.photoURL || user.photoURL || '',
-              tournamentTokens: 1,
+              tournamentTokens: 0,
             }).catch(() => {});
           }
         } catch {
@@ -690,7 +664,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             phone: user.phoneNumber || '',
             level: savedLevel,
             photoURL: user.photoURL || '',
-            tournamentTokens: 1,
+            tournamentTokens: 0,
             points: 0,
             wins: 0,
             titlesCount: 0,
@@ -705,7 +679,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           phone: '',
           level: null,
           photoURL: '',
-          tournamentTokens: 1,
+          tournamentTokens: 0,
           points: 0,
           wins: 0,
           titlesCount: 0,
@@ -749,12 +723,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
 
   const resetAllDataToCleanSlate = () => {
-    if (!window.confirm('AtenÃ§Ã£o: Isso irÃ¡ apagar todo o histÃ³rico de teste em cache e iniciar o Sharkset completamente do zero. Deseja continuar?')) {
+    if (!window.confirm('Atenção: Isso irá apagar todo o histórico de teste em cache e iniciar o Sharkset completamente do zero. Deseja continuar?')) {
       return;
     }
     try {
       localStorage.clear();
-      localStorage.setItem('sharkset_clean_slate', 'true');
+
     } catch {
       // ignore
     }
@@ -847,12 +821,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   };
 
-  const [slots, setSlots] = useState<TimeSlot[]>(() => {
-    return syncSlotsWithBookings(generateWeeklySlots(tenant.courts), bookings);
-  });
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
 
   useEffect(() => {
-    setSlots(syncSlotsWithBookings(generateWeeklySlots(tenant.courts), bookings));
+    setSlots([]);
   }, [tenant]);
 
   // Athletes Ranking state
@@ -961,7 +933,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(STORAGE_KEYS.TOURNAMENTS, JSON.stringify(tournaments));
   }, [tournaments]);
 
-  const [activeTournamentId, setActiveTournamentId] = useState<string>('tourn-conflora-1');
+  const [activeTournamentId, setActiveTournamentId] = useState<string>('');
 
   // Registered Pairs state
   const [registeredPairs, setRegisteredPairs] = useState<TeamPair[]>(() => {
@@ -988,7 +960,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
-  const [liveSpectatorsCount, setLiveSpectatorsCount] = useState<number>(1);
+  const [liveSpectatorsCount, setLiveSpectatorsCount] = useState<number>(0);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(tournamentMatches));
@@ -1046,7 +1018,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         try {
           const data = JSON.parse((ev as MessageEvent).data);
           if (typeof data.spectators === 'number') {
-            setLiveSpectatorsCount(Math.max(1, data.spectators));
+            setLiveSpectatorsCount(Math.max(0, data.spectators));
           }
         } catch {
           // Ignore malformed event
@@ -1114,9 +1086,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Create Booking
   const createBooking = (slotId: string, sport: SportType, customerName: string, customerPhone: string): Booking => {
-    if (!BOOKING_DEMO) throw new Error('Reserva online indisponÃ­vel. A arena deve confirmar o horÃ¡rio.');
+    if (!BOOKING_DEMO) throw new Error('Reserva online indisponível. A arena deve confirmar o horário.');
     const slot = slots.find((s) => s.id === slotId);
-    if (!slot) throw new Error('Slot nÃ£o encontrado');
+    if (!slot) throw new Error('Slot não encontrado');
 
     const court = tenant.courts.find((c) => c.id === slot.courtId);
     const newBooking: Booking = {
@@ -1165,7 +1137,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Cancel Booking & Automatically Notify Next Person in Waitlist (with Push Notification)
   const cancelBooking = (bookingId: string): WaitlistEntry | null => {
-    if (!BOOKING_DEMO) throw new Error('Cancelamento online indisponÃ­vel. Contate a arena.');
+    if (!BOOKING_DEMO) throw new Error('Cancelamento online indisponível. Contate a arena.');
     const targetBooking = bookings.find((b) => b.id === bookingId);
     if (!targetBooking) return null;
 
@@ -1230,7 +1202,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     customerPhone: string
   ): WaitlistEntry => {
     const slot = slots.find((s) => s.id === slotId);
-    if (!slot) throw new Error('HorÃ¡rio nÃ£o encontrado');
+    if (!slot) throw new Error('Horário não encontrado');
 
     const court = tenant.courts.find((c) => c.id === slot.courtId);
     const activeInSlot = waitlist.filter(
@@ -1278,9 +1250,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const claimWaitlistSlot = (waitlistId: string): Booking => {
-    if (!BOOKING_DEMO) throw new Error('Reserva online indisponÃ­vel. A arena deve confirmar o horÃ¡rio.');
+    if (!BOOKING_DEMO) throw new Error('Reserva online indisponível. A arena deve confirmar o horário.');
     const entry = waitlist.find((w) => w.id === waitlistId);
-    if (!entry) throw new Error('Registro da lista de espera nÃ£o encontrado');
+    if (!entry) throw new Error('Registro da lista de espera não encontrado');
 
     const newBooking: Booking = {
       id: `book-${Date.now()}`,
@@ -1466,7 +1438,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       courtName: court ? court.name : 'Quadra Principal',
       classId: data.classConfig.id,
       classTitle: data.classConfig.title,
-      classTime: `${data.classConfig.startTime} Ã s ${data.classConfig.endTime}`,
+      classTime: `${data.classConfig.startTime} às ${data.classConfig.endTime}`,
       coachName: data.classConfig.coachName,
       sport: data.classConfig.sport,
       studentName: data.studentName,
@@ -1485,11 +1457,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           ? data.classConfig.coachName
           : data.enrolledByRole === 'dono'
           ? 'Dono da Arena'
-          : 'Auto-MatrÃ­cula pelo App'),
+          : 'Auto-Matrícula pelo App'),
     };
     setClassStudents((prev) => [newStudent, ...prev]);
 
-    // Se a mensalidade vence hoje (inÃ­cio no dia da inscriÃ§Ã£o), envia notificaÃ§Ã£o automÃ¡tica pro aluno
+    // Se a mensalidade vence hoje (início no dia da inscrição), envia notificação automática pro aluno
     if (data.billingType === 'mensal' && cycle.isDueToday) {
       const notif = buildTuitionDueTodayNotification(newStudent, tenant.name);
       useSharkStore.getState().pushSmartNotification(notif);
@@ -1503,7 +1475,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       prev.map((s) => {
         if (s.id !== studentId) return s;
         const nextStatus = s.paymentStatus === 'pago' ? 'pendente' : 'pago';
-        // Quando pago, avanÃ§a o prÃ³ximo vencimento em +1 mÃªs mantendo o dia da inscriÃ§Ã£o
+        // Quando pago, avança o próximo vencimento em +1 mês mantendo o dia da inscrição
         let updatedNextDue = s.nextDueDate;
         if (nextStatus === 'pago' && s.billingType === 'mensal') {
           const baseStr = s.nextDueDate || s.enrolledAt;
@@ -1517,34 +1489,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return { ...s, paymentStatus: nextStatus, nextDueDate: updatedNextDue };
       })
     );
-  };
-
-  const simulateStudentDueToday = (studentId: string): ClassStudent | null => {
-    const todayIso = new Date().toISOString().split('T')[0];
-    const todayDay = new Date().getDate();
-    let targetStudent: ClassStudent | null = null;
-
-    setClassStudents((prev) =>
-      prev.map((s) => {
-        if (s.id !== studentId) return s;
-        const updated: ClassStudent = {
-          ...s,
-          billingType: 'mensal',
-          paymentStatus: 'pendente',
-          dueDayOfMonth: todayDay,
-          nextDueDate: todayIso,
-          lastDueNotificationAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        };
-        targetStudent = updated;
-        return updated;
-      })
-    );
-
-    if (targetStudent) {
-      const notif = buildTuitionDueTodayNotification(targetStudent, tenant.name);
-      useSharkStore.getState().pushSmartNotification(notif);
-    }
-    return targetStudent;
   };
 
   const notifyStudentTuitionDue = (studentId: string) => {
@@ -1569,7 +1513,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Create Tournament (Supports Location, Modality Format Simples/Duplas, Specific Rules, Max Participants)
-  const createTournament = (data: {
+  const createTournament = async (data: {
     name: string;
     sport: SportType;
     category: TournamentCategory;
@@ -1584,7 +1528,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     responsiblePhone: string;
     tenantId?: string;
     createdScope?: 'arena' | 'user';
-  }): Tournament => {
+  }): Promise<Tournament> => {
+    const currentUser = auth.currentUser;
+    if (!currentUser?.emailVerified) {
+      throw new Error('Entre com uma conta verificada para criar o torneio.');
+    }
     const isUserScope = data.createdScope === 'user';
     const targetTenantId = data.tenantId || tenant.id;
 
@@ -1592,13 +1540,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if ((userProfile.tournamentTokens || 0) < 1) {
         throw new Error('Você precisa de 1 Token de Campeonato para criar um torneio independente. Adquira tokens na loja para continuar.');
       }
-      setUserProfileState((prev) => ({
-        ...prev,
-        tournamentTokens: Math.max(0, prev.tournamentTokens - 1),
-      }));
-      if (auth.currentUser) {
-        void spendTournamentTokenInFirestore(auth.currentUser.uid).catch(() => {});
-      }
+      const spent = await spendTournamentTokenInFirestore(currentUser.uid);
+      if (!spent) throw new Error('Não há token confirmado no seu perfil para criar este torneio.');
     }
 
     const selectedArena = arenasMap[targetTenantId];
@@ -1626,13 +1569,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       tableLicenseStatus: isUserScope ? 'unlocked_single_20' : 'unlocked_arena_pro_99',
       tableLicenseFee: isUserScope ? 20 : 0,
       createdScope: isUserScope ? 'user' : 'arena',
-      creatorUid: auth.currentUser?.uid,
+      creatorUid: currentUser.uid,
       creatorTokensSpent: isUserScope ? 1 : 0,
     };
 
+    try {
+      await persistTournamentToFirestore(newTourn);
+    } catch (error) {
+      if (isUserScope) {
+        try {
+          await addTournamentTokensInFirestore(currentUser.uid, 1);
+        } catch {
+          throw new Error('Falha ao salvar o torneio e ao reverter o token. Confira o saldo antes de tentar novamente.');
+        }
+      }
+      throw error;
+    }
+    if (isUserScope) {
+      setUserProfileState((prev) => ({ ...prev, tournamentTokens: Math.max(0, prev.tournamentTokens - 1) }));
+    }
     setTournaments((prev) => [newTourn, ...prev]);
     setActiveTournamentId(newTourn.id);
-    void persistTournamentToFirestore(newTourn).catch(() => {});
 
     return newTourn;
   };
@@ -1690,7 +1647,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     if (!isSingles && p1Email && p2Email && p1Email === p2Email) {
-      throw new Error('Os dois atletas da dupla nÃ£o podem ter o mesmo e-mail.');
+      throw new Error('Os dois atletas da dupla não podem ter o mesmo e-mail.');
     }
 
     const pairsInTourn = registeredPairs.filter(
@@ -1717,12 +1674,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
 
     if (duplicateEnrollment) {
-      throw new Error('Este atleta (e-mail) ou dupla jÃ¡ estÃ¡ inscrita neste torneio.');
+      throw new Error('Este atleta (e-mail) ou dupla já está inscrita neste torneio.');
     }
 
     const registrationLockKey = `${data.tournamentId}:${[p1Email, p2Email].filter(Boolean).sort().join('|')}`;
     if (pairRegistrationLocks.current.has(registrationLockKey)) {
-      throw new Error('Esta inscriÃ§Ã£o jÃ¡ estÃ¡ sendo processada.');
+      throw new Error('Esta inscrição já está sendo processada.');
     }
     pairRegistrationLocks.current.add(registrationLockKey);
 
@@ -1905,7 +1862,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     });
 
-    if (tourn && eligiblePairs.length > tourn.maxPairs) throw new Error('NÃºmero de duplas excede o limite do torneio.');
+    if (tourn && eligiblePairs.length > tourn.maxPairs) throw new Error('Número de duplas excede o limite do torneio.');
     const generatedMatches = createBracketForPresentPairs(
       tournamentId,
       eligiblePairs,
@@ -1917,7 +1874,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Initialize Referee state on Round 1 ready matches
     const withReferee = generatedMatches.map((m) =>
       m.team1 && m.team2 && m.status !== 'completed'
-        ? { ...m, liveReferee: buildDefaultRefereeState(m, tourn?.responsibleName || 'Ãrbitro SHARK SET') }
+        ? { ...m, liveReferee: buildDefaultRefereeState(m, tourn?.responsibleName || 'Árbitro SHARK SET') }
         : m
     );
 
@@ -2026,7 +1983,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       (a) => (a.email || '').trim().toLowerCase() === emailToUse
     );
     if (emailAlreadyExists) {
-      throw new Error('JÃ¡ existe um usuÃ¡rio cadastrado com este e-mail.');
+      throw new Error('Já existe um usuário cadastrado com este e-mail.');
     }
 
     const newAth: AthleteProfile = {
@@ -2038,7 +1995,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       experienceCategory: data.experienceCategory || (data.level === 'profissional' ? 'profissional' : 'amador'),
       courtSide: 'Ambos',
       dominantFoot: 'Destro',
-      bio: `Atleta SHARK SET de ${data.preferredSport === 'futevolei' ? 'FutevÃ´lei' : 'Areia'} (${data.city}).`,
+      bio: `Atleta SHARK SET de ${data.preferredSport === 'futevolei' ? 'Futevôlei' : 'Areia'} (${data.city}).`,
       level: data.level,
       highestHistoricalLevel: data.level,
       points: 0,
@@ -2205,7 +2162,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         matches: changed.map(({ audit, ...match }) => match),
         removedIds: matches.filter(match => !previous.some(old => old.id === match.id)).map(match => match.id),
         teams: teams ? registeredPairs.filter(team => team.tournamentId === tournamentId) : undefined }]));
-    } catch { throw new Error('NÃ£o foi possÃ­vel preservar o histÃ³rico neste navegador. Libere espaÃ§o antes de salvar a alteraÃ§Ã£o.'); }
+    } catch { throw new Error('Não foi possível preservar o histórico neste navegador. Libere espaço antes de salvar a alteração.'); }
     const updated = [...tournamentMatches.filter(match => match.tournamentId !== tournamentId), ...matches];
     setTournamentMatches(updated);
     if (auth.currentUser?.emailVerified) {
@@ -2383,10 +2340,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ): { credited: boolean; message: string } => {
     const target = bookings.find((b) => b.id === bookingId);
     if (!target) {
-      return { credited: false, message: 'Partida nÃ£o encontrada.' };
+      return { credited: false, message: 'Partida não encontrada.' };
     }
     // A browser preview or an editable local scoreboard is not verified match evidence.
-    return { credited: false, message: 'O ranking de lives serÃ¡ liberado apÃ³s a integraÃ§Ã£o de vÃ­deo e validaÃ§Ã£o do resultado no servidor. A prÃ©via nÃ£o pontua.' };
+    return { credited: false, message: 'O ranking de lives será liberado após a integração de vídeo e validação do resultado no servidor. A prévia não pontua.' };
   };
 
   return (
@@ -2450,7 +2407,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         removeClassScheduleFromCourt,
         enrollStudentInClass,
         toggleClassStudentPayment,
-        simulateStudentDueToday,
         notifyStudentTuitionDue,
         removeStudentFromClass,
         createTournament,
