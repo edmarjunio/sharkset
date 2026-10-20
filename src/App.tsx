@@ -5,6 +5,7 @@ import { FreeSlotsDateTimeFilter } from './components/FreeSlotsDateTimeFilter';
 import React from 'react';
 import { AquariumBackground } from './components/AquariumBackground';
 import { AppProvider, useApp } from './context/AppContext';
+import { ArenaAdmin } from './components/ArenaAdmin';
 import { Navbar } from './components/Navbar';
 import { SmartNotificationBanner } from './components/SmartNotificationBanner';
 import { PersistentLiveStreamDock } from './components/PersistentLiveStreamDock';
@@ -22,12 +23,23 @@ import { SharksetLogo } from './components/SharksetLogo';
 import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
 import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import {
+  Maximize2,
+  Minimize2,
+  Home,
+  Trophy,
+  MapPin,
+  TrendingUp,
+  Radio,
+  CalendarCheck,
+  Shield,
+} from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MainContent: React.FC = () => {
   const {
     activeTab,
+    setActiveTab,
     tenant,
     activeLiveBroadcastBookingId,
     setActiveLiveBroadcastBookingId,
@@ -120,6 +132,7 @@ const MainContent: React.FC = () => {
       {!focusMode && activeTab !== 'home' && <PersistentLiveStreamDock />}
 
       <main className={`site-content flex-1 min-w-0 ${focusMode ? 'pt-4 px-2 sm:px-4' : ''}`}>
+        {activeTab === 'arena_admin' && <ArenaAdmin />}
         {activeTab === 'home' && <HomeHighlights />}
         {activeTab === 'live' && <LiveDirectory />}
         {activeTab === 'tournaments' && <DoubleEliminationBracket />}
@@ -181,53 +194,64 @@ const MainContent: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Links Nav */}
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-6 gap-y-2 py-4 text-xs font-bold text-slate-300">
+            {/* Quick Links Nav with Unified Capsule Pill Standard */}
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-4 py-6">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                {[
+                  { id: 'home', label: 'INÍCIO', icon: Home },
+                  { id: 'tournaments', label: 'CAMPEONATOS', icon: Trophy },
+                  { id: 'arenas_directory', label: 'ARENAS', icon: MapPin },
+                  { id: 'ranking_athletes', label: 'RANKINGS', icon: TrendingUp },
+                  { id: 'live', label: 'AO VIVO', icon: Radio, isLive: true },
+                  { id: 'my_bookings', label: 'MINHAS RESERVAS', icon: CalendarCheck },
+                ].map((item) => {
+                  const isActive = activeTab === item.id;
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(item.id as any);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all active:translate-y-0.5 cursor-pointer shadow-md ${
+                        isActive
+                          ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border border-cyan-300 shadow-[0_0_15px_rgba(18,199,187,0.45)]'
+                          : item.isLive
+                          ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 text-white border border-red-400/40 shadow-red-700/20'
+                          : 'bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300'
+                      }`}
+                    >
+                      {item.isLive ? (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                        </span>
+                      ) : (
+                        <Icon size={14} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                      )}
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Dedicated Arena Admin Pill Button */}
               <button
                 type="button"
                 onClick={() => {
-                  setActiveTab('home');
+                  setActiveTab('arena_admin');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="hover:text-cyan-400 transition-colors cursor-pointer"
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs uppercase tracking-wider shadow-md transition-all active:translate-y-0.5 cursor-pointer ${
+                  activeTab === 'arena_admin'
+                    ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 border border-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.45)]'
+                    : 'bg-[#150f04]/90 hover:bg-[#241a06] text-amber-300 hover:text-white border border-amber-500/40 hover:border-amber-300'
+                }`}
               >
-                Início
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('tournaments')}
-                className="hover:text-cyan-400 transition-colors cursor-pointer"
-              >
-                Campeonatos
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('arenas_directory')}
-                className="hover:text-cyan-400 transition-colors cursor-pointer"
-              >
-                Arenas
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('ranking_athletes')}
-                className="hover:text-cyan-400 transition-colors cursor-pointer"
-              >
-                Rankings
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('live')}
-                className="hover:text-red-400 transition-colors cursor-pointer flex items-center gap-1"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                Ao Vivo
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('my_bookings')}
-                className="hover:text-cyan-400 transition-colors cursor-pointer"
-              >
-                Minhas Reservas
+                <Shield size={14} className={activeTab === 'arena_admin' ? 'text-slate-950 stroke-[2.5]' : 'text-amber-400'} />
+                <span>Área do Administrador da Arena</span>
               </button>
             </div>
 

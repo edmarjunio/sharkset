@@ -70,7 +70,7 @@ import {
   History,
 } from 'lucide-react';
 
-export const CourtScheduler: React.FC = () => {
+export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ administration = false }) => {
   const {
     tenant,
     slots,
@@ -158,7 +158,7 @@ export const CourtScheduler: React.FC = () => {
   const [newClassDaily, setNewClassDaily] = useState(40);
   const [newClassMaxStudents, setNewClassMaxStudents] = useState<number>(8);
   const [selectedHourFilter, setSelectedHourFilter] = useState<string | null>(null);
-  const [isOwnerView, setIsOwnerView] = useState<boolean>(false);
+  const isOwnerView = administration;
   const [selectedTournBracketId, setSelectedTournBracketId] = useState<string | null>(null);
   const [selectedClassSportFilter, setSelectedClassSportFilter] = useState<'all' | SportType>('all');
 
@@ -265,7 +265,7 @@ export const CourtScheduler: React.FC = () => {
       : arenaSubTab === 'info_historico'
       ? 'info_historico'
       : arenaSubTab === 'dono' || arenaSubTab === 'config_dono'
-      ? 'dono'
+      ? (isOwnerView ? 'dono' : 'agendamentos')
       : 'agendamentos';
 
   const effectiveNowStr = useMemo(() => {
@@ -497,6 +497,7 @@ export const CourtScheduler: React.FC = () => {
     );
   };
 
+  if (!tenant.id) return <section className="max-w-3xl mx-auto p-8 text-center"><h1 className="text-xl font-bold">Nenhuma arena selecionada</h1><p className="mt-2">Encontre uma arena para consultar quadras e horários.</p><button type="button" onClick={() => setActiveTab('arenas_directory')} className="mt-4 min-h-11 rounded-xl bg-cyan-700 px-5 text-white">Buscar arenas</button></section>;
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* Toast Notification */}
@@ -713,7 +714,7 @@ export const CourtScheduler: React.FC = () => {
               </div>
 
               {/* White-Label Arena Logo & Palette Customizer Trigger */}
-              <div className="flex flex-col gap-2 shrink-0">
+              {isOwnerView && <div className="flex flex-col gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowWhiteLabelModal(true)}
@@ -733,7 +734,7 @@ export const CourtScheduler: React.FC = () => {
                 <span className="text-[10px] text-slate-300 text-center font-semibold">
                   A página fica toda na paleta da logo enviada · <strong className="text-white">DESENVOLVIDO POR SHARKSET</strong>
                 </span>
-              </div>
+              </div>}
             </div>
 
             {/* High-Visibility Sub-Navigation Inside the Arena */}
@@ -786,7 +787,7 @@ export const CourtScheduler: React.FC = () => {
                     icon: Settings,
                     label: '6. ÁREA DO DONO (GESTÃO)',
                   },
-                ].map((tab) => {
+                ].filter(tab => tab.id !== 'dono' || isOwnerView).map((tab) => {
                   const Icon = tab.icon;
                   const isActive = effectiveSubTab === tab.id;
                   const activeBg =
@@ -799,7 +800,7 @@ export const CourtScheduler: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setArenaSubTab(tab.id as ArenaSubTab);
-                        if (tab.id === 'dono') setIsOwnerView(true);
+
                       }}
                       className={`px-3.5 py-2 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
                         isActive
@@ -820,37 +821,6 @@ export const CourtScheduler: React.FC = () => {
                 })}
               </div>
 
-              {/* Mode Toggle: Player vs Arena Owner */}
-              <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/15 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOwnerView(false);
-                    if (effectiveSubTab === 'dono') setArenaSubTab('agendamentos');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
-                    !isOwnerView && effectiveSubTab !== 'dono'
-                      ? 'bg-white/20 text-white font-black'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  👤 Visão do Jogador (Público)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOwnerView(true);
-                    setArenaSubTab('dono');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
-                    isOwnerView || effectiveSubTab === 'dono'
-                      ? 'bg-amber-400 text-slate-950 font-black'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  👑 Modo Dono da Arena
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -1437,17 +1407,17 @@ export const CourtScheduler: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <button
+                      {isOwnerView && <button
                         type="button"
                         onClick={() => {
-                          setIsOwnerView(true);
+                          setActiveTab('arena_admin');
                           setArenaSubTab('dono');
                         }}
                         className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         <Settings className="w-3.5 h-3.5" />
                         Configurar Preços (Pico / Dias)
-                      </button>
+                      </button>}
                       <div className="text-xs text-slate-600 font-medium">
                         <span className="text-emerald-700 font-bold tabular-nums">{availableCount}</span> horários livres hoje
                       </div>
@@ -2114,7 +2084,7 @@ export const CourtScheduler: React.FC = () => {
       {/* ===================================================================== */}
       {/* SUB-TAB 7: ÁREA DO DONO DA ARENA (GESTÃO COMPLETA)                   */}
       {/* ===================================================================== */}
-      {effectiveSubTab === 'dono' && (
+      {isOwnerView && effectiveSubTab === 'dono' && (
         <div className="space-y-6">
           {/* Dono Hub Overview Banner */}
           <div className="aquarium-glass bg-slate-950 text-white border border-slate-800 rounded-3xl p-6 shadow-md space-y-4">

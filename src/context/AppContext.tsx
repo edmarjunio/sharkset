@@ -91,7 +91,8 @@ export type MainTab =
   | 'saas_hub'
   | 'ranking_athletes'
   | 'shark_academy'
-  | 'my_bookings';
+  | 'my_bookings'
+  | 'arena_admin';
 
 export type ArenaSubTab =
   | 'agendamentos'

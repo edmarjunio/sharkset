@@ -20,6 +20,7 @@ import { AthleteLevelBadge } from './AthleteLevelBadge';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import { Top10WhatsAppShareModal } from './Top10WhatsAppShareModal';
 import { IntegrityReportModal } from './IntegrityReportModal';
+import { SharkCardsShowcase } from './SharkCardsShowcase';
 import {
   Trophy,
   Search,
@@ -79,6 +80,9 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
   const [selectedState, setSelectedState] = useState<string>('GO');
   const [selectedCity, setSelectedCity] = useState<string>('Mineiros');
   const [selectedArenaId, setSelectedArenaId] = useState<string>(tenant.id);
+
+  // View Mode: Cards 3D (TCG) vs Table
+  const [rankingViewMode, setRankingViewMode] = useState<'cards' | 'table'>('cards');
 
   // Filters & Sorting
   const [selectedCategory, setSelectedCategory] = useState<AthleteLevel | 'all'>('all');
@@ -336,6 +340,37 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
             <p className="text-xs text-slate-400 mt-1">Classificação por pontos em jogos e torneios.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 ranking-actions">
+            {/* View Mode Toggle: Cards 3D vs Tabela Geral */}
+            <div className="flex items-center p-1 rounded-xl bg-slate-950/90 border border-cyan-500/40 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setRankingViewMode('cards')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  rankingViewMode === 'cards'
+                    ? 'bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 shadow-md font-black'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Cards 3D</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-400 text-slate-950 font-black">
+                  TCG
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRankingViewMode('table')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  rankingViewMode === 'table'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                <span>Tabela Geral</span>
+              </button>
+            </div>
+
             <button onClick={() => setIsShareTop10Open(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white"><MessageCircle size={16} />Compartilhar Top 10</button>
             <button onClick={loadAthletesFromFirestore} disabled={isLoading} title="Atualizar ranking" aria-label="Atualizar ranking"><RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} /></button>
             <details className="relative"><summary className="cursor-pointer rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold">Gerenciar</summary>
@@ -372,10 +407,18 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
         </div>
       )}
 
-      {/* ===================================================================== */}
-      {/* LEVEL 2: TABS ATTACHED DIRECTLY TO THE TOP OF CLASSIFICATION TABLE    */}
-      {/* ===================================================================== */}
-      <div>
+      {rankingViewMode === 'cards' ? (
+        <SharkCardsShowcase
+          athletes={sourceAthletes}
+          rankingLogs={rankingLogs}
+          onBookCourtClick={() => setActiveTab('scheduler')}
+        />
+      ) : (
+        <>
+          {/* ===================================================================== */}
+          {/* LEVEL 2: TABS ATTACHED DIRECTLY TO THE TOP OF CLASSIFICATION TABLE    */}
+          {/* ===================================================================== */}
+          <div>
         <div className="flex flex-wrap items-end gap-1 border-b border-[#145A9B]/60 px-2">
           {scopeTabs.map((tab) => {
             const active = rankingScope === tab.id;
@@ -873,6 +916,8 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
           <FreeBroadcastPanel />
         </div>
       </details>
+      </>
+      )}
 
       {/* ===================================================================== */}
       {/* MODAL 1: CADASTRAR JOGADOR NO RANKING                                 */}

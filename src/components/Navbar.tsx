@@ -13,6 +13,15 @@ import {
   ArrowLeft,
   PlusCircle,
   LogIn,
+  Home,
+  Trophy,
+  TrendingUp,
+  Users,
+  UserCheck,
+  Calendar,
+  Award,
+  Info,
+  Sparkles,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -62,7 +71,7 @@ export const Navbar: React.FC = () => {
   const unreadSmartCount = smartNotifications.filter((n) => !n.read).length;
 
   // Is viewing a dedicated Arena Page ('scheduler')
-  const isArenaPage = activeTab === 'scheduler';
+  const isArenaPage = Boolean(tenant.id) && activeTab === 'scheduler';
 
   // Strictly scope White-Label Arena Branding to the Arena page ('scheduler') only
   const isArenaWhiteLabelSite =
@@ -74,7 +83,7 @@ export const Navbar: React.FC = () => {
   const openBroadcastStudio = () => {
     const booking = bookings.find(item => item.status === 'confirmed');
     if (booking) setActiveLiveBroadcastBookingId(booking.id);
-    else { setActiveTab('scheduler'); setArenaSubTab('transmissoes'); }
+    else if (tenant.id) { setActiveTab('scheduler'); setArenaSubTab('transmissoes'); } else setActiveTab('live');
   };
   const liveActions = (
     <div className="navbar-live-actions flex items-center gap-2">
@@ -82,7 +91,7 @@ export const Navbar: React.FC = () => {
         type="button"
         onClick={() => setActiveTab('live')}
         aria-current={activeTab === 'live' ? 'page' : undefined}
-        className="navbar-live-action relative inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-red-700/30 border border-red-400/40 active:translate-y-0.5 transition-all cursor-pointer"
+        className="navbar-live-action relative inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-red-700/30 border border-red-400/50 active:translate-y-0.5 transition-all cursor-pointer"
         title="Assistir partidas ao vivo agora"
       >
         <span className="relative flex h-2 w-2">
@@ -94,7 +103,7 @@ export const Navbar: React.FC = () => {
       <button
         type="button"
         onClick={openBroadcastStudio}
-        className="navbar-live-action inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 font-bold text-xs shadow-md active:translate-y-0.5 transition-all cursor-pointer"
+        className="navbar-live-action inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300 font-bold text-xs uppercase tracking-wider shadow-md active:translate-y-0.5 transition-all cursor-pointer"
         title="Abrir estúdio de transmissão ao vivo"
       >
         <Radio size={14} className="text-[#12C7BB]" />
@@ -103,24 +112,34 @@ export const Navbar: React.FC = () => {
     </div>
   );
 
-  // General Platform Navigation Items
-  const navItems: { id: typeof activeTab; label: string; isArena?: boolean }[] = [
-    { id: 'home', label: 'INÍCIO' },
-    { id: 'tournaments', label: 'CAMPEONATOS' },
-    { id: 'arenas_directory', label: 'ARENAS', isArena: true },
-    { id: 'ranking_athletes', label: 'RANKINGS' },
-    { id: 'shark_academy', label: 'COMUNIDADE' },
-    { id: 'register_dupla', label: 'INSCRIÇÕES' },
+  // General Platform Navigation Items with unified pill standard
+  const navItems: {
+    id: typeof activeTab;
+    label: string;
+    icon: React.FC<{ size?: number; className?: string }>;
+    isArena?: boolean;
+  }[] = [
+    { id: 'home', label: 'INÍCIO', icon: Home },
+    { id: 'tournaments', label: 'CAMPEONATOS', icon: Trophy },
+    { id: 'arenas_directory', label: 'ARENAS', icon: MapPin, isArena: true },
+    { id: 'ranking_athletes', label: 'RANKINGS', icon: TrendingUp },
+    { id: 'shark_academy', label: 'COMUNIDADE', icon: Users },
+    { id: 'register_dupla', label: 'INSCRIÇÕES', icon: UserCheck },
   ];
 
-  // Dedicated Arena Page Navigation Items
-  const arenaNavItems: { id: ArenaSubTab; label: string; isLive?: boolean }[] = [
-    { id: 'agendamentos', label: 'AGENDAMENTOS' },
-    { id: 'ranking', label: 'RANKING' },
-    { id: 'campeonatos', label: 'CAMPEONATOS' },
-    { id: 'transmissoes', label: 'AO VIVO', isLive: true },
-    { id: 'comunidade', label: 'COMUNIDADE' },
-    { id: 'info_historico', label: 'INFORMAÇÕES' },
+  // Dedicated Arena Page Navigation Items with unified pill standard
+  const arenaNavItems: {
+    id: ArenaSubTab;
+    label: string;
+    icon: React.FC<{ size?: number; className?: string }>;
+    isLive?: boolean;
+  }[] = [
+    { id: 'agendamentos', label: 'AGENDAMENTOS', icon: Calendar },
+    { id: 'ranking', label: 'RANKING', icon: Trophy },
+    { id: 'campeonatos', label: 'CAMPEONATOS', icon: Award },
+    { id: 'transmissoes', label: 'AO VIVO', icon: Radio, isLive: true },
+    { id: 'comunidade', label: 'COMUNIDADE', icon: Users },
+    { id: 'info_historico', label: 'INFORMAÇÕES', icon: Info },
   ];
 
   const activeAccentHex =
@@ -179,8 +198,8 @@ export const Navbar: React.FC = () => {
             até 36px (tamanho do avatar) ao rolar o site para baixo
           - À direita: Linha 1 de botões e ações + Linha 2 com campo de busca
           ===================================================================== */}
-      <div className="hidden lg:block max-w-[1600px] mx-auto px-4 sm:px-6 py-2 transition-all duration-300">
-        <div className="flex items-start gap-4 lg:gap-5">
+      <div className="header-desktop hidden lg:block max-w-[1600px] mx-auto px-4 sm:px-6 py-2 transition-all duration-300">
+        <div className="header-layout flex items-center gap-4 lg:gap-5">
 
           {/* Logo Column (Desktop) */}
           <div className="shrink-0 flex items-center justify-center pt-0.5">
@@ -190,8 +209,7 @@ export const Navbar: React.FC = () => {
                 onClick={() => setActiveTab('scheduler')}
                 className={`group cursor-pointer rounded-full overflow-hidden border-2 border-white/80 shadow-xl transition-all duration-300 ${
                   isScrolled
-                    ? 'w-9 h-9 translate-y-0'
-                    : 'w-28 h-28 xl:w-32 xl:h-32 translate-y-2'
+                    ? 'w-16 h-16' : 'w-16 h-16'
                 }`}
                 style={{ borderColor: arenaPalette?.accent || '#FF6B00' }}
                 title={tenant.name}
@@ -211,14 +229,13 @@ export const Navbar: React.FC = () => {
                 }}
                 className={`navbar-coin-anchor block cursor-pointer transition-all duration-300 ease-out z-30 ${
                   isScrolled
-                    ? 'translate-y-0'
-                    : 'translate-y-2 lg:translate-y-3'
+                    ? '' : ''
                 }`}
                 title="SHARKSET Oficial"
               >
                 <SharksetLogo
-                  variant={isScrolled ? 'default' : 'coin3d'}
-                  customPx={isScrolled ? 36 : 124}
+                  variant="coin3d"
+                  customPx={64}
                   className="transition-all duration-300"
                 />
               </a>
@@ -229,49 +246,53 @@ export const Navbar: React.FC = () => {
           <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
 
             {/* Linha 1: Botões de navegação + Ações */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <nav aria-label="Navegação desktop" className="flex flex-wrap items-center gap-1.5 py-0.5">
-            {isArenaPage ? (
+            <div className="header-navigation-row flex flex-wrap items-center justify-between gap-2">
+              <nav aria-label="Navegação desktop" className="flex flex-wrap items-center gap-2 py-0.5">
+                {isArenaPage ? (
                   <>
-                    <button type="button" onClick={goHome} className="min-h-9 px-3 py-2 rounded-xl text-xs font-black hover:bg-white/10 whitespace-nowrap">INÍCIO</button>
+                    <button
+                      type="button"
+                      onClick={goHome}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300 font-bold text-xs uppercase tracking-wider shadow-md active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      <Home size={14} className="text-[#12C7BB]" />
+                      <span>INÍCIO</span>
+                    </button>
 
                     <button
                       type="button"
                       onClick={() => setActiveTab('arenas_directory')}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-black text-slate-200 hover:text-white border border-white/15 transition-all cursor-pointer whitespace-nowrap mr-1"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300 font-bold text-xs uppercase tracking-wider shadow-md active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap"
                       title="Voltar para todas as arenas"
                     >
-                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <ArrowLeft size={14} className="text-[#12C7BB]" />
                       <span>Todas as Arenas</span>
                     </button>
 
                     {arenaNavItems.map((item) => {
                       const isActive = effectiveArenaSubTab === item.id;
+                      const Icon = item.icon;
                       return (
                         <button
                           key={item.id}
                           type="button"
                           aria-current={isActive ? 'page' : undefined}
                           onClick={() => setArenaSubTab(item.id)}
-                          className={`relative min-h-9 px-3 py-2 text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer rounded-xl ${
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all active:translate-y-0.5 cursor-pointer whitespace-nowrap shadow-md ${
                             isActive
-                              ? 'text-white bg-white/15 shadow-xs'
-                              : 'text-slate-300 hover:text-white hover:bg-white/5'
+                              ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border border-cyan-300 shadow-[0_0_15px_rgba(18,199,187,0.45)]'
+                              : 'bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300'
                           }`}
-                          style={isActive ? { color: activeAccentHex } : undefined}
                         >
-                          <span className="flex items-center gap-1.5">
-                            {item.isLive && (
-                              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                            )}
-                            {item.label}
-                          </span>
-                          {isActive && (
-                            <span
-                              className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full transition-all"
-                              style={{ backgroundColor: activeAccentHex }}
-                            />
+                          {item.isLive ? (
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                            </span>
+                          ) : (
+                            <Icon size={14} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
                           )}
+                          <span>{item.label}</span>
                         </button>
                       );
                     })}
@@ -279,6 +300,7 @@ export const Navbar: React.FC = () => {
                 ) : (
                   navItems.map((item) => {
                     const isActive = activeTab === item.id;
+                    const Icon = item.icon;
 
                     return (
                       <button
@@ -286,23 +308,14 @@ export const Navbar: React.FC = () => {
                         type="button"
                         aria-current={isActive ? 'page' : undefined}
                         onClick={() => item.id === 'home' ? goHome() : setActiveTab(item.id)}
-                        className={`relative min-h-9 px-3 py-2 text-xs font-extrabold tracking-wider uppercase transition-colors whitespace-nowrap cursor-pointer rounded-xl ${
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all active:translate-y-0.5 cursor-pointer whitespace-nowrap shadow-md ${
                           isActive
-                            ? 'text-white bg-white/10'
-                            : 'text-slate-300 hover:text-white hover:bg-white/5'
+                            ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border border-cyan-300 shadow-[0_0_15px_rgba(18,199,187,0.45)]'
+                            : 'bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300'
                         }`}
-                        style={isActive ? { color: activeAccentHex } : undefined}
                       >
-                        <span className="flex items-center gap-1.5">
-
-                          {item.label}
-                        </span>
-                        {isActive && (
-                          <span
-                            className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full transition-all"
-                            style={{ backgroundColor: activeAccentHex }}
-                          />
-                        )}
+                        <Icon size={14} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
+                        <span>{item.label}</span>
                       </button>
                     );
                   })
@@ -315,30 +328,14 @@ export const Navbar: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isArenaPage) {
-                      setArenaSubTab('campeonatos');
-                    } else {
-                      setActiveTab('tournaments');
-                    }
-                  }}
-                  className="px-4 py-1.5 rounded-full text-white text-xs font-black transition-all whitespace-nowrap cursor-pointer shadow-sm hover:brightness-110 active:scale-[0.98]"
-                  style={{ backgroundColor: activeAccentHex }}
-                >
-                  Criar Torneio
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
-                  className="relative p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                  className="relative inline-flex items-center justify-center p-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-slate-200 hover:text-white border border-cyan-500/40 hover:border-cyan-300 transition-all cursor-pointer shadow-md active:translate-y-0.5"
                   title="Alertas e Notificações"
                 >
-                  <Bell className="w-4 h-4" />
+                  <Bell className="w-4 h-4 text-cyan-300" />
                   {(unreadSmartCount > 0 || notifiedWaitlistCount > 0) && (
                     <span
-                      className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-black text-white flex items-center justify-center shadow-xs"
-                      style={{ backgroundColor: activeAccentHex }}
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-black text-white flex items-center justify-center shadow-xs bg-red-500 animate-pulse"
                     >
                       {unreadSmartCount + notifiedWaitlistCount}
                     </span>
@@ -349,21 +346,21 @@ export const Navbar: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setProfileModalOpen(true)}
-                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-500/40 text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#052445]/90 hover:bg-[#083566] text-white border border-cyan-500/40 hover:border-cyan-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md active:translate-y-0.5"
                     title="Entrar com Google"
                   >
-                    <LogIn className="w-3.5 h-3.5 text-cyan-400" />
+                    <LogIn className="w-3.5 h-3.5 text-[#12C7BB]" />
                     <span>Entrar com Google</span>
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setProfileModalOpen(true)}
-                    className="relative flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 transition-all cursor-pointer shrink-0"
+                    className="relative inline-flex items-center gap-2.5 pl-1 pr-4 py-1 rounded-full bg-[#052445]/90 hover:bg-[#083566] border border-cyan-500/40 hover:border-cyan-300 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all active:translate-y-0.5 cursor-pointer shrink-0"
                     title={`Perfil de ${firebaseUser.displayName || userProfile.name || 'Atleta'}`}
                   >
                     <div className="relative shrink-0">
-                      <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white/80 shadow-xs">
+                      <div className="w-7 h-7 rounded-full overflow-hidden bg-slate-900 text-white font-black text-xs flex items-center justify-center border border-cyan-400 shadow-xs">
                         {firebaseUser.photoURL ? (
                           <img
                             src={firebaseUser.photoURL}
@@ -374,7 +371,7 @@ export const Navbar: React.FC = () => {
                           <span>{(firebaseUser.displayName || userProfile.name || 'A').charAt(0).toUpperCase()}</span>
                         )}
                       </div>
-                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-slate-900 shadow-[0_0_8px_rgba(16,185,129,0.95)] z-20 pointer-events-none" />
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#052445] shadow-[0_0_8px_rgba(16,185,129,0.95)] z-20 pointer-events-none" />
                     </div>
                     <span className="text-xs font-black text-white max-w-[80px] truncate">
                       {(firebaseUser.displayName || userProfile.name || 'Atleta').split(' ')[0]}
@@ -530,26 +527,37 @@ export const Navbar: React.FC = () => {
         <div className="w-full">
           <nav
             aria-label="Navegação móvel com botões sempre à mostra"
-            className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 w-full"
+            className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 w-full"
           >
-            {isArenaPage && <button type="button" onClick={goHome} className="lg:hidden min-h-10 px-3 py-2 rounded-xl border border-slate-700 bg-slate-900 text-[11px] font-black">INÍCIO</button>}
+            {isArenaPage && (
+              <button
+                type="button"
+                onClick={goHome}
+                className="lg:hidden min-h-10 px-3 py-2 rounded-full border border-cyan-500/40 bg-[#052445]/90 text-white text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 shadow-md active:scale-95"
+              >
+                <Home size={13} className="text-[#12C7BB]" />
+                <span>INÍCIO</span>
+              </button>
+            )}
             {isArenaPage ? (
               arenaNavItems.map((item) => {
                 const isActive = effectiveArenaSubTab === item.id;
+                const Icon = item.icon;
                 return (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => setArenaSubTab(item.id)}
-                    className={`min-h-10 py-2.5 px-2 text-[11px] font-black tracking-wide uppercase transition-all rounded-xl text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs border ${
+                    className={`min-h-10 py-2 px-1.5 text-[11px] font-bold tracking-wider uppercase transition-all rounded-full text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-md border ${
                       isActive
-                        ? 'text-white border-transparent shadow-md font-black'
-                        : 'text-slate-200 bg-slate-900/90 hover:bg-slate-800 border-slate-800'
+                        ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border-cyan-300 shadow-[0_0_12px_rgba(18,199,187,0.4)]'
+                        : 'text-white bg-[#052445]/90 hover:bg-[#083566] border-cyan-500/30'
                     }`}
-                    style={isActive ? { backgroundColor: activeAccentHex } : undefined}
                   >
-                    {item.isLive && (
+                    {item.isLive ? (
                       <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse shrink-0" />
+                    ) : (
+                      <Icon size={13} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
                     )}
                     <span className="truncate">{item.label}</span>
                   </button>
@@ -558,20 +566,20 @@ export const Navbar: React.FC = () => {
             ) : (
               navItems.map((item) => {
                 const isActive = activeTab === item.id;
+                const Icon = item.icon;
                 return (
                   <button
                     key={item.id}
                     type="button"
                     aria-current={isActive ? 'page' : undefined}
                     onClick={() => item.id === 'home' ? goHome() : setActiveTab(item.id)}
-                    className={`min-h-10 py-2 px-1 text-[11px] font-black tracking-wide uppercase transition-all rounded-xl text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs border ${
+                    className={`min-h-10 py-2 px-1.5 text-[11px] font-bold tracking-wider uppercase transition-all rounded-full text-center flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-md border ${
                       isActive
-                        ? 'text-white border-white/20 shadow-md font-black'
-                        : 'text-slate-200 bg-slate-900/90 hover:bg-slate-800 border-slate-800'
+                        ? 'bg-gradient-to-r from-cyan-500 via-[#12C7BB] to-blue-600 text-slate-950 font-black border-cyan-300 shadow-[0_0_12px_rgba(18,199,187,0.4)]'
+                        : 'text-white bg-[#052445]/90 hover:bg-[#083566] border-cyan-500/30'
                     }`}
-                    style={isActive ? { backgroundColor: activeAccentHex } : undefined}
                   >
-
+                    <Icon size={13} className={isActive ? 'text-slate-950 stroke-[2.5]' : 'text-[#12C7BB]'} />
                     <span className="truncate">{item.label}</span>
                   </button>
                 );

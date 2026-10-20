@@ -967,3 +967,25 @@ body {
 @media (prefers-reduced-motion: reduce) { .navbar-live-list { animation: none; } }
 /* Secondary links use the same glass surface and tactile elevation as site buttons. */
 .site-secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 9px 14px; border: 1px solid rgb(56 139 190 / 32%); border-radius: 12px; color: #a5f3fc; font-size: 12px; font-weight: 700; line-height: 1.4; cursor: pointer; }
+
+/* Stable header rows: navigation never competes with account actions for width. */
+.site-navbar .header-layout { align-items: center; }
+.site-navbar .header-navigation-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.site-navbar .header-navigation-row nav { flex-wrap: nowrap; justify-content: flex-start; gap: 4px; }
+.site-navbar .header-navigation-row > div { margin-left: 0; justify-content: flex-end; }
+.site-navbar .header-navigation-row button,
+.site-navbar .navbar-live-action { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
+.site-navbar .header-navigation-row nav button { flex: 1; padding-inline: 12px; }
+.site-navbar .navbar-coin-anchor { transform: none; }
+.site-navbar .navbar-live-actions { align-items: center; }
+.site-navbar .navbar-live-action { font-size: 11px; }
+.site-navbar button { touch-action: manipulation; }
+@media (min-width: 1440px) {
+  .site-navbar .header-navigation-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; }
+  .site-navbar .header-navigation-row nav button { padding-inline: 8px; font-size: 11px; }
+}
+@media (max-width: 1023px) {
+  .site-navbar nav button { min-height: 44px; }
+  .site-navbar .navbar-live-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .site-navbar .navbar-live-action { padding-inline: 8px; }
+}

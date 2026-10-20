@@ -36,21 +36,11 @@ export const CommandPalette: React.FC = () => {
       },
       {
         id: 'nav-classes',
-        label: 'Gerenciar Aulas & Cobrança Mensal ou Diária',
+        label: 'Consultar aulas e treinos',
         category: 'Arena',
         icon: GraduationCap,
         action: () => {
           setArenaSubTab('aulas');
-          setActiveTab('scheduler');
-        },
-      },
-      {
-        id: 'nav-owner-config',
-        label: 'Configurar Valores e Horários por Quadra (Dono)',
-        category: 'Proprietário',
-        icon: Settings,
-        action: () => {
-          setArenaSubTab('config_dono');
           setActiveTab('scheduler');
         },
       },
