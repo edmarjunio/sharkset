@@ -10,7 +10,7 @@ interface SportBallIconProps {
 
 const BALL_ASSETS: Record<SportBallType, { src: string; alt: string; label: string }> = {
   futevolei: {
-    src: '/brand/sports/futevolei.jpg',
+    src: '/brand/sports/futevolei-transparent.png',
     alt: 'Bola Oficial de Futevôlei',
     label: 'Futevôlei',
   },
@@ -20,7 +20,7 @@ const BALL_ASSETS: Record<SportBallType, { src: string; alt: string; label: stri
     label: 'Vôlei de Praia',
   },
   'beach-tennis': {
-    src: '/brand/sports/beach-tennis.png',
+    src: '/brand/sports/beach-tennis-transparent.png',
     alt: 'Bola Oficial de Beach Tennis',
     label: 'Beach Tennis',
   },
@@ -36,14 +36,14 @@ export const SportBallIcon: React.FC<SportBallIconProps> = ({
 
   return (
     <span
-      className={`relative inline-flex items-center justify-center rounded-full overflow-hidden shrink-0 select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)] ring-1 ring-white/20 ${className}`}
+      className={`relative inline-flex items-center justify-center shrink-0 select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)] ${className}`}
       style={style}
       title={ball.label}
     >
       <img
         src={ball.src}
         alt={ball.alt}
-        className="w-full h-full object-cover rounded-full transform scale-[1.03] transition-transform duration-200"
+        className="w-full h-full object-contain transition-transform duration-200"
         loading="lazy"
         decoding="async"
       />

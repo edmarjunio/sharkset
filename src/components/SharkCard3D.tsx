@@ -482,7 +482,7 @@ export const SharkCard3D: React.FC<SharkCard3DProps> = ({
                 </div>
 
                 {/* Season Sponsor / Footer */}
-                <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-[9px] text-slate-400">
+                <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-[9px] text-slate-400">
                   <span className="font-bold truncate max-w-[190px]">
                     ⭐ {sponsorName}
                   </span>

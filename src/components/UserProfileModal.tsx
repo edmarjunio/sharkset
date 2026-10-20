@@ -72,8 +72,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       });
   }, []);
 
-  if (!isOpen) return null;
-
   const currentUser = auth.currentUser;
   const isLoggedIn = Boolean(currentUser);
 
@@ -229,6 +227,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       matchesCount
     );
   }, [points, titles, athleteLevel, winsCount, matchesCount]);
+
+  if (!isOpen) return null;
 
   const inactDays = getInactivityDays(currentAthleteRecord?.lastMatchAt);
   const isResetDue = inactDays !== null && inactDays >= INACTIVITY_DAYS;

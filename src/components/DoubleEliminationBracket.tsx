@@ -2874,7 +2874,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       )}
 
       {/* Share Bracket Modal (Deep Link, Social Summary, WhatsApp) */}
-      <ShareBracketModal
+      {activeTournament && <ShareBracketModal
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
         tournament={activeTournament || (tournaments[0] as any)}
@@ -2882,10 +2882,10 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         selectedMatch={shareMatch}
         podium={podium}
         tenantName={tenant.name}
-      />
+      />}
 
       {/* Head-to-Head & Match History + Firestore MVP Voting Modal */}
-      <MatchHistoryModal
+      {activeTournament && <MatchHistoryModal
         isOpen={showMatchHistoryModal}
         onClose={() => setShowMatchHistoryModal(false)}
         availablePairs={activePairsInTourn}
@@ -2895,7 +2895,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         activeMatchId={activeHistoryMatchId}
         tournamentId={activeTournament.id}
         tournamentName={activeTournament.name}
-      />
+      />}
 
       {/* Integrity Report Modal (Denunciar Partida) */}
       {reportMatchTarget && (

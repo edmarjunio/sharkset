@@ -43,6 +43,7 @@ import { FloatingBottomDock } from './components/FloatingBottomDock';
 import { TopBarSlotDetailsModal } from './components/TopBarSlotDetailsModal';
 import { GlobalToast } from './components/GlobalToast';
 import type { UpcomingSlotItem } from './hooks/useUpcomingFreeSlots';
+import { reportUnexpectedError } from './services/errorReporter';
 
 const MainContent: React.FC = () => {
   const {
@@ -63,6 +64,21 @@ const MainContent: React.FC = () => {
   } = useApp();
   const watchSource = useBroadcastNavigation((state) => state.source);
   const [publishedWatchTournamentId, setPublishedWatchTournamentId] = React.useState<string | null>(null);
+  const [unexpectedError, setUnexpectedError] = React.useState(false);
+  React.useEffect(() => {
+    const showError = (error: unknown, context: string) => {
+      setUnexpectedError(true);
+      reportUnexpectedError(error, context);
+    };
+    const onError = (event: ErrorEvent) => showError(event.error || event.message, 'erro não tratado');
+    const onRejection = (event: PromiseRejectionEvent) => showError(event.reason, 'falha assíncrona');
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
+  }, []);
   React.useEffect(() => {
     if (watchSource?.kind !== 'published') {
       setPublishedWatchTournamentId(null);
@@ -136,6 +152,7 @@ const MainContent: React.FC = () => {
     >
       <AquariumBackground />
       <GlobalToast />
+      {unexpectedError && <div role="alert" className="fixed bottom-4 left-1/2 z-[2000] -translate-x-1/2 max-w-lg rounded-xl border border-amber-300/40 bg-slate-950/95 px-4 py-3 text-sm font-semibold text-white shadow-2xl">Ocorreu algo inesperado. O erro foi registrado para suporte. <button type="button" onClick={() => setUnexpectedError(false)} className="ml-3 underline">Fechar</button></div>}
       <TournamentResultNotifications tournamentIds={resultNotificationTournamentIds} onOpenMatch={openResultMatch} />
 
       {/* Floating Focus Mode Bar when active */}
@@ -222,13 +239,13 @@ const MainContent: React.FC = () => {
               {/* Sports Modalities Pills */}
               <div className="flex flex-wrap justify-center items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs hover:border-cyan-400/40 transition-colors">
-                  <SportBallIcon sport="futevolei" /> Futevôlei
+                  <SportBallIcon sport="futevolei" size={24} /> Futevôlei
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs hover:border-cyan-400/40 transition-colors">
-                  <SportBallIcon sport="volei-praia" /> Vôlei de Praia
+                  <SportBallIcon sport="volei-praia" size={24} /> Vôlei de Praia
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs hover:border-cyan-400/40 transition-colors">
-                  <SportBallIcon sport="beach-tennis" /> Beach Tennis
+                  <SportBallIcon sport="beach-tennis" size={24} /> Beach Tennis
                 </span>
               </div>
             </div>

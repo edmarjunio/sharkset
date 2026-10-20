@@ -152,7 +152,7 @@ export const Navbar: React.FC = () => {
         <span>LIVE</span>
       </button>
 
-      <button
+      {firebaseUser ? <button
         type="button"
         onClick={openBroadcastStudio}
         className="navbar-live-action inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#FF6B00] via-[#FF8533] to-[#E65100] hover:from-[#FF781F] hover:to-[#FF6B00] text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,107,0,0.45)] border border-amber-300 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
@@ -164,7 +164,7 @@ export const Navbar: React.FC = () => {
         </span>
         <Radio size={14} className="text-slate-950 stroke-[2.5]" />
         <span>INICIAR TRANSMISSÃO</span>
-      </button>
+      </button> : <span role="status" className="max-w-36 text-center text-[10px] font-bold leading-tight text-amber-200">Entre na sua conta para iniciar uma transmissão</span>}
     </div>
   );
 

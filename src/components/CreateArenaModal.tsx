@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { auth } from '../lib/firebase';
+import { auth, getArenaCreationAccess, signInWithGooglePopup } from '../lib/firebase';
 import { Court, SportType, TenantConfig } from '../types';
 import { toast } from '../store/useToastStore';
 import { Building2, MapPin, Phone, Clock, DollarSign, X, Check, Plus, Shield } from 'lucide-react';
@@ -28,6 +28,22 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
   const [isCovered, setIsCovered] = useState<boolean | null>(null);
   const [hasLighting, setHasLighting] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accessState, setAccessState] = useState<'checking' | 'allowed' | 'login' | 'plan'>('checking');
+
+  useEffect(() => {
+    let current = true;
+    if (!isOpen) return () => { current = false; };
+    const user = auth.currentUser;
+    if (!user) {
+      setAccessState('login');
+      return () => { current = false; };
+    }
+    setAccessState('checking');
+    void getArenaCreationAccess(user.uid)
+      .then((access) => { if (current) setAccessState(access.allowed ? 'allowed' : access.reason === 'login' ? 'login' : 'plan'); })
+      .catch(() => { if (current) setAccessState('plan'); });
+    return () => { current = false; };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -41,6 +57,12 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
     e.preventDefault();
     if (!auth.currentUser) {
       toast.error('Entre com sua conta antes de cadastrar uma arena.');
+      return;
+    }
+    const access = await getArenaCreationAccess(auth.currentUser.uid).catch(() => ({ allowed: false, reason: 'plan' as const }));
+    if (!access.allowed) {
+      toast.error(access.reason === 'login' ? 'Entre com sua conta para cadastrar uma arena.' : 'A criação de arena exige o plano pago de R$ 99 ou R$ 149, ou uma liberação administrativa.');
+      setAccessState(access.reason);
       return;
     }
     const courtTotal = Number(courtCount);
@@ -141,7 +163,18 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs font-bold">
+        {accessState !== 'allowed' ? (
+          <div className="rounded-2xl border border-amber-400/30 bg-amber-950/30 p-5 text-center space-y-3">
+            <Shield className="mx-auto text-amber-300" size={28} />
+            <p className="text-sm font-bold text-white">
+              {accessState === 'checking' ? 'Verificando acesso…' : accessState === 'login'
+                ? 'Entre com sua conta para cadastrar uma arena.'
+                : 'Para cadastrar uma arena, assine o plano de R$ 99 ou R$ 149, ou solicite uma liberação administrativa.'}
+            </p>
+            {accessState === 'login' && <button type="button" onClick={() => { setAccessState('checking'); void signInWithGooglePopup().then(({ user }) => getArenaCreationAccess(user.uid)).then((access) => setAccessState(access.allowed ? 'allowed' : access.reason === 'login' ? 'login' : 'plan')).catch(() => setAccessState('login')); }} className="rounded-xl bg-cyan-600 px-4 py-2.5 font-black text-white">Entrar com Google</button>}
+            {accessState === 'plan' && <button type="button" onClick={() => { onClose(); setActiveTab('saas_hub'); }} className="rounded-xl bg-amber-400 px-4 py-2.5 font-black text-slate-950">Ver planos</button>}
+          </div>
+        ) : <form onSubmit={handleSubmit} className="space-y-4 text-xs font-bold">
           <div>
             <label className="block text-slate-300 mb-1">Nome Oficial da Arena *</label>
             <input
@@ -337,7 +370,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
               <span>{isSubmitting ? 'Cadastrando…' : 'Cadastrar Arena'}</span>
             </button>
           </div>
-        </form>
+        </form>}
       </div>
     </div>
   );

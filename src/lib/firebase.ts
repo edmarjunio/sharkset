@@ -785,6 +785,17 @@ export async function persistArenaToFirestore(arena: TenantConfig): Promise<void
   }
 }
 
+export async function getArenaCreationAccess(uid: string): Promise<{ allowed: boolean; reason: 'login' | 'plan' | 'granted' }> {
+  if (!auth.currentUser || auth.currentUser.uid !== uid) return { allowed: false, reason: 'login' };
+  const access = await getDoc(doc(db, 'arena_access', uid));
+  const data = access.data();
+  if (data?.active === true && ['arena_pro_99', 'arena_pro_149'].includes(data.plan)) {
+    return { allowed: true, reason: 'plan' };
+  }
+  if (data?.adminGranted === true) return { allowed: true, reason: 'granted' };
+  return { allowed: false, reason: 'plan' };
+}
+
 /**
  * Fetches all arenas from Firestore.
  */

@@ -114,6 +114,36 @@ async function sendWhatsAppMessage(
 }
 
 export function registerWhatsAppRoutes(app: Express) {
+  const errorReportAttempts = new Map<string, number>();
+  app.post('/api/notifications/whatsapp/error-report', async (req: Request, res: Response) => {
+    const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 1000) : '';
+    if (!message) {
+      res.status(400).json({ ok: false, error: 'Descrição do erro obrigatória.' });
+      return;
+    }
+    const clientKey = String(req.ip || req.socket.remoteAddress || 'unknown');
+    const previous = errorReportAttempts.get(clientKey) || 0;
+    if (Date.now() - previous < 60_000) {
+      res.status(429).json({ ok: false, error: 'Aguarde antes de enviar outro relatório.' });
+      return;
+    }
+    errorReportAttempts.set(clientKey, Date.now());
+    const destination = process.env.SHARKSET_ADMIN_WHATSAPP;
+    const config = getWhatsAppConfig();
+    if (!destination || !config) {
+      console.error('SHARKSET_ERROR_REPORT', message);
+      res.status(503).json({ ok: false, error: 'Relatório WhatsApp não configurado no servidor.' });
+      return;
+    }
+    const phone = normalizePhoneNumber(destination);
+    if (!phone) {
+      res.status(503).json({ ok: false, error: 'Número de WhatsApp administrativo inválido.' });
+      return;
+    }
+    const result = await sendWhatsAppMessage(config, phone, `SHARKSET — erro inesperado\n${message}`);
+    res.status(result.success ? 200 : 502).json({ ok: result.success });
+  });
+
   // Service configuration status endpoint
   app.get('/api/notifications/whatsapp/status', (_req: Request, res: Response) => {
     const config = getWhatsAppConfig();

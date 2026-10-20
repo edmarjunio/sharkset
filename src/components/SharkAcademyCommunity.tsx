@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { AcademyCategory, AcademyMediaType, AcademyPost } from '../types';
 import { useApp } from '../context/AppContext';
 import { persistAcademyPostToFirestore } from '../lib/firebase';
 import { SharksetLogo } from './SharksetLogo';
+import { auth, signInWithGooglePopup } from '../lib/firebase';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import {
   GraduationCap,
   Video,
@@ -244,6 +246,10 @@ const CATEGORY_LABELS: Record<AcademyCategory, string> = {
 
 export const SharkAcademyCommunity: React.FC = () => {
   const { tenant, userProfile } = useApp();
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(auth.currentUser);
+  const [loginError, setLoginError] = useState('');
+
+  useEffect(() => onAuthStateChanged(auth, setFirebaseUser), []);
 
   const [activeTacticalId, setActiveTacticalId] = useState<AcademyCategory>('marcacao_padrao');
   const [mediaFilter, setMediaFilter] = useState<'all' | AcademyMediaType>('all');
@@ -311,6 +317,11 @@ export const SharkAcademyCommunity: React.FC = () => {
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth.currentUser || !auth.currentUser.emailVerified) {
+      setShowCreateModal(false);
+      setLoginError(auth.currentUser ? 'Confirme seu e-mail antes de publicar uma aula.' : 'Entre na sua conta Google para publicar uma aula.');
+      return;
+    }
     if (!newTitle.trim() || !newSummary.trim() || !newAuthor.trim()) return;
 
     const points = newKeyPointsText
@@ -333,6 +344,7 @@ export const SharkAcademyCommunity: React.FC = () => {
       createdAt: new Date().toISOString(),
     };
 
+    await persistAcademyPostToFirestore(created);
     const nextPosts = [created, ...posts];
     setPosts(nextPosts);
     try {
@@ -340,8 +352,6 @@ export const SharkAcademyCommunity: React.FC = () => {
     } catch {
       // ignore
     }
-
-    await persistAcademyPostToFirestore(created);
 
     setNewTitle('');
     setNewMediaUrl('');
@@ -418,7 +428,7 @@ export const SharkAcademyCommunity: React.FC = () => {
       {/* =================================================================== */}
       {/* HERO HEADER: SHARK ACADEMY & COMUNIDADE FUTEVÔLEI SHARKSET          */}
       {/* =================================================================== */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#030B17] via-[#071D3D] to-[#0B254E] border-2 border-[#0987CE] p-6 sm:p-8 shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#030B17] via-[#071D3D] to-[#0B254E] border-2 border-[#0987CE] p-5 sm:p-7 shadow-2xl">
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-[#0987CE]/15 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
@@ -441,14 +451,14 @@ export const SharkAcademyCommunity: React.FC = () => {
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
-              <button
+              {firebaseUser ? <button
                 type="button"
                 onClick={() => setShowCreateModal(true)}
                 className="px-5 py-2.5 rounded-2xl bg-[#0987CE] hover:bg-[#0772b0] text-white font-black text-xs sm:text-sm shadow-lg shadow-[#0987CE]/30 transition-all cursor-pointer flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Postar Vídeo, Documento ou Imagem
-              </button>
+              </button> : <button type="button" onClick={() => { setLoginError(''); void signInWithGooglePopup().catch(() => setLoginError('Não foi possível entrar com Google. Tente novamente.')); }} className="px-5 py-2.5 rounded-2xl bg-[#0987CE] text-white font-black text-xs sm:text-sm inline-flex items-center gap-2"><Plus className="w-4 h-4" />Entre para postar uma aula</button>}
 
               <button
                 type="button"
@@ -461,14 +471,16 @@ export const SharkAcademyCommunity: React.FC = () => {
             </div>
           </div>
 
-          <div className="shrink-0 flex flex-col items-center bg-[#030B17]/80 border border-[#145A9B] rounded-2xl p-4">
+          <div className="shrink-0 flex items-center gap-4 bg-[#030B17]/80 border border-[#145A9B] rounded-2xl px-5 py-3">
             <SharksetLogo size="lg" />
-            <span className="text-[10px] font-mono text-slate-300 mt-2 font-bold uppercase tracking-wider">
+            <span className="text-sm sm:text-base font-bold text-slate-100 tracking-wide">
               CT Oficial · {posts.length} Materiais Ativos
             </span>
           </div>
         </div>
       </div>
+
+      {loginError && <div role="status" className="rounded-xl border border-amber-400/30 bg-amber-950/30 p-3 text-sm text-amber-100 flex items-center justify-between gap-3"><span>{loginError}</span><button type="button" className="underline font-bold" onClick={() => setLoginError('')}>Fechar</button></div>}
 
       {/* =================================================================== */}
       {/* BLOCO 1: LABORATÓRIO TÁTICO INTERATIVO (OS 4 PILARES DO FUTEVÔLEI)  */}
