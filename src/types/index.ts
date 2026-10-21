@@ -508,6 +508,11 @@ export interface TenantConfig {
   brandPalette?: ArenaBrandPalette;
   lat?: number;
   lng?: number;
+  cep?: string;
+  defaultHourlyRate?: number;
+  hasPeakPricing?: boolean;
+  peakIntervals?: Array<{ id: string; startTime: string; endTime: string; price: number; label?: string }>;
+  whatsappVerified?: boolean;
 }
 
 export type CouponScope = 'global' | 'arena';

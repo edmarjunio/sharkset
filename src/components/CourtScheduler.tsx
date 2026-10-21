@@ -5,6 +5,10 @@ import { useArenaAvailability } from '../hooks/useArenaAvailability';
 import { useBookingSelection } from '../store/useBookingSelection';
 import { arenaDate } from '../services/bookingAvailability';
 import { QuickBookingPaymentModal } from './QuickBookingPaymentModal';
+import { ArenaSmartBookingFinder } from './ArenaSmartBookingFinder';
+import { ArenaFeaturedChampionship } from './ArenaFeaturedChampionship';
+import { ArenaTop5Ranking } from './ArenaTop5Ranking';
+import { ArenaAvailableClassesSection } from './ArenaAvailableClassesSection';
 import { closeOnBackdrop } from '../utils/dialog';
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp, ArenaSubTab } from '../context/AppContext';
@@ -887,29 +891,29 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
           onClick={() => setArenaSubTab('agendamentos')}
           className={`p-4 sm:p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between gap-3 group shadow-xs hover:shadow-md ${
             effectiveSubTab === 'agendamentos'
-              ? 'bg-gradient-to-br from-emerald-500/15 via-white to-white border-emerald-500 ring-2 ring-emerald-400/40'
-              : 'bg-white border-slate-200 hover:border-emerald-300'
+              ? 'bg-gradient-to-br from-emerald-950/90 via-[#062444] to-[#041a33] border-emerald-400 ring-2 ring-emerald-400/50 shadow-emerald-950/50'
+              : 'bg-[#05182C]/90 border-cyan-800/60 hover:border-emerald-400/60 hover:bg-[#072444]'
           }`}
         >
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black">
               <Calendar className="w-5 h-5" />
             </div>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black uppercase tracking-wider">
               {todayAvailableSlotsCount > 0 ? `${todayAvailableSlotsCount} livres hoje` : 'Esgotado'}
             </span>
           </div>
 
           <div>
-            <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-700 transition-colors">
+            <h3 className="text-base font-black text-white group-hover:text-emerald-400 transition-colors">
               1. Agendamentos
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-300 mt-0.5">
               {tenant.courts.length} quadras · ⚽ Futevôlei foco principal, Beach e Vôlei
             </p>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-black text-emerald-700">
+          <div className="flex items-center justify-between pt-2 border-t border-cyan-900/60 text-xs font-black text-emerald-400">
             <span>Ver Horários & Grade</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
@@ -920,12 +924,12 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
           onClick={() => setArenaSubTab('aulas')}
           className={`p-4 sm:p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between gap-3 group shadow-xs hover:shadow-md ${
             effectiveSubTab === 'aulas'
-              ? 'bg-gradient-to-br from-indigo-500/15 via-white to-white border-indigo-500 ring-2 ring-indigo-400/40'
-              : 'bg-white border-slate-200 hover:border-indigo-300'
+              ? 'bg-gradient-to-br from-indigo-950/90 via-[#062444] to-[#041a33] border-indigo-400 ring-2 ring-indigo-400/50 shadow-indigo-950/50'
+              : 'bg-[#05182C]/90 border-cyan-800/60 hover:border-indigo-400/60 hover:bg-[#072444]'
           }`}
         >
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-black">
               <GraduationCap className="w-5 h-5" />
             </div>
             {classesWithSpotsCount > 0 ? (
@@ -940,15 +944,15 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
           </div>
 
           <div>
-            <h3 className="text-base font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+            <h3 className="text-base font-black text-white group-hover:text-indigo-400 transition-colors">
               2. Aulas & Treinos
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-300 mt-0.5">
               Limite pré-definido pelo dono · {totalClassSpotsRemaining} vagas restantes no total
             </p>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-black text-indigo-700">
+          <div className="flex items-center justify-between pt-2 border-t border-cyan-900/60 text-xs font-black text-indigo-400">
             <span>Garantir Minha Vaga</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
@@ -959,29 +963,29 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
           onClick={() => setArenaSubTab('campeonatos')}
           className={`p-4 sm:p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between gap-3 group shadow-xs hover:shadow-md ${
             effectiveSubTab === 'campeonatos'
-              ? 'bg-gradient-to-br from-amber-500/15 via-white to-white border-amber-500 ring-2 ring-amber-400/40'
-              : 'bg-white border-slate-200 hover:border-amber-300'
+              ? 'bg-gradient-to-br from-amber-950/90 via-[#062444] to-[#041a33] border-amber-400 ring-2 ring-amber-400/50 shadow-amber-950/50'
+              : 'bg-[#05182C]/90 border-cyan-800/60 hover:border-amber-400/60 hover:bg-[#072444]'
           }`}
         >
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black">
               <Trophy className="w-5 h-5" />
             </div>
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider">
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase tracking-wider">
               {arenaTournaments.length} Torneios
             </span>
           </div>
 
           <div>
-            <h3 className="text-base font-black text-slate-900 group-hover:text-amber-800 transition-colors">
+            <h3 className="text-base font-black text-white group-hover:text-amber-400 transition-colors">
               3. Campeonatos
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-300 mt-0.5">
               Inscrições online, validação de categorias e chaves ao vivo
             </p>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-black text-amber-800">
+          <div className="flex items-center justify-between pt-2 border-t border-cyan-900/60 text-xs font-black text-amber-400">
             <span>Ver Torneios & Chaves</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
@@ -992,12 +996,12 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
           onClick={() => setArenaSubTab('transmissoes')}
           className={`p-4 sm:p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between gap-3 group shadow-xs hover:shadow-md ${
             effectiveSubTab === 'transmissoes'
-              ? 'bg-gradient-to-br from-red-500/15 via-white to-white border-red-500 ring-2 ring-red-400/40'
-              : 'bg-white border-slate-200 hover:border-red-300'
+              ? 'bg-gradient-to-br from-rose-950/90 via-[#062444] to-[#041a33] border-rose-400 ring-2 ring-rose-400/50 shadow-rose-950/50'
+              : 'bg-[#05182C]/90 border-cyan-800/60 hover:border-rose-400/60 hover:bg-[#072444]'
           }`}
         >
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center font-black">
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center font-black">
               <Radio className="w-5 h-5" />
             </div>
             <span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 animate-pulse">
@@ -1007,15 +1011,15 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
           </div>
 
           <div>
-            <h3 className="text-base font-black text-slate-900 group-hover:text-red-600 transition-colors">
+            <h3 className="text-base font-black text-white group-hover:text-rose-400 transition-colors">
               4. Transmissões
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-300 mt-0.5">
               Câmeras oficiais 1080p · Placar sincronizado em tempo real
             </p>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-black text-red-600">
+          <div className="flex items-center justify-between pt-2 border-t border-cyan-900/60 text-xs font-black text-rose-400">
             <span>Assistir Agora</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
@@ -1044,6 +1048,81 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
       {/* ===================================================================== */}
       {effectiveSubTab === 'agendamentos' && (
         <div className="space-y-6">
+          {/* SELEÇÃO DE QUADRAS NA TELA PRINCIPAL DA ARENA */}
+          <div className="p-4 rounded-2xl bg-[#031326] border border-cyan-800/60 flex flex-wrap items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-cyan-400">
+                Seleção de Quadras:
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedCourtId('all')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                  selectedCourtId === 'all'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md ring-2 ring-cyan-300/40'
+                    : 'bg-[#05182C] text-slate-300 hover:text-white border border-cyan-900/60'
+                }`}
+              >
+                🏟️ Todas as Quadras ({tenant.courts.length})
+              </button>
+
+              {tenant.courts.map((court) => (
+                <button
+                  key={court.id}
+                  type="button"
+                  onClick={() => setSelectedCourtId(court.id)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black cursor-pointer transition-all flex items-center gap-1.5 ${
+                    selectedCourtId === court.id
+                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-md ring-2 ring-amber-300/60'
+                      : 'bg-[#05182C] text-slate-300 hover:text-white border border-cyan-900/60'
+                  }`}
+                >
+                  <span>{court.name}</span>
+                  <span className="text-[10px] opacity-75">· R$ {court.hourlyRate}/h</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* FILTRO RÁPIDO: QUAL HORÁRIO VOCÊ DESEJA? */}
+          <ArenaSmartBookingFinder
+            arena={tenant}
+            onBookSlot={(slot, court) => handleSlotClick(slot, court)}
+            onSelectCourt={(cId) => setSelectedCourtId(cId)}
+          />
+
+          {/* CAMPEONATO EM DESTAQUE NA ARENA (SOMENTE 1: PRÓXIMO OU ÚLTIMO) */}
+          <ArenaFeaturedChampionship
+            arena={tenant}
+            tournaments={tournaments}
+            onOpenTournament={(tId) => {
+              setSelectedTournBracketId(tId);
+              setArenaSubTab('campeonatos');
+            }}
+            onRegisterTournament={(tId) => {
+              setRegisteringTournId(tId);
+              setArenaSubTab('campeonatos');
+            }}
+          />
+
+          {/* TOP 5 RANKING DA ARENA */}
+          <ArenaTop5Ranking
+            arena={tenant}
+            athletes={athletes}
+            onViewFullRanking={() => setArenaSubTab('ranking')}
+          />
+
+          {/* AULAS DISPONÍVEIS NA ARENA */}
+          <ArenaAvailableClassesSection
+            arena={tenant}
+            classesWithSpotsInfo={classesWithSpotsInfo}
+            onEnrollClass={(cId, cls) =>
+              setSelectedClassForEnroll({ courtId: cId, classConfig: cls })
+            }
+          />
           {/* 1. HORÁRIOS PRÓXIMOS DE AGORA (HOJE) */}
           {upcomingAvailableSlots.length > 0 && !selectedHourFilter && (
             <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-orange-500/10 border-2 border-orange-400/40 shadow-xs space-y-3">
@@ -1516,22 +1595,41 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                           return <div key={slot.id} className="min-h-[64px] p-2 rounded-xl bg-slate-100 text-slate-500 text-center text-xs"><strong className="block font-mono">{slot.startTime}</strong>{STATE_LABELS[slot.state]}</div>;
                         }
                         if (!slot.isAvailable) {
+                          const otherCourtFree = slotsForDate.find(
+                            (s) => s.courtId !== court.id && s.startTime === slot.startTime && s.isAvailable
+                          );
+                          const altCourt = otherCourtFree ? tenant.courts.find((c) => c.id === otherCourtFree.courtId) : null;
                           return (
                             <button
                               key={slot.id}
-                              onClick={() => handleSlotClick(slot, court)}
+                              onClick={() => {
+                                if (altCourt && otherCourtFree) {
+                                  setSelectedCourtId(altCourt.id);
+                                  handleSlotClick(otherCourtFree, altCourt);
+                                } else {
+                                  handleSlotClick(slot, court);
+                                }
+                              }}
                               className={`min-h-[64px] p-2 rounded-xl flex flex-col items-center justify-center transition-all text-xs font-semibold cursor-pointer border ${
-                                slotWaitlist.length > 0
+                                altCourt
+                                  ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/70 hover:bg-emerald-900/80 shadow-md ring-1 ring-emerald-400/40'
+                                  : slotWaitlist.length > 0
                                   ? 'bg-amber-50/90 text-amber-950 border-amber-300 hover:bg-amber-100'
                                   : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200/80 hover:border-slate-300'
                               }`}
-                              title="Quadra esgotada neste horário. Clique para entrar na Lista de Espera!"
+                              title={
+                                altCourt
+                                  ? `Ocupado na ${court.name.split(' - ')[0]}, mas disponível na ${altCourt.name.split(' - ')[0]}! Clique para agendar!`
+                                  : 'Quadra esgotada neste horário. Clique para entrar na Lista de Espera!'
+                              }
                             >
                               <span className="tabular-nums font-mono text-[12px] font-bold line-through opacity-75">
                                 {slot.startTime}
                               </span>
-                              <span className="text-[9px] font-bold text-amber-800 truncate max-w-full">
-                                {slotWaitlist.length > 0
+                              <span className="text-[9px] font-bold truncate max-w-full">
+                                {altCourt
+                                  ? `🟢 Livre: ${altCourt.name.split(' - ')[0]}`
+                                  : slotWaitlist.length > 0
                                   ? `⏳ ${slotWaitlist.length} na fila`
                                   : '+ Lista Espera'}
                               </span>
@@ -1896,7 +1994,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                   Campeonatos da Arena · {tenant.name}
                 </h2>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-300 mt-0.5">
                 {isOwnerView
                   ? 'Painel do Dono da Arena: crie campeonatos, gerencie duplas, seedings e lance os resultados da chave.'
                   : 'Inscreva sua dupla com validação de categoria, realize o pagamento e acompanhe a chave ao vivo de forma minimalista.'}
@@ -2082,7 +2180,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                   Transmissão Oficial Ao Vivo · {tenant.name}
                 </h2>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-300 mt-0.5">
                 Acompanhe as partidas ao vivo da arena com placar oficial sincronizado e controle de transmissão.
               </p>
             </div>
@@ -2109,7 +2207,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
                   Ranking Oficial de Atletas · {tenant.name}
                 </h2>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-300 mt-0.5">
                 Classificação dos atletas homologados que competem e pontuam nesta arena.
               </p>
             </div>

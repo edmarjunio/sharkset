@@ -139,6 +139,7 @@ interface AppContextType {
   setTenantId: (id: string) => void;
   availableTenants: TenantConfig[];
   addArena: (arena: TenantConfig) => void;
+  updateArena: (arena: TenantConfig) => Promise<void>;
   radiusKm: number;
   setRadiusKm: (km: number) => void;
   selectedSport: 'all' | SportType;
@@ -432,6 +433,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const availableTenants = useMemo(() => Object.values(arenasMap), [arenasMap]);
+
+  const updateArena = async (arena: TenantConfig) => {
+    await persistArenaToFirestore(arena);
+    setArenasMap((prev) => ({
+      ...prev,
+      [arena.id]: arena,
+    }));
+  };
 
   const addArena = async (arena: TenantConfig) => {
     await persistArenaToFirestore(arena);
@@ -2341,6 +2350,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setTenantId,
         availableTenants,
         addArena,
+        updateArena,
         radiusKm,
         setRadiusKm,
         selectedSport,

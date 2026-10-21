@@ -95,3 +95,14 @@ test('public agenda contains no reservation personal or financial identifiers', 
   assert.equal(JSON.stringify(cells).includes('PRIVATE'), false);
   assert.ok(cells.every(c => !c.bookingId && c.isAvailable === (c.state === 'free')));
 });
+test('closing at 00:00 includes midnight slot 23:00 to 00:00', () => {
+  const midnightArena = {
+    ...arena,
+    operatingHours: { open: '06:00', close: '00:00' },
+    courts: [{ ...court, openTime: '06:00', closeTime: '00:00', classSchedules: [] }],
+  };
+  const cells = buildArenaAvailability(midnightArena, '2026-10-21', [], { now });
+  const midnightSlot = cells.find(c => c.startTime === '23:00' && c.endTime === '00:00');
+  assert.ok(midnightSlot, '23:00 to 00:00 slot must exist when arena closes at 00:00');
+  assert.equal(midnightSlot.state, 'free');
+});

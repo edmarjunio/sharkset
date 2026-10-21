@@ -29,13 +29,20 @@ export const minutes = (time: string) => {
   const hour = Number(time.slice(0, 2)), minute = Number(time.slice(3));
   return hour <= 24 && minute < 60 && (hour !== 24 || minute === 0) ? hour * 60 + minute : NaN;
 };
-const clock = (value: number) => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
-export const overlaps = (start: string, end: string, otherStart: string, otherEnd: string) => minutes(start) < minutes(otherEnd) && minutes(otherStart) < minutes(end);
+export const closeMinutes = (time: string) => (time === '00:00' || time === '24:00' ? 1440 : minutes(time));
+export const endMinutes = (time: string) => (time === '00:00' || time === '24:00' ? 1440 : minutes(time));
+const clock = (value: number) => {
+  const h = Math.floor(value / 60) % 24;
+  const m = value % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+export const overlaps = (start: string, end: string, otherStart: string, otherEnd: string) =>
+  minutes(start) < endMinutes(otherEnd) && minutes(otherStart) < endMinutes(end);
 
 export function slotPrice(court: Court, date: string, startTime: string) {
   const day = new Date(`${date}T12:00:00Z`).getUTCDay();
   const rule = court.dayOfWeekPricing?.[day];
-  const peak = minutes(startTime) >= minutes(court.peakStartTime || '18:00') && minutes(startTime) < minutes(court.peakEndTime || '22:00');
+  const peak = minutes(startTime) >= minutes(court.peakStartTime || '18:00') && minutes(startTime) < endMinutes(court.peakEndTime || '22:00');
   const weekend = day === 0 || day === 6;
   const normal = weekend ? court.weekendNormalRate ?? court.hourlyRate : court.hourlyRate;
   const peakRate = weekend ? court.weekendPeakRate ?? court.peakHourlyRate ?? normal + 15 : court.peakHourlyRate ?? normal;
@@ -56,7 +63,7 @@ export function buildArenaAvailability(arena: TenantConfig, date: string, bookin
   const cells: AvailabilityCell[] = [];
   for (const court of arena.courts) {
     const open = Math.max(minutes(arena.operatingHours.open), minutes(court.openTime ?? arena.operatingHours.open));
-    const close = Math.min(minutes(arena.operatingHours.close), minutes(court.closeTime ?? arena.operatingHours.close));
+    const close = Math.min(closeMinutes(arena.operatingHours.close), closeMinutes(court.closeTime ?? arena.operatingHours.close));
     if (!Number.isFinite(open) || !Number.isFinite(close) || open < 0 || close > 1440 || close <= open) continue;
     for (let start = open; start + 60 <= close; start += 60) {
       const startTime = clock(start), endTime = clock(start + 60);

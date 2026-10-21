@@ -97,11 +97,12 @@ export const ArenaHighlightCard: React.FC<ArenaHighlightCardProps> = ({
       for (const crt of ar.courts) {
         const hourNum = parseInt(targetHour.split(':')[0], 10) || 18;
         const openNum = parseInt((crt.openTime || '06:00').split(':')[0], 10) || 6;
-        const closeNum = parseInt((crt.closeTime || '23:00').split(':')[0], 10) || 23;
+        const rawClose = crt.closeTime || '23:00';
+        const closeNum = rawClose === '00:00' ? 24 : (parseInt(rawClose.split(':')[0], 10) || 23);
         if (hourNum >= openNum && hourNum < closeNum) {
           const isPeak = hourNum >= 18 && hourNum <= 22;
           const price = isPeak ? (crt.peakHourlyRate || crt.hourlyRate) : crt.hourlyRate;
-          const endStr = `${String(hourNum + 1).padStart(2, '0')}:00`;
+          const endStr = `${String((hourNum + 1) % 24).padStart(2, '0')}:00`;
 
           tips.push({
             arenaId: ar.id,

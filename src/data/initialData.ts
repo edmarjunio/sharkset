@@ -127,11 +127,12 @@ export function generateWeeklySlots(courts: Court[]): TimeSlot[] {
 
     for (const court of courts) {
       const openHour = parseInt((court.openTime || '06:00').split(':')[0], 10) || 6;
-      const closeHour = parseInt((court.closeTime || '23:00').split(':')[0], 10) || 23;
+      const rawClose = court.closeTime || '23:00';
+      const closeHour = rawClose === '00:00' ? 24 : (parseInt(rawClose.split(':')[0], 10) || 23);
 
       for (let h = openHour; h < closeHour; h++) {
         const startTime = `${String(h).padStart(2, '0')}:00`;
-        const endTime = `${String(h + 1).padStart(2, '0')}:00`;
+        const endTime = `${String((h + 1) % 24).padStart(2, '0')}:00`;
         const { price, isPeak, dayOfWeek, pricingLabel, isDayEnabled } = calculateCourtSlotPrice(
           court,
           dateStr,
