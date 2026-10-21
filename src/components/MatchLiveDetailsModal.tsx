@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BracketMatch, PointSkillType, RefereePointEvent, TeamPair } from '../types';
+import { closeOnBackdrop } from '../utils/dialog';
 import { buildDefaultRefereeState } from '../services/bracketEngine';
 import { ATHLETE_LEVEL_LABELS } from '../services/rankingValidator';
 import {
@@ -276,7 +277,7 @@ export const MatchLiveDetailsModal: React.FC<MatchLiveDetailsModalProps> = ({
   const currentSpectators = match.spectatorsCount;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, onClose)}>
       <div className="aquarium-glass bg-[#030B17] text-[#F7FAFD] border-2 border-[#145A9B] rounded-3xl max-w-6xl w-full shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col">
         {/* TOP HEADER: Match Stage, Court, Status, Spectators Count & Quick Actions */}
         <div className="px-4 sm:px-6 py-4 bg-[#071D3D] border-b border-[#145A9B] flex flex-wrap items-center justify-between gap-3 shrink-0">

@@ -166,10 +166,10 @@ export const Navbar: React.FC = () => {
         <Radio size={14} className="text-slate-950 stroke-[2.5]" />
         <span>INICIAR TRANSMISSÃO</span>
       </button> : <AccessLockedAction
-        message="Entre na sua conta para iniciar uma transmissão"
+        message="Faça login para transmitir"
+        onClick={() => setProfileModalOpen(true)}
         className="rounded-full"
         previewClassName="navbar-live-action items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#FF6B00] via-[#FF8533] to-[#E65100] text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,107,0,0.45)] border border-amber-300"
-        messageClassName="rounded-full"
       >
         <span className="relative flex h-2 w-2"><span className="inline-flex rounded-full h-2 w-2 bg-white" /></span>
         <Radio size={14} className="text-slate-950 stroke-[2.5]" />
@@ -217,7 +217,7 @@ export const Navbar: React.FC = () => {
   return (
     <header
       className={`site-navbar aquarium-glass sticky top-0 z-40 w-full bg-[#030B17]/95 backdrop-blur-md text-white border-b border-cyan-500/20 shadow-md transition-all duration-300 ${
-        scrollY > 90 ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+        scrollY > 90 ? '-translate-y-full opacity-0 pointer-events-none navbar-hidden-on-scroll' : 'translate-y-0 opacity-100'
       }`}
       style={
         isArenaWhiteLabelSite && arenaPalette
@@ -310,7 +310,7 @@ export const Navbar: React.FC = () => {
 
             {/* Linha 1: Botões de navegação das abas */}
             <div className="header-navigation-row flex items-center justify-between gap-2">
-              <nav aria-label="Navegação desktop" className="flex flex-wrap items-center gap-2 py-0.5">
+              <nav aria-label="Navegação desktop" className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 py-0.5">
                 {isArenaPage ? (
                   <>
                     <button

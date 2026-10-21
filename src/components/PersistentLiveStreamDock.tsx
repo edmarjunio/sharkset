@@ -1,6 +1,7 @@
 import { useBroadcastNavigation } from '../store/useBroadcastNavigation';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { closeOnBackdrop } from '../utils/dialog';
 import { BracketMatch, HistoricalLegendVideo, LiveChatMessage } from '../types';
 
 const HISTORICAL_LEGEND_VIDEOS: HistoricalLegendVideo[] = [];
@@ -220,6 +221,7 @@ export const PersistentLiveStreamDock: React.FC = () => {
           ? 'fixed inset-0 z-50 bg-black/85 backdrop-blur-sm p-4 overflow-y-auto flex items-center justify-center'
           : 'max-w-7xl mx-auto px-4 sm:px-6 pt-6'
       }
+      onClick={(event) => { if (isTheaterExpanded) closeOnBackdrop(event, () => setIsTheaterExpanded(false)); }}
     >
       <div className="aquarium-glass w-full max-w-7xl bg-[#030B17] text-white border-2 border-[#145A9B] rounded-3xl overflow-hidden shadow-xl">
         {/* Top Broadcast Bar */}

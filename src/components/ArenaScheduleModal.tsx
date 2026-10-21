@@ -5,6 +5,7 @@ import { useModalFocus } from '../hooks/useModalFocus';
 import { STATE_LABELS, type AvailabilityCell } from '../services/bookingAvailability';
 import { BookingDatePicker } from './BookingDatePicker';
 import { useBookingSelection } from '../store/useBookingSelection';
+import { closeOnBackdrop } from '../utils/dialog';
 
 export function ArenaScheduleModal({ arena, onClose, onViewArena, onSelect }: {
   arena: TenantConfig; onClose: () => void; onViewArena: () => void; onSelect: (slot: AvailabilityCell) => void;
@@ -13,7 +14,7 @@ export function ArenaScheduleModal({ arena, onClose, onViewArena, onSelect }: {
   const { cells, loading, error, maxDate } = useArenaAvailability(arena, date);
   const close = useCallback(onClose, [onClose]);
   const ref = useModalFocus(close);
-  return <dialog ref={ref} aria-labelledby="arena-schedule-title" className="m-auto w-[96vw] max-w-6xl max-h-[92dvh] overflow-y-auto rounded-3xl border border-cyan-700 bg-slate-950 p-5 text-white backdrop:bg-black/75 shadow-2xl">
+  return <dialog ref={ref} aria-labelledby="arena-schedule-title" onClick={(event) => closeOnBackdrop(event, onClose)} className="m-auto w-[96vw] max-w-6xl max-h-[92dvh] overflow-y-auto rounded-3xl border border-cyan-700 bg-slate-950 p-5 text-white backdrop:bg-black/75 shadow-2xl">
     <header className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-md flex flex-wrap justify-between items-start gap-3 pb-3 mb-4 border-b border-cyan-800/60">
       <div><h2 id="arena-schedule-title" className="font-black text-xl">{arena.name}</h2><p className="text-sm text-slate-300">{arena.city}/{arena.state} · {arena.courts.length} quadras · {cells.filter(c => c.state === 'free').length} horários livres</p></div>
       <div className="flex gap-3"><button onClick={onViewArena} className="text-cyan-300">Ver Arena</button><button onClick={onClose} aria-label="Fechar agenda" className="rounded-xl border px-3 py-2">Fechar ×</button></div>

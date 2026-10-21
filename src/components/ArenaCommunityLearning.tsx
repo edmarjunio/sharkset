@@ -1,5 +1,6 @@
 import { DropdownUI } from './DropdownUI';
 import React, { useState } from 'react';
+import { closeOnBackdrop } from '../utils/dialog';
 import { TenantConfig, SportType } from '../types';
 import {
   Video,
@@ -272,7 +273,7 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
 
       {/* Video Player Modal */}
       {selectedVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-in fade-in overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-in fade-in overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setSelectedVideo(null))}>
           <div className="bg-slate-950 border border-cyan-500/40 rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl space-y-4 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="relative aspect-video w-full bg-black">
               {/* Responsive embedded media player */}
@@ -332,7 +333,7 @@ export const ArenaCommunityLearning: React.FC<ArenaCommunityLearningProps> = ({ 
 
       {/* Add New Video Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setShowAddModal(false))}>
           <div className="bg-slate-950 border border-slate-800 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 text-white my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-white/10 -mt-1 pt-1">
               <div className="flex items-center gap-2">

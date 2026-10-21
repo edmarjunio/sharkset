@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { closeOnBackdrop } from '../utils/dialog';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -242,7 +243,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       aria-modal="true"
       aria-labelledby="user-profile-title"
       className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
-      onClick={onClose}
+      onClick={(event) => closeOnBackdrop(event, onClose)}
     >
       <div
         className="relative w-full max-w-xl my-auto rounded-3xl bg-[#030E1F]/98 border-2 border-cyan-500/40 shadow-[0_0_50px_rgba(0,0,0,0.9)] p-5 sm:p-7 text-white flex flex-col max-h-[calc(100dvh-2rem)] overflow-hidden"

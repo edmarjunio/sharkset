@@ -5,6 +5,7 @@ import { BracketMatch, PointSkillType, RefereeCardEvent, RefereePointEvent, Refe
 import { buildDefaultRefereeState } from '../services/bracketEngine';
 import { buildServiceOrder, pairAthletes, teamAtServiceIndex } from '../services/serviceOrder';
 import { auth, db } from '../lib/firebase';
+import { closeOnBackdrop } from '../utils/dialog';
 import {
   BellRing,
   Check,
@@ -417,7 +418,7 @@ export const RefereeConsoleModal: React.FC<RefereeConsoleModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xs flex items-start justify-center p-3 sm:p-4 overflow-y-auto py-4 sm:py-6">
+    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xs flex items-start justify-center p-3 sm:p-4 overflow-y-auto py-4 sm:py-6" onClick={(event) => closeOnBackdrop(event, onClose)}>
       <div className="aquarium-glass bg-slate-950 text-white border border-slate-800 rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-4">
         {/* Top Bar: Match Identity + Live Status */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">

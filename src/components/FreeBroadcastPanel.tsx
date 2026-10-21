@@ -49,10 +49,10 @@ export function FreeBroadcastPanel({ arenaId, broadcastId }: { arenaId?: string;
     <h2 className="font-bold">{arenaId ? 'Transmissão da arena' : 'Transmissão livre'}</h2>
     <p className="text-sm text-slate-600">Sem reserva ou outros jogadores. Não vale pontos no ranking.</p>
     {!id && (!auth.currentUser ? <AccessLockedAction
-      message="Entre na sua conta para criar uma transmissão"
+      message="Faça login para transmitir"
       onClick={() => void signInWithGooglePopup().then(() => save()).catch(() => setError('Não foi possível entrar. Tente novamente.'))}
       className="rounded-xl"
-      previewClassName="rounded-xl bg-[#0987CE] px-4 py-3 font-bold text-white"
+      previewClassName="rounded-xl bg-[#0987CE] px-4 py-3 font-bold text-white border border-sky-400/60 shadow-md shadow-sky-500/20 inline-flex items-center gap-2"
     >Criar transmissão</AccessLockedAction> : <button disabled={busy} onClick={() => save()} className="rounded-xl bg-[#0987CE] text-white px-4 py-3 font-bold">Criar transmissão</button>)}
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     {broadcast && <>

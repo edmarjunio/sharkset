@@ -345,10 +345,10 @@ export const SharkCard3D: React.FC<SharkCard3DProps> = ({
 
                 {onUnlockClick && requiresLogin ? (
                   <AccessLockedAction
-                    message="Faça login para emitir seu Card Oficial"
+                    message="Faça login para emitir seu Card"
                     onClick={onUnlockClick}
                     className="w-full rounded-xl"
-                    previewClassName="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg items-center justify-center gap-1.5"
+                    previewClassName="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg border border-amber-300 items-center justify-center gap-1.5 inline-flex"
                   >
                     <span>Jogar Agora & Desbloquear</span>
                     <ArrowRight className="w-4 h-4" />

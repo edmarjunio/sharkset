@@ -8,6 +8,7 @@ import { SharksetLogo } from './SharksetLogo';
 import { AccessLockedAction } from './AccessLockedAction';
 import { auth, signInWithGooglePopup } from '../lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
+import { closeOnBackdrop } from '../utils/dialog';
 import {
   GraduationCap,
   Video,
@@ -461,9 +462,10 @@ export const SharkAcademyCommunity: React.FC = () => {
                 <Plus className="w-4 h-4" />
                 Postar Vídeo, Documento ou Imagem
               </button> : <AccessLockedAction
-                message="Entre para postar uma aula"
+                message="Faça login para postar aula"
                 onClick={() => { setLoginError(''); void signInWithGooglePopup().catch(() => setLoginError('Não foi possível entrar com Google. Tente novamente.')); }}
-                previewClassName="px-5 py-2.5 rounded-2xl bg-[#0987CE] text-white font-black text-xs sm:text-sm items-center gap-2"
+                className="rounded-2xl"
+                previewClassName="px-5 py-2.5 rounded-2xl bg-[#0987CE] text-white font-black text-xs sm:text-sm items-center gap-2 border border-sky-400/60 shadow-lg shadow-[#0987CE]/30 inline-flex"
               >
                 <Plus className="w-4 h-4" />Postar Vídeo, Documento ou Imagem
               </AccessLockedAction>}
@@ -1011,7 +1013,7 @@ export const SharkAcademyCommunity: React.FC = () => {
       {/* MODAL DE PUBLICAÇÃO DE CONTEÚDO NA COMUNIDADE                       */}
       {/* =================================================================== */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setShowCreateModal(false))}>
           <div className="aquarium-glass w-full max-w-lg bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-[#F7FAFD] my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-center justify-between border-b border-[#145A9B] pb-3 -mt-1 pt-1">
               <div className="flex items-center gap-2">
@@ -1168,7 +1170,7 @@ export const SharkAcademyCommunity: React.FC = () => {
       {/* MODAL DE VISUALIZAÇÃO DO MATERIAL                                   */}
       {/* =================================================================== */}
       {selectedPostPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setSelectedPostPreview(null))}>
           <div className="aquarium-glass w-full max-w-2xl bg-[#071D3D] border-2 border-[#0987CE] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-[#F7FAFD] my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-center justify-between border-b border-[#145A9B] pb-3 -mt-1 pt-1">
               <div>

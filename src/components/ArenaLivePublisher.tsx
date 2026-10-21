@@ -103,10 +103,10 @@ export function ArenaLivePublisher({ arenaId }: { arenaId: string }) {
     <video ref={preview} autoPlay muted playsInline hidden={!active} className="w-full aspect-video object-contain rounded-xl bg-black" />
     <div className="flex flex-wrap items-center gap-2">
       {!user ? <AccessLockedAction
-        message="Entre na sua conta para iniciar uma transmissão"
+        message="Faça login para transmitir"
         onClick={() => void signInWithGooglePopup().catch(() => setError('Não foi possível entrar. Tente novamente.'))}
         className="rounded-xl"
-        previewClassName="site-secondary-action aquarium-glass items-center gap-2 px-4 py-3"
+        previewClassName="rounded-xl bg-red-600 px-4 py-3 font-bold text-white border border-red-500/60 shadow-lg shadow-red-600/30 inline-flex items-center gap-2"
       ><Radio size={16} />Iniciar transmissão</AccessLockedAction> : <button disabled={!configured || active || !!session.current} onClick={() => void start()} className="rounded-xl bg-red-600 px-4 py-3 font-bold text-white disabled:opacity-50 inline-flex items-center gap-2"><Radio size={16} />{state === 'starting' ? 'Conectando câmera…' : 'Iniciar transmissão'}</button>}
       {(active || session.current) && <button disabled={state === 'ending'} onClick={() => void stop()} className="site-secondary-action aquarium-glass"><Square size={16} />{state === 'ending' ? 'Encerrando…' : 'Encerrar transmissão'}</button>}
       {state === 'live' && broadcastId && <button className="site-secondary-action aquarium-glass" onClick={() => useBroadcastNavigation.getState().open({ kind: 'published', id: broadcastId })}>Abrir tela do público</button>}

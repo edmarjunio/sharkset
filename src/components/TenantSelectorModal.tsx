@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { closeOnBackdrop } from '../utils/dialog';
 import { Building2, Check, MapPin } from 'lucide-react';
 
 export const TenantSelectorModal: React.FC = () => {
@@ -8,7 +9,7 @@ export const TenantSelectorModal: React.FC = () => {
   if (!tenantModalOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setTenantModalOpen(false))}>
       <div className="aquarium-glass bg-[#071D3D] text-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border-2 border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 space-y-4 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-[#145A9B]/60 -mt-1 pt-1">
           <div className="flex items-center gap-2">

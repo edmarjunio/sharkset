@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { closeOnBackdrop } from '../utils/dialog';
 import html2canvas from 'html2canvas';
 import { Camera, Crown, Download, Trophy, X } from 'lucide-react';
 import type { BracketMatch, TenantConfig, Tournament } from '../types';
@@ -175,7 +176,7 @@ export function PodiumCardStudio({ tournament, matches, arena }: Props) {
 
   return <>
     <button className="podium-launch" disabled={!ready} onClick={() => setOpen(true)}><Trophy size={20} /> Criar cards do pódio · Adicionar fotos</button>
-    {open && createPortal(<div className="podium-studio-backdrop">
+    {open && createPortal(<div className="podium-studio-backdrop" onClick={(event) => closeOnBackdrop(event, close)}>
       <div className="podium-studio" role="dialog" aria-modal="true" aria-labelledby="podium-studio-title" tabIndex={-1} ref={dialogRef} onKeyDown={handleKeys}>
         <header className="podium-studio-header"><div><span>TORNEIO CONCLUÍDO</span><h2 id="podium-studio-title">Transforme a conquista em coleção</h2><p>Adicione a foto de cada dupla e baixe seus cards SHARKSET.</p></div>
           <button onClick={close} disabled={busy} aria-label="Fechar cards do pódio"><X /></button></header>

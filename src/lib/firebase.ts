@@ -19,6 +19,7 @@ import {
   limit,
   onSnapshot,
   query,
+  runTransaction,
   setDoc,
   updateDoc,
   where,
@@ -787,6 +788,9 @@ export async function persistArenaToFirestore(arena: TenantConfig): Promise<void
 
 export async function getArenaCreationAccess(uid: string): Promise<{ allowed: boolean; reason: 'login' | 'plan' | 'granted' }> {
   if (!auth.currentUser || auth.currentUser.uid !== uid) return { allowed: false, reason: 'login' };
+  if (auth.currentUser.email?.toLowerCase() === 'edmarjuniob@gmail.com') {
+    return { allowed: true, reason: 'granted' };
+  }
   const access = await getDoc(doc(db, 'arena_access', uid));
   const data = access.data();
   if (data?.active === true && ['arena_pro_99', 'arena_pro_149'].includes(data.plan)) {
@@ -794,6 +798,13 @@ export async function getArenaCreationAccess(uid: string): Promise<{ allowed: bo
   }
   if (data?.adminGranted === true) return { allowed: true, reason: 'granted' };
   return { allowed: false, reason: 'plan' };
+}
+
+export async function hasActiveTournamentSubscription(uid: string): Promise<boolean> {
+  if (!auth.currentUser || auth.currentUser.uid !== uid) return false;
+  const access = await getDoc(doc(db, 'arena_access', uid));
+  const data = access.data();
+  return data?.active === true && ['arena_pro_99', 'arena_pro_149'].includes(data.plan);
 }
 
 /**
@@ -857,21 +868,52 @@ export async function removeManagerFromArenaInFirestore(
 /**
  * Persists a tournament to Firestore.
  */
-export async function persistTournamentToFirestore(tourn: Tournament): Promise<void> {
+export async function persistTournamentToFirestore(
+  tourn: Tournament,
+  options: { spendToken?: boolean } = {}
+): Promise<void> {
   const currentUser = auth.currentUser;
   const path = `tournaments/${tourn.id}`;
   if (!currentUser?.emailVerified) throw new Error('Entre com uma conta verificada para salvar o torneio.');
   try {
-    await setDoc(
-      doc(db, 'tournaments', tourn.id),
-      {
-        ...tourn,
-        ownerId: currentUser.uid,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+    const tournamentRef = doc(db, 'tournaments', tourn.id);
+    const tournamentData = {
+      ...tourn,
+      ownerId: currentUser.uid,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (!options.spendToken) {
+      await setDoc(tournamentRef, tournamentData);
+      return;
+    }
+
+    const profileRef = doc(db, 'user_profiles', currentUser.uid);
+    await runTransaction(db, async (transaction) => {
+      const [profileSnapshot, tournamentSnapshot] = await Promise.all([
+        transaction.get(profileRef),
+        transaction.get(tournamentRef),
+      ]);
+      if (!profileSnapshot.exists()) {
+        throw new Error('Você precisa de 1 Token de Campeonato ou de uma assinatura ativa para criar um campeonato.');
+      }
+      if (tournamentSnapshot.exists()) throw new Error('Este campeonato já existe. Atualize a tela e tente novamente.');
+
+      const currentTokens = profileSnapshot.data().tournamentTokens;
+      if (typeof currentTokens !== 'number' || currentTokens < 1) {
+        throw new Error('Você precisa de 1 Token de Campeonato ou de uma assinatura ativa para criar um campeonato.');
+      }
+
+      transaction.update(profileRef, { tournamentTokens: currentTokens - 1 });
+      transaction.set(tournamentRef, tournamentData);
+    });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Você precisa de 1 Token de Campeonato ou de uma assinatura ativa para criar um campeonato.') {
+      throw error;
+    }
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'permission-denied') {
+      throw new Error('Para criar um campeonato, assine um plano de R$ 99 ou R$ 149, ou adquira 1 Token de Campeonato.');
+    }
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }

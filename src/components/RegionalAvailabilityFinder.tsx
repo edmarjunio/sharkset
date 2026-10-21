@@ -222,10 +222,10 @@ export const RegionalAvailabilityFinder: React.FC<RegionalAvailabilityFinderProp
                 </>
               ) : (
                 <AccessLockedAction
-                  message="Faça login para definir sua categoria"
+                  message="Faça login para sua categoria"
                   onClick={() => void signInWithGooglePopup().catch(() => {})}
                   className="min-w-[190px] rounded-full"
-                  previewClassName="min-h-9 min-w-[190px] justify-center rounded-full border border-cyan-500/30 bg-slate-900/80 px-3 py-1 text-xs text-slate-300"
+                  previewClassName="min-h-9 min-w-[190px] justify-center rounded-full border border-cyan-500/50 bg-slate-900/80 px-3 py-1 text-xs text-slate-300 inline-flex"
                 >Sua Categoria Oficial</AccessLockedAction>
               )}
             </span>

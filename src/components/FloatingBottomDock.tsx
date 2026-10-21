@@ -37,7 +37,7 @@ export function FloatingBottomDock({ onSelectSlot }: Props) {
 
     const updateOffset = () => {
       const rect = el.getBoundingClientRect();
-      const totalOffset = Math.max(112, Math.ceil(rect.height + 24));
+      const totalOffset = isVisible ? Math.max(112, Math.ceil(rect.height + 24)) : 0;
       document.documentElement.style.setProperty('--floating-dock-offset', `${totalOffset}px`);
     };
 
@@ -50,6 +50,10 @@ export function FloatingBottomDock({ onSelectSlot }: Props) {
       observer?.disconnect();
       window.removeEventListener('resize', updateOffset);
     };
+  }, [isVisible]);
+
+  useEffect(() => () => {
+    document.documentElement.style.removeProperty('--floating-dock-offset');
   }, []);
 
   const goHome = () => {

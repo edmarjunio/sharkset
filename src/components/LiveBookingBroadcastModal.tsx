@@ -1,6 +1,7 @@
 import { DropdownUI } from './DropdownUI';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { BroadcastOverlay } from './BroadcastOverlay';
+import { closeOnBackdrop } from '../utils/dialog';
 import { useApp } from '../context/AppContext';
 import {
   AthleteLevel,
@@ -353,7 +354,7 @@ export const LiveBookingBroadcastModal: React.FC<LiveBookingBroadcastModalProps>
   if (!activeBooking) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-3 lg:p-5 overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-3 lg:p-5 overflow-hidden" onClick={(event) => closeOnBackdrop(event, onClose)}>
       <div className="aquarium-glass bg-white border border-slate-200 rounded-none sm:rounded-3xl max-w-[1600px] w-full h-[100dvh] sm:h-auto sm:max-h-[96dvh] overflow-hidden shadow-2xl flex flex-col min-h-0">
         {/* Top Modal Header */}
         <div className="bg-slate-900 text-white px-3 sm:px-5 py-3 flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-slate-800 shrink-0">

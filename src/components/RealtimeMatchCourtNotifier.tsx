@@ -231,10 +231,10 @@ export const RealtimeMatchCourtNotifier: React.FC = () => {
                 </>
               ) : (
                 <AccessLockedAction
-                  message="Faça login para receber chamadas de quadra"
+                  message="Faça login para receber alertas"
                   onClick={() => void signInWithGooglePopup().catch(() => {})}
                   className="rounded-lg"
-                  previewClassName="items-center rounded-lg border border-amber-500/30 bg-slate-950/80 px-3 py-1.5 text-amber-100"
+                  previewClassName="items-center rounded-lg border border-amber-500/50 bg-slate-950/80 px-3 py-1.5 text-amber-100 inline-flex"
                 >
                   <strong>Ativar alertas de quadra</strong>
                 </AccessLockedAction>

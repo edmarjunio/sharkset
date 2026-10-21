@@ -1,6 +1,7 @@
 import { matchPhaseLabel } from '../services/bracketPresentation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ImmersiveSurface } from './ImmersiveSurface';
+import { closeOnBackdrop } from '../utils/dialog';
 import type { BracketMatch, BracketSource, MatchSet, SemiFormat, TeamPair } from '../types';
 import { layoutBracket, bracketEdges, bracketSlotOrigins, CARD_WIDTH, CARD_HEIGHT } from '../services/bracketLayout';
 import { matchRules } from '../services/tournamentRules';
@@ -1441,7 +1442,7 @@ export const FutevoleiVisualBracketCanvas: React.FC<FutevoleiVisualBracketCanvas
       {quickModalMatch && onQuickOfficialize && (
         <div
           className="fixed inset-0 z-[10020] flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
-          onClick={() => setQuickModalMatchId(null)}
+          onClick={(event) => closeOnBackdrop(event, () => setQuickModalMatchId(null))}
         >
           <div
             className="aquarium-glass bg-[#061A30] border-2 border-cyan-400/50 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 text-white my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto"

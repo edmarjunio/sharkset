@@ -1,47 +1,93 @@
 import React from 'react';
+import { Lock, Sparkles } from 'lucide-react';
 
-interface AccessLockedActionProps {
-  message: string;
+export interface AccessLockedActionProps {
+  message: React.ReactNode;
+  accessibleMessage?: string;
   children: React.ReactNode;
   onClick?: () => void;
   className?: string;
   previewClassName?: string;
   messageClassName?: string;
+  title?: string;
+  icon?: React.ReactNode;
+  lockType?: 'login' | 'plan' | 'auto';
 }
 
 export const AccessLockedAction: React.FC<AccessLockedActionProps> = ({
   message,
+  accessibleMessage,
   children,
   onClick,
   className = '',
   previewClassName = '',
   messageClassName = '',
-}) => (
-  <span className={`relative isolate inline-flex shrink-0 rounded-xl ${className}`}>
-    <span
+  title,
+  icon,
+  lockType = 'auto',
+}) => {
+  const isClickable = Boolean(onClick);
+  const Component = isClickable ? 'button' : 'div';
+
+  const textMessage =
+    typeof message === 'string'
+      ? message
+      : typeof accessibleMessage === 'string'
+      ? accessibleMessage
+      : '';
+
+  const isPlan =
+    lockType === 'plan' ||
+    (lockType !== 'login' &&
+      /assine|plano|assinatura|mensalidade|upgrade/i.test(textMessage));
+
+  const defaultIcon = isPlan ? (
+    <Sparkles
+      size={12}
+      className="shrink-0 text-amber-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
       aria-hidden="true"
-      className={`pointer-events-none inline-flex select-none ${previewClassName}`}
+    />
+  ) : (
+    <Lock
+      size={12}
+      className="shrink-0 text-amber-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+      aria-hidden="true"
+    />
+  );
+
+  const activeIcon = icon !== undefined ? icon : defaultIcon;
+  const tooltip = title || accessibleMessage || (typeof message === 'string' ? message : undefined);
+
+  // Garante contorno sempre nítido no botão se nenhuma borda estiver declarada
+  const hasBorder = previewClassName.includes('border') || className.includes('border');
+  const borderFallback = hasBorder ? '' : 'border border-white/25';
+
+  return (
+    <Component
+      {...(isClickable ? { type: 'button', onClick } : { role: 'status' })}
+      aria-label={accessibleMessage ?? (typeof message === 'string' ? message : undefined)}
+      title={tooltip}
+      className={`group relative isolate inline-flex items-center justify-center overflow-hidden shrink-0 transition-all select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+        isClickable ? 'cursor-pointer active:scale-[0.98] hover:brightness-105' : ''
+      } ${borderFallback} ${previewClassName} ${className}`}
     >
-      <span className="inline-flex items-center gap-[inherit] blur-[1.5px] opacity-60">
+      {/* 1. Camada original embaçada por baixo (mantém cores, ícones e layout do botão original) */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none inline-flex items-center justify-center gap-[inherit] select-none filter blur-[2px] opacity-45 scale-[0.98] transition-transform duration-200 group-hover:scale-100"
+      >
         {children}
       </span>
-    </span>
-    {onClick ? (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={message}
-        className={`absolute inset-0 z-10 flex cursor-pointer items-center justify-center rounded-[inherit] border border-white/30 bg-[#04172c]/55 px-2 text-center text-[11px] font-bold leading-tight text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[1px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] transition-colors hover:bg-[#062341]/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${messageClassName}`}
-      >
-        {message}
-      </button>
-    ) : (
+
+      {/* 2. Película de vidro fumê frontal com o aviso nítido e borda externa preservada */}
       <span
-        role="status"
-        className={`absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] border border-white/30 bg-[#04172c]/55 px-2 text-center text-[11px] font-bold leading-tight text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[1px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] ${messageClassName}`}
+        className={`absolute inset-0 z-10 flex items-center justify-center gap-1.5 px-3 py-1 bg-black/35 backdrop-blur-[2px] transition-colors duration-200 group-hover:bg-black/20 ${messageClassName}`}
       >
-        {message}
+        {activeIcon}
+        <span className="font-black text-[11px] sm:text-xs tracking-wide text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] whitespace-nowrap text-center">
+          {message}
+        </span>
       </span>
-    )}
-  </span>
-);
+    </Component>
+  );
+};

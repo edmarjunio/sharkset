@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { closeOnBackdrop } from '../utils/dialog';
 import { useApp } from '../context/AppContext';
 import { ArenaBrandPalette } from '../types';
 import { extractPaletteFromLogoImage } from '../services/logoPaletteExtractor';
@@ -86,7 +87,7 @@ export const ArenaWhiteLabelCustomizerModal: React.FC<ArenaWhiteLabelCustomizerM
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, onClose)}>
       <div className="aquarium-glass bg-white border border-slate-200 rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl my-auto">
         {/* Header */}
         <div

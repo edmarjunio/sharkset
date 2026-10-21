@@ -36,23 +36,30 @@ export const SportBallIcon: React.FC<SportBallIconProps> = ({
 
   return (
     <span
-      className={`relative inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full shrink-0 select-none drop-shadow-[0_3px_5px_rgba(0,0,0,0.55)] ${className}`}
+      className={`relative inline-flex h-7 w-7 items-center justify-center shrink-0 select-none ${className}`}
       style={style}
       title={ball.label}
     >
       <img
         src={ball.src}
         alt={ball.alt}
-        className={`h-full w-full object-contain transition-transform duration-200 ${sport === 'beach-tennis' || sport === 'volei-praia' ? 'scale-[1.16]' : 'scale-[1.03]'}`}
+        className="relative z-0 h-full w-full object-contain drop-shadow-[0_2px_3px_rgba(0,18,38,0.42)] transition-transform duration-200"
         loading="lazy"
         decoding="async"
       />
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 rounded-full"
+        className="pointer-events-none absolute inset-0 z-[1]"
         style={{
-          background: 'radial-gradient(circle at 28% 22%, rgba(255,255,255,.42), transparent 34%, rgba(0,0,0,.08) 63%, rgba(0,0,0,.45) 100%)',
-          boxShadow: 'inset -2px -3px 5px rgba(0,0,0,.35), inset 1px 1px 2px rgba(255,255,255,.2)',
+          background: 'radial-gradient(ellipse at 28% 18%, rgba(255,255,255,.28), transparent 40%, rgba(12,55,89,.10) 78%, rgba(12,55,89,.22) 100%)',
+          WebkitMaskImage: `url("${ball.src}")`,
+          maskImage: `url("${ball.src}")`,
+          WebkitMaskSize: 'contain',
+          maskSize: 'contain',
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+          WebkitMaskPosition: 'center',
+          maskPosition: 'center',
         }}
       />
     </span>

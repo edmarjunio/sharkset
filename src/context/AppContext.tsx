@@ -79,6 +79,7 @@ import {
 import { useSharkStore } from '../store/useSharkStore';
 import {
   auth,
+  hasActiveTournamentSubscription,
   getUserProfileFromFirestore,
   persistUserProfileToFirestore,
   persistFullAthleteProfileToFirestore,
@@ -1535,14 +1536,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     const isUserScope = data.createdScope === 'user';
     const targetTenantId = data.tenantId || tenant.id;
-
-    if (isUserScope) {
-      if ((userProfile.tournamentTokens || 0) < 1) {
-        throw new Error('Você precisa de 1 Token de Campeonato para criar um torneio independente. Adquira tokens na loja para continuar.');
-      }
-      const spent = await spendTournamentTokenInFirestore(currentUser.uid);
-      if (!spent) throw new Error('Não há token confirmado no seu perfil para criar este torneio.');
-    }
+    const hasSubscriptionAccess = await hasActiveTournamentSubscription(currentUser.uid);
+    const isPlatformAdmin = currentUser.email?.toLowerCase() === 'edmarjuniob@gmail.com';
+    const spendToken = !hasSubscriptionAccess && !isPlatformAdmin;
 
     const selectedArena = arenasMap[targetTenantId];
     const newTourn: Tournament = {
@@ -1566,26 +1562,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       responsiblePhone: data.responsiblePhone,
       isOpenForRegistration: true,
       isFinished: false,
-      tableLicenseStatus: isUserScope ? 'unlocked_single_20' : 'unlocked_arena_pro_99',
-      tableLicenseFee: isUserScope ? 20 : 0,
+      tableLicenseStatus: spendToken ? 'unlocked_single_20' : 'unlocked_arena_pro_99',
+      tableLicenseFee: spendToken ? 20 : 0,
       createdScope: isUserScope ? 'user' : 'arena',
       creatorUid: currentUser.uid,
-      creatorTokensSpent: isUserScope ? 1 : 0,
+      creatorTokensSpent: spendToken ? 1 : 0,
     };
 
-    try {
-      await persistTournamentToFirestore(newTourn);
-    } catch (error) {
-      if (isUserScope) {
-        try {
-          await addTournamentTokensInFirestore(currentUser.uid, 1);
-        } catch {
-          throw new Error('Falha ao salvar o torneio e ao reverter o token. Confira o saldo antes de tentar novamente.');
-        }
-      }
-      throw error;
-    }
-    if (isUserScope) {
+    await persistTournamentToFirestore(newTourn, { spendToken });
+    if (spendToken) {
       setUserProfileState((prev) => ({ ...prev, tournamentTokens: Math.max(0, prev.tournamentTokens - 1) }));
     }
     setTournaments((prev) => [newTourn, ...prev]);

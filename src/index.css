@@ -758,6 +758,14 @@ body {
   box-shadow: 0 8px 28px rgba(0, 10, 24, 0.5) !important;
 }
 
+/* Drop the sticky glass layer before translating the navbar offscreen to avoid scroll artifacts. */
+.shark-site-background header.site-navbar.navbar-hidden-on-scroll {
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom-color: transparent !important;
+}
+
 @keyframes sharkCoinFloat3D {
   0% {
     transform: rotateY(8deg) rotateX(3deg) translateZ(6px);
@@ -1036,12 +1044,21 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 20px max(16px, env(safe-area-inset-bottom));
+  align-items: center;
+  gap: 12px;
+  padding: 16px clamp(16px, 3vw, 24px) max(18px, env(safe-area-inset-bottom));
   border-top: 1px solid #67e8f966;
-  background: #031a2e;
-  box-shadow: 0 -12px 28px #0005;
+  background: linear-gradient(180deg, rgb(4 28 48 / 96%), rgb(3 20 36 / 98%));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
   z-index: 1;
+}
+.onboarding-selected-category { width: 100%; text-align: center; }
+.onboarding-rules-card { text-align: center; }
+.onboarding-rules-notices > p {
+  padding: 9px 11px;
+  border: 1px solid rgb(251 191 36 / 14%);
+  border-radius: 12px;
+  background: rgb(2 15 28 / 28%);
 }
 .onboarding-confirm-button {
   display: flex;

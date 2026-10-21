@@ -39,7 +39,10 @@ import { MatchHistoryModal } from './MatchHistoryModal';
 import { SharksetLogo } from './SharksetLogo';
 import { IntegrityReportModal } from './IntegrityReportModal';
 import { toast } from '../store/useToastStore';
+import { auth, signInWithGooglePopup } from '../lib/firebase';
 import { AthleteEmailSelector } from './AthleteEmailSelector';
+import { AccessLockedAction } from './AccessLockedAction';
+import { closeOnBackdrop } from '../utils/dialog';
 import {
   Trophy,
   MessageSquare,
@@ -194,6 +197,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   const [formRules, setFormRules] = useState('');
   const [formResponsible, setFormResponsible] = useState('');
   const tournamentSaveLock = useRef(false);
+  const tokenPurchaseSectionRef = useRef<HTMLDivElement | null>(null);
+  const [tokenPurchaseNotice, setTokenPurchaseNotice] = useState(false);
 
   // Tournament Filters & Search State
   const [tournamentSearch, setTournamentSearch] = useState('');
@@ -419,6 +424,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       'Preliminares: set único de 18 pontos, diferença de 2. Semifinais, final e 3º lugar: melhor de 3 sets (18/18/15), diferença de 2. Sem reinício da final.'
     );
     setFormResponsible(userProfile.name);
+    setTokenPurchaseNotice(false);
     setShowTournamentModal('create');
   };
 
@@ -447,7 +453,6 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       toast.error('Informe a data e a taxa de inscrição reais do torneio.');
       return;
     }
-
     tournamentSaveLock.current = true;
     setIsSavingTournament(true);
     let saved = false;
@@ -502,7 +507,13 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       }
       saved = true;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Não foi possível salvar o torneio.');
+      const message = error instanceof Error ? error.message : 'Não foi possível salvar o torneio.';
+      toast.error(message);
+      if (showTournamentModal === 'create' && message.includes('Token de Campeonato')) {
+        setFormScope('user');
+        setTokenPurchaseNotice(true);
+        requestAnimationFrame(() => tokenPurchaseSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+      }
     } finally {
       setIsSavingTournament(false);
       if (saved) {
@@ -1209,6 +1220,8 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                 Clique para abrir o chaveamento
               </span>
             </div>
+
+            <LocationScopeFilter />
 
             {filteredTournaments.length === 0 ? (
               <div className="p-8 rounded-2xl bg-[#031527] border border-cyan-800/40 text-center space-y-2">
@@ -2075,7 +2088,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       {/* MODAL A: CREATE OR EDIT TOURNAMENT                                    */}
       {/* ===================================================================== */}
       {showTournamentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setShowTournamentModal(null))}>
           <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleSaveTournamentModal} className="space-y-4 text-xs">
               <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-[#145A9B]/60 -mt-1 pt-1">
@@ -2126,7 +2139,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                         <span className="font-bold text-xs">Torneio da Arena</span>
                       </div>
                       <span className="text-[11px] text-slate-300 block">
-                        Fixo na {tenant.name}. Sem custo de tokens (Incluso no plano da Arena).
+                        Fixo na {tenant.name}. Assinantes criam sem token; sem assinatura, é necessário usar 1 token.
                       </span>
                     </button>
 
@@ -2144,7 +2157,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                         <span className="font-bold text-xs">Organizador Independente</span>
                       </div>
                       <span className="text-[11px] text-slate-300 block">
-                        Custa 1 Token de Campeonato. Escolha qualquer arena cadastrada no app.
+                        Assinantes não consomem token. Sem assinatura, é necessário usar 1 token. Escolha qualquer arena cadastrada no app.
                       </span>
                     </button>
                   </div>
@@ -2174,7 +2187,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                       </DropdownUI>
 
                       {/* Token Pack Purchase Quick Panel */}
-                      <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-600/40 space-y-2">
+                      <div ref={tokenPurchaseSectionRef} className="p-3 rounded-xl bg-amber-950/40 border border-amber-600/40 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
                             <ShoppingCart className="w-3.5 h-3.5" />
@@ -2182,11 +2195,25 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                           </span>
                           <span className="text-[10px] text-slate-400">Uso gradual</span>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
+                        {tokenPurchaseNotice && <div role="status" className="rounded-lg border border-amber-400/50 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-100">
+                          <p>Você precisa de um token ou de um plano ativo para criar este campeonato.</p>
+                          <button type="button" onClick={() => setActiveTab('saas_hub')} className="mt-2 rounded-lg border border-cyan-300/40 bg-cyan-400/10 px-3 py-1.5 font-extrabold text-cyan-100 transition hover:bg-cyan-400/20">
+                            Ver planos
+                          </button>
+                        </div>}
+                        {!auth.currentUser ? <AccessLockedAction
+                          message="Entre na sua conta para comprar tokens"
+                          accessibleMessage="Entre ou crie sua conta para acessar a compra de tokens de campeonato"
+                          onClick={() => void signInWithGooglePopup().catch(() => toast.error('Não foi possível entrar. Tente novamente.'))}
+                          lockType="login"
+                          className="w-full rounded-lg"
+                          previewClassName="w-full rounded-lg border border-amber-500/50 bg-amber-500/20 px-3 py-3 font-bold text-white"
+                        >Comprar Token de Campeonato</AccessLockedAction> : <div className="grid grid-cols-3 gap-2">
                           <button
                             type="button"
                             onClick={async () => {
                               await buyTournamentTokens(1);
+                              setTokenPurchaseNotice(false);
                               toast.success('1 Token de Campeonato adicionado com sucesso!');
                             }}
                             className="p-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-center transition-all cursor-pointer"
@@ -2199,6 +2226,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                             type="button"
                             onClick={async () => {
                               await buyTournamentTokens(5);
+                              setTokenPurchaseNotice(false);
                               toast.success('Pacote de 5 Tokens de Campeonato adicionado!');
                             }}
                             className="p-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-center transition-all cursor-pointer"
@@ -2211,6 +2239,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                             type="button"
                             onClick={async () => {
                               await buyTournamentTokens(10);
+                              setTokenPurchaseNotice(false);
                               toast.success('Super Pacote de 10 Tokens de Campeonato adicionado!');
                             }}
                             className="p-2 rounded-lg bg-amber-500/30 hover:bg-amber-500/40 border border-amber-400 text-center transition-all cursor-pointer ring-1 ring-amber-400/50"
@@ -2218,7 +2247,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                             <span className="block font-extrabold text-amber-300 text-xs">+10 Tokens</span>
                             <span className="block text-[10px] text-emerald-300 font-bold">R$ 150 (-25%)</span>
                           </button>
-                        </div>
+                        </div>}
                       </div>
                     </div>
                   )}
@@ -2394,7 +2423,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       {/* MODAL B: SISTEMA DE INSCRIÇÃO RÁPIDA NO TORNEIO (SIMPLES OU DUPLAS)   */}
       {/* ===================================================================== */}
       {showQuickEnrollModal && activeTournament && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm overflow-y-auto" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowQuickEnrollModal(false); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setShowQuickEnrollModal(false))}>
           <div role="dialog" aria-modal="true" aria-labelledby="quick-enroll-title" className="aquarium-glass my-auto max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[#145A9B] bg-[#071D3D] p-5 text-white shadow-2xl sm:p-6">
             <form onSubmit={handleQuickEnrollSubmit} className="space-y-4 text-xs">
               <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-start justify-between gap-3 border-b border-[#145A9B]/60 pb-3 -mt-1 pt-1">
@@ -2431,7 +2460,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
       )}
       {/* Full Unfrozen Match Editor Modal */}
       {editingMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setEditingMatch(null))}>
           <div className="aquarium-glass bg-[#071D3D] text-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#145A9B] animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-[#145A9B]/60 -mt-1 pt-1">
               <div>
@@ -2563,7 +2592,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
 
       {/* Start Tournament & Dynamic Draw Builder Modal */}
       {showStartDrawModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setShowStartDrawModal(false))}>
           <div className="aquarium-glass bg-[#071D3D] text-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-[#145A9B] space-y-5 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="sticky top-0 z-10 bg-[#071D3D]/95 backdrop-blur-md flex items-start justify-between border-b border-[#145A9B]/60 pb-4 -mt-1 pt-1">
               <div>

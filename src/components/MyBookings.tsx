@@ -418,10 +418,10 @@ export const MyBookings: React.FC = () => {
             </p>
           </div>
           <AccessLockedAction
-            message="Entre para acessar seu perfil de atleta"
+            message="Faça login para seu perfil"
             onClick={() => setLoginModalOpen(true)}
             className="rounded-2xl"
-            previewClassName="items-center gap-3 px-6 py-3.5 rounded-2xl bg-white text-slate-950 font-black text-sm shadow-xl"
+            previewClassName="items-center gap-3 px-6 py-3.5 rounded-2xl bg-white text-slate-950 font-black text-sm shadow-xl border border-white/80 inline-flex"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

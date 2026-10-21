@@ -21,6 +21,7 @@ import {
 } from '../services/rankingValidator';
 import { AthleteLevelBadge } from './AthleteLevelBadge';
 import { AthleteEmailSelector } from './AthleteEmailSelector';
+import { closeOnBackdrop } from '../utils/dialog';
 import { toast } from '../store/useToastStore';
 import {
   Plus,
@@ -289,9 +290,25 @@ export const DoublesRegistration: React.FC = () => {
 
   if (!activeTournament) {
     return (
-      <div className="mx-auto max-w-3xl p-8 text-center text-slate-300" role="status">
-        <h1 className="text-xl font-bold text-white">Nenhum torneio cadastrado</h1>
-        <p className="mt-2">Cadastre um torneio para abrir inscrições de atletas ou duplas.</p>
+      <div className="mx-auto flex min-h-[48vh] w-full max-w-7xl items-center justify-center px-4 py-10 sm:px-6" role="status">
+        <section className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-cyan-300/30 bg-gradient-to-br from-[#0a3555]/95 via-[#062748]/95 to-[#03172b]/95 px-6 py-8 text-center shadow-[0_24px_70px_rgba(0,0,0,0.32)] sm:px-10 sm:py-10">
+          <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
+          <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/35 bg-cyan-400/10 text-cyan-200 shadow-[0_0_28px_rgba(18,199,187,0.16)]">
+            <Trophy size={30} strokeWidth={1.8} />
+          </div>
+          <p className="relative text-xs font-extrabold uppercase tracking-[0.2em] text-cyan-300">Inscrições</p>
+          <h1 className="relative mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Nenhum campeonato disponível</h1>
+          <p className="relative mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-300 sm:text-base">
+            As inscrições aparecem aqui quando houver um campeonato cadastrado. Acesse Campeonatos para criar ou consultar um torneio.
+          </p>
+          <button
+            type="button"
+            onClick={() => setActiveTab('tournaments')}
+            className="relative mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/60 bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3 text-sm font-extrabold text-slate-950 shadow-lg shadow-cyan-950/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#062748]"
+          >
+            Ver campeonatos <ArrowRight size={17} />
+          </button>
+        </section>
       </div>
     );
   }
@@ -733,6 +750,7 @@ export const DoublesRegistration: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-add-athlete-title"
+          onClick={(event) => closeOnBackdrop(event, () => setIsAddAthleteModalOpen(false))}
         >
           <div className="aquarium-glass w-full max-w-lg bg-[#05182C] border border-[#145A9B] rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="sticky top-0 z-10 bg-[#05182C]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-[#145A9B]/50 -mt-1 pt-1">

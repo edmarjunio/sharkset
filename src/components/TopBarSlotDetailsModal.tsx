@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { closeOnBackdrop } from '../utils/dialog';
 import type { TenantConfig, SportType } from '../types';
 import type { AvailabilityCell } from '../services/bookingAvailability';
 import { useApp } from '../context/AppContext';
@@ -121,7 +122,7 @@ export function TopBarSlotDetailsModal({
       aria-modal="true"
       aria-labelledby="slot-modal-title"
       className="fixed inset-0 z-[120] overflow-y-auto bg-black/85 backdrop-blur-md p-2 sm:p-4 flex flex-col justify-start sm:justify-center items-center"
-      onClick={onClose}
+      onClick={(event) => closeOnBackdrop(event, onClose)}
     >
       <div
         className="relative my-auto w-full max-w-lg rounded-3xl border border-cyan-400/40 bg-[#041529]/98 text-white shadow-[0_0_50px_rgba(0,0,0,0.85)] flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[min(90vh,680px)] overflow-hidden animate-in fade-in zoom-in-95 duration-150"

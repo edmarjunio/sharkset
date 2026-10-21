@@ -47,10 +47,10 @@ export function LivekitViewer({ arenaId, muted }: { arenaId: string; muted: bool
     <video ref={video} autoPlay playsInline muted className="watch-media" />
     <audio ref={audio} autoPlay muted={muted} />
     {status && <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center bg-black/70">{!user ? <AccessLockedAction
-      message="Entre na sua conta para assistir"
+      message="Faça login para assistir"
       onClick={() => void signInWithGooglePopup().catch(() => setStatus('Não foi possível entrar. Tente novamente.'))}
       className="rounded-xl"
-      previewClassName="watch-control px-5 py-3 font-bold"
+      previewClassName="watch-control px-5 py-3 font-bold rounded-xl border border-white/30 inline-flex items-center gap-2"
     >Assistir transmissão</AccessLockedAction> : <p role="status">{status}</p>}</div>}
     {needsAudio && !muted && <button className="watch-control absolute bottom-28 left-4" onClick={() => { void connection.current?.startAudio().then(() => setNeedsAudio(false)).catch(() => setNeedsAudio(true)); }}>Ativar áudio</button>}
   </div>;

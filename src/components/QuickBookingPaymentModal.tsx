@@ -4,6 +4,7 @@ import type { SportType, TenantConfig } from '../types';
 import { useArenaAvailability, BOOKING_DEMO } from '../hooks/useArenaAvailability';
 import { useModalFocus } from '../hooks/useModalFocus';
 import { useApp } from '../context/AppContext';
+import { closeOnBackdrop } from '../utils/dialog';
 import { Tag, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export interface QuickBookingSlotData {
@@ -103,6 +104,7 @@ function BookingReview({ data, onClose }: { data: QuickBookingSlotData; onClose:
     <dialog
       ref={ref}
       aria-labelledby="booking-review-title"
+      onClick={(event) => closeOnBackdrop(event, onClose)}
       className="m-auto w-[95vw] max-w-lg rounded-3xl border border-cyan-700 bg-slate-950 p-5 sm:p-6 text-white backdrop:bg-black/75 shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
     >
       <header className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-md flex justify-between items-center pb-3 border-b border-cyan-900/60">

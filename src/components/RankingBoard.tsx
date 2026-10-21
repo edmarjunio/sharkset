@@ -17,6 +17,7 @@ import {
 } from '../services/rankingValidator';
 import { getInactivityDays, INACTIVITY_DAYS } from '../services/rankingActivity';
 import { AthleteLevelBadge } from './AthleteLevelBadge';
+import { closeOnBackdrop } from '../utils/dialog';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
 import { Top10WhatsAppShareModal } from './Top10WhatsAppShareModal';
 import { IntegrityReportModal } from './IntegrityReportModal';
@@ -918,6 +919,7 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby="rb-modal-add-athlete-title"
+          onClick={(event) => closeOnBackdrop(event, () => setIsAddAthleteModalOpen(false))}
         >
           <div className="aquarium-glass w-full max-w-lg bg-[#05182C] border border-[#145A9B] rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="sticky top-0 z-10 bg-[#05182C]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-[#145A9B]/50 -mt-1 pt-1">

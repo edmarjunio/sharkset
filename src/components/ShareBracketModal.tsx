@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tournament, BracketMatch, TeamPair } from '../types';
 import { SharksetLogo } from './SharksetLogo';
+import { closeOnBackdrop } from '../utils/dialog';
 import {
   X,
   Share2,
@@ -121,7 +122,7 @@ export const ShareBracketModal: React.FC<ShareBracketModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn overflow-y-auto" onClick={(event) => closeOnBackdrop(event, onClose)}>
       <div className="aquarium-glass relative w-full max-w-lg bg-[#071D3D] border-2 border-[#145A9B] rounded-3xl shadow-2xl overflow-hidden text-[#F7FAFD] my-auto max-h-[calc(100dvh-2rem)] flex flex-col">
         {/* Top Gradient Banner */}
         <div className="bg-gradient-to-r from-[#030B17] via-[#071D3D] to-[#0A2E63] p-4 sm:p-5 border-b border-[#145A9B] flex items-center justify-between shrink-0">

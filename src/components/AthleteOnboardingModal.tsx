@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { closeOnBackdrop } from '../utils/dialog';
 import { AthleteLevel } from '../types';
 import { ATHLETE_TIERS } from '../services/rankingValidator';
 import { SharksetLogo } from './SharksetLogo';
@@ -8,6 +9,7 @@ interface OnboardingModalProps {
   isOpen: boolean;
   playerName: string;
   onComplete: (level: AthleteLevel) => void;
+  onClose: () => void;
 }
 
 const LEVEL_ICONS: Record<AthleteLevel, React.FC<{ className?: string }>> = {
@@ -22,6 +24,7 @@ export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
   isOpen,
   playerName,
   onComplete,
+  onClose,
 }) => {
   const [selectedLevel, setSelectedLevel] = useState<AthleteLevel>('iniciante');
 
@@ -38,6 +41,7 @@ export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-title"
+      onClick={(event) => closeOnBackdrop(event, onClose)}
     >
       <div className="aquarium-glass bg-[#030E1F]/98 border-2 border-[#12C7BB]/60 text-white rounded-3xl max-w-xl w-full shadow-2xl my-auto max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
         <div className="min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5">
@@ -100,17 +104,17 @@ export const AthleteOnboardingModal: React.FC<OnboardingModalProps> = ({
         </form>
         </div>
           <div className="onboarding-confirm-panel">
-            <span className="text-sm text-white font-bold">
+            <span className="onboarding-selected-category text-sm text-white font-bold">
               Categoria selecionada: {ATHLETE_TIERS.find(tier => tier.level === selectedLevel)?.label}
             </span>
-            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1.5 text-left">
-              <div className="flex items-center gap-1.5 font-black text-amber-300">
+            <div className="onboarding-rules-card w-full rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs p-4 space-y-2 shadow-inner">
+              <div className="flex items-center justify-center gap-1.5 font-black text-amber-300">
                 <span>🔒 Escolha única de categoria:</span>
               </div>
-              <p className="text-[11px] text-slate-200 leading-relaxed">
+              <p className="mx-auto max-w-2xl text-center text-[11px] text-slate-100 leading-relaxed">
                 Você <strong>só poderá escolher sua categoria esta única vez</strong> no cadastro. Após confirmar, não será mais possível alterá-la manualmente; sua evolução ocorrerá exclusivamente por pontuação (MMR) conquistada nas partidas do app.
               </p>
-              <div className="pt-1 border-t border-amber-500/20 text-[10px] text-amber-300/90 space-y-0.5">
+              <div className="onboarding-rules-notices mt-2 pt-3 border-t border-amber-500/20 text-[10px] text-amber-100 leading-relaxed grid gap-2">
                 <p>⚠️ <strong>Regra de Inatividade:</strong> Se ficar <strong>30 dias sem pontuar</strong>, você será desclassificado do ranking. Quanto mais tempo sem jogar, mais pontos você perde!</p>
                 <p>🚨 <strong>Integridade Competitiva:</strong> Os outros atletas podem te denunciar caso seu nível no ranking não seja o mesmo citado. Fique atento com isso!</p>
               </div>

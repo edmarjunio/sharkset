@@ -203,7 +203,7 @@ const MainContent: React.FC = () => {
 
       {!focusMode && (
         <footer
-          className="relative z-10 w-full mt-auto border-t border-b border-cyan-300/20 bg-[#03172b]/75 backdrop-blur-md text-slate-300 transition-all mb-[var(--floating-dock-offset,9.5rem)] sm:mb-[var(--floating-dock-offset,8.75rem)]"
+          className="relative z-10 w-full mt-auto border-t border-b border-cyan-300/20 bg-[#03172b]/75 backdrop-blur-md text-slate-300 transition-all mb-[var(--floating-dock-offset,0px)]"
           style={
             isArenaWhiteLabel && arenaPalette
               ? {
@@ -218,8 +218,8 @@ const MainContent: React.FC = () => {
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-cyan-100/10">
               {/* Brand Info */}
               <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3.5">
-                <div className="box-border flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-2xl border border-cyan-300/25 bg-[#062b45]/75 p-1.5 shadow-md sm:self-center">
-                  <SharksetLogo size="sm" />
+                <div className="box-border flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-2xl border border-cyan-300/25 bg-[#062b45]/75 p-1 shadow-md sm:self-center">
+                  <SharksetLogo size="custom" customPx={56} />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center justify-center sm:justify-start gap-2">
@@ -237,15 +237,18 @@ const MainContent: React.FC = () => {
               </div>
 
               {/* Sports Modalities Pills */}
-              <div className="flex flex-wrap justify-center items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs hover:border-cyan-400/40 transition-colors">
-                  <SportBallIcon sport="futevolei" size={24} /> Futevôlei
+              <div className="flex flex-wrap justify-center items-center gap-2.5">
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-300/30 bg-gradient-to-br from-[#0b3555]/95 to-[#04182c]/95 px-3 py-1 text-xs font-extrabold text-white shadow-md shadow-black/20 transition-all hover:border-cyan-200/60 hover:brightness-110">
+                  <SportBallIcon sport="futevolei" size={30} />
+                  Futevôlei
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs hover:border-cyan-400/40 transition-colors">
-                  <SportBallIcon sport="volei-praia" size={24} /> Vôlei de Praia
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-300/30 bg-gradient-to-br from-[#0b3555]/95 to-[#04182c]/95 px-3 py-1 text-xs font-extrabold text-white shadow-md shadow-black/20 transition-all hover:border-cyan-200/60 hover:brightness-110">
+                  <SportBallIcon sport="volei-praia" size={30} />
+                  Vôlei de Praia
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 text-cyan-200 border border-cyan-500/20 text-xs font-bold shadow-xs hover:border-cyan-400/40 transition-colors">
-                  <SportBallIcon sport="beach-tennis" size={24} /> Beach Tennis
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-300/30 bg-gradient-to-br from-[#0b3555]/95 to-[#04182c]/95 px-3 py-1 text-xs font-extrabold text-white shadow-md shadow-black/20 transition-all hover:border-cyan-200/60 hover:brightness-110">
+                  <SportBallIcon sport="beach-tennis" size={30} />
+                  Beach Tennis
                 </span>
               </div>
             </div>
@@ -301,6 +304,7 @@ const MainContent: React.FC = () => {
         isOpen={showOnboarding}
         playerName={userProfile.name}
         onComplete={handleCompleteOnboarding}
+        onClose={() => setShowOnboarding(false)}
       />
 
       <CommandPalette />

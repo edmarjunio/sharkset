@@ -5,6 +5,7 @@ import { useArenaAvailability } from '../hooks/useArenaAvailability';
 import { useBookingSelection } from '../store/useBookingSelection';
 import { arenaDate } from '../services/bookingAvailability';
 import { QuickBookingPaymentModal } from './QuickBookingPaymentModal';
+import { closeOnBackdrop } from '../utils/dialog';
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp, ArenaSubTab } from '../context/AppContext';
 import { FreeBroadcastPanel } from './FreeBroadcastPanel';
@@ -2766,7 +2767,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
       {/* MODAL 1B: WAITLIST FOR SOLD-OUT COURT SLOT (LISTA DE ESPERA)          */}
       {/* ===================================================================== */}
       {waitlistSlot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setWaitlistSlot(null))}>
           <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 space-y-4 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             {(() => {
               const currentBooking = bookings.find(
@@ -2983,7 +2984,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
       {/* MODAL 2: ENROLL CLIENT IN CLASS (ALUNO, PROFESSOR OU DONO + VENCIMENTO)*/}
       {/* ===================================================================== */}
       {selectedClassForEnroll && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setSelectedClassForEnroll(null))}>
           <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <form onSubmit={handleEnrollStudent} className="space-y-4">
               <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-slate-100 -mt-1 pt-1">
@@ -3153,7 +3154,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
       {/* MODAL 3: CREATE TOURNAMENT INSIDE ARENA                               */}
       {/* ===================================================================== */}
       {showCreateTournModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setShowCreateTournModal(false))}>
           <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <form onSubmit={handleCreateTournamentSubmit} className="space-y-4">
               <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-slate-100 -mt-1 pt-1">
@@ -3326,7 +3327,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
       {/* MODAL 4: ONLINE REGISTRATION & PAYMENT WITH LEVEL VALIDATION          */}
       {/* ===================================================================== */}
       {activeRegisteringTourn && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" onClick={(event) => closeOnBackdrop(event, () => setRegisteringTournId(null))}>
           <div className="aquarium-glass bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <form onSubmit={handleCompleteTournRegistration} className="space-y-4">
               <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-slate-100 -mt-1 pt-1">

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AlertTriangle, ShieldAlert, CheckCircle, X, Send } from 'lucide-react';
 import type { ReportReason, ReportTargetType, IntegrityReport } from '../types';
 import { useSharkStore } from '../store/useSharkStore';
+import { closeOnBackdrop } from '../utils/dialog';
 
 interface Props {
   isOpen: boolean;
@@ -110,6 +111,7 @@ export const IntegrityReportModal: React.FC<Props> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm overflow-y-auto"
       role="dialog"
       aria-modal="true"
+      onClick={(event) => closeOnBackdrop(event, onClose)}
     >
       <div className="relative w-full max-w-lg bg-[#041529] border border-red-500/50 rounded-3xl p-5 sm:p-6 text-white shadow-2xl my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <button

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { closeOnBackdrop } from '../utils/dialog';
 import { useApp } from '../context/AppContext';
 import {
   clearRecentSearches,
@@ -148,7 +149,7 @@ export const CommandPalette: React.FC = () => {
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-20 bg-black/60 backdrop-blur-xs p-4"
-      onClick={() => setCommandPaletteOpen(false)}
+      onClick={(event) => closeOnBackdrop(event, () => setCommandPaletteOpen(false))}
       data-testid="command-palette-overlay"
     >
       <div

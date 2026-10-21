@@ -116,6 +116,21 @@ service cloud.firestore {
         );
     }
 
+    function spendsOneTournamentToken(uid) {
+      let profilePath = /databases/$(database)/documents/user_profiles/$(uid);
+      return isSignedIn() && request.auth.uid == uid && exists(profilePath) &&
+        get(profilePath).data.tournamentTokens is number &&
+        get(profilePath).data.tournamentTokens > 0 &&
+        getAfter(profilePath).data.tournamentTokens == get(profilePath).data.tournamentTokens - 1;
+    }
+
+    function hasActiveTournamentSubscription(uid) {
+      return isSignedIn() && request.auth.uid == uid &&
+        exists(/databases/$(database)/documents/arena_access/$(uid)) &&
+        get(/databases/$(database)/documents/arena_access/$(uid)).data.active == true &&
+        get(/databases/$(database)/documents/arena_access/$(uid)).data.plan in ['arena_pro_99', 'arena_pro_149'];
+    }
+
     // Returns true if authenticated user is the arena owner, listed in managers (UID or email), or admin
     function isArenaOrganizer(arenaId) {
       return isSignedIn() &&
@@ -538,11 +553,13 @@ service cloud.firestore {
     match /tournaments/{tournamentId} {
       allow get: if isValidId(tournamentId);
       allow list: if true;
-      allow create: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) && (
-        isAdmin() ||
-        isArenaOrganizer(incoming().tenantId) ||
-        (incoming().ownerId == request.auth.uid && incoming().createdScope == 'user')
-      );
+      allow create: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) &&
+        incoming().ownerId == request.auth.uid && incoming().creatorUid == request.auth.uid &&
+        (
+          isAdmin() ||
+          (incoming().creatorTokensSpent == 1 && spendsOneTournamentToken(request.auth.uid)) ||
+          (incoming().creatorTokensSpent == 0 && hasActiveTournamentSubscription(request.auth.uid))
+        );
       allow update: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) &&
         (isAdmin() || isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId)) &&
         incoming().id == existing().id &&
