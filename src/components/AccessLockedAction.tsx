@@ -67,24 +67,33 @@ export const AccessLockedAction: React.FC<AccessLockedActionProps> = ({
       {...(isClickable ? { type: 'button', onClick } : { role: 'status' })}
       aria-label={accessibleMessage ?? (typeof message === 'string' ? message : undefined)}
       title={tooltip}
-      className={`group relative isolate inline-flex items-center justify-center overflow-hidden shrink-0 transition-all select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+      className={`group relative isolate inline-grid grid-cols-1 items-center justify-items-center overflow-hidden shrink-0 transition-all select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
         isClickable ? 'cursor-pointer active:scale-[0.98] hover:brightness-105' : ''
       } ${borderFallback} ${previewClassName} ${className}`}
+      style={{ display: 'inline-grid', gridTemplateColumns: '1fr', gridTemplateRows: '1fr' }}
     >
       {/* 1. Camada original embaçada por baixo (mantém cores, ícones e layout do botão original) */}
       <span
         aria-hidden="true"
-        className="pointer-events-none inline-flex items-center justify-center gap-[inherit] select-none filter blur-[2px] opacity-45 scale-[0.98] transition-transform duration-200 group-hover:scale-100"
+        className="col-start-1 row-start-1 w-full h-full pointer-events-none inline-flex items-center justify-center gap-[inherit] select-none filter blur-[2px] opacity-45 scale-[0.98] transition-transform duration-200 group-hover:scale-100"
+        style={{ gridArea: '1 / 1' }}
       >
         {children}
       </span>
 
-      {/* 2. Película de vidro fumê frontal com o aviso nítido e borda externa preservada */}
+      {/* 2. Película de vidro fumê frontal que cobre 100% do botão de ponta a ponta (elimina qualquer faixa preta interna) */}
       <span
-        className={`absolute inset-0 z-10 flex items-center justify-center gap-1.5 px-3 py-1 bg-black/35 backdrop-blur-[2px] transition-colors duration-200 group-hover:bg-black/20 ${messageClassName}`}
+        aria-hidden="true"
+        className="absolute inset-0 z-10 pointer-events-none bg-black/35 backdrop-blur-[2px] transition-colors duration-200 group-hover:bg-black/20"
+      />
+
+      {/* 3. Aviso nítido com ícone perfeitamente alinhado e integrado ao botão */}
+      <span
+        className={`col-start-1 row-start-1 z-20 w-full h-full min-w-0 flex items-center justify-center gap-1.5 ${messageClassName}`}
+        style={{ gridArea: '1 / 1' }}
       >
         {activeIcon}
-        <span className="font-black text-[11px] sm:text-xs tracking-wide text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] whitespace-nowrap text-center">
+        <span className="min-w-0 max-w-full font-black text-[11px] sm:text-xs tracking-normal sm:tracking-wide text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] whitespace-nowrap text-center truncate">
           {message}
         </span>
       </span>

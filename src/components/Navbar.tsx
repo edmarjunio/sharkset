@@ -168,7 +168,8 @@ export const Navbar: React.FC = () => {
       </button> : <AccessLockedAction
         message="Faça login para transmitir"
         onClick={() => setProfileModalOpen(true)}
-        className="rounded-full"
+        className="rounded-full w-auto max-w-full"
+        messageClassName="w-full"
         previewClassName="navbar-live-action items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#FF6B00] via-[#FF8533] to-[#E65100] text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,107,0,0.45)] border border-amber-300"
       >
         <span className="relative flex h-2 w-2"><span className="inline-flex rounded-full h-2 w-2 bg-white" /></span>
