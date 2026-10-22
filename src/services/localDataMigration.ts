@@ -1,6 +1,7 @@
 export interface LocalDataMigrationSource {
   key: string;
   suggestedCollection: string;
+  match: 'exact' | 'prefix';
 }
 
 export interface LocalDataMigrationPreviewItem {
@@ -20,68 +21,84 @@ export interface LocalDataMigrationPreview {
   totalBytes: number;
 }
 
+/** Current operational keys, plus legacy versions that may still exist in a browser. */
 export const LOCAL_DATA_MIGRATION_SOURCES: readonly LocalDataMigrationSource[] = [
-  { key: 'sharkset_v3_arenas', suggestedCollection: 'arenas' },
-  { key: 'sharkset_v2_bookings', suggestedCollection: 'bookings' },
-  { key: 'sharkset_v1_waitlist', suggestedCollection: 'waitlist' },
-  { key: 'sharkset_v2_athletes', suggestedCollection: 'athletes_public' },
-  { key: 'sharkset_v1_ranking_logs', suggestedCollection: 'ranking_events' },
-  { key: 'sharkset_v2_class_students', suggestedCollection: 'arena students' },
-  { key: 'sharkset_v5_tournaments', suggestedCollection: 'tournaments' },
-  { key: 'sharkset_v5_pairs', suggestedCollection: 'tournament registrations' },
-  { key: 'sharkset_v5_matches', suggestedCollection: 'matches' },
-  { key: 'sharkset_v6_academy_posts', suggestedCollection: 'academy_posts' },
-  { key: 'sharkset_integrity_reports', suggestedCollection: 'integrity_reports' },
+  { key: 'sharkset_v4_arenas', suggestedCollection: 'arenas', match: 'exact' },
+  { key: 'sharkset_v3_arenas', suggestedCollection: 'arenas', match: 'exact' },
+  { key: 'sharkset_v3_bookings:', suggestedCollection: 'bookings', match: 'prefix' },
+  { key: 'sharkset_v2_bookings', suggestedCollection: 'bookings', match: 'exact' },
+  { key: 'sharkset_v2_waitlist:', suggestedCollection: 'waitlist', match: 'prefix' },
+  { key: 'sharkset_v1_waitlist', suggestedCollection: 'waitlist', match: 'exact' },
+  { key: 'sharkset_v3_athletes:', suggestedCollection: 'athletes_public', match: 'prefix' },
+  { key: 'sharkset_v2_athletes', suggestedCollection: 'athletes_public', match: 'exact' },
+  { key: 'sharkset_v2_ranking_logs:', suggestedCollection: 'ranking_events', match: 'prefix' },
+  { key: 'sharkset_v1_ranking_logs', suggestedCollection: 'ranking_events', match: 'exact' },
+  { key: 'sharkset_v3_class_students:', suggestedCollection: 'arena students', match: 'prefix' },
+  { key: 'sharkset_v2_class_students', suggestedCollection: 'arena students', match: 'exact' },
+  { key: 'sharkset_v6_tournaments:', suggestedCollection: 'tournaments', match: 'prefix' },
+  { key: 'sharkset_v5_tournaments', suggestedCollection: 'tournaments', match: 'exact' },
+  { key: 'sharkset_v6_pairs:', suggestedCollection: 'tournament registrations', match: 'prefix' },
+  { key: 'sharkset_v5_pairs', suggestedCollection: 'tournament registrations', match: 'exact' },
+  { key: 'sharkset_v6_matches:', suggestedCollection: 'matches', match: 'prefix' },
+  { key: 'sharkset_v5_matches', suggestedCollection: 'matches', match: 'exact' },
+  { key: 'sharkset_v2_mvp_votes', suggestedCollection: 'match_mvp_votes', match: 'exact' },
+  { key: 'sharkset_academy_posts', suggestedCollection: 'academy_posts', match: 'exact' },
+  { key: 'sharkset_v6_academy_posts', suggestedCollection: 'academy_posts', match: 'exact' },
+  { key: 'sharkset_integrity_reports', suggestedCollection: 'integrity_reports', match: 'exact' },
 ];
 
-/**
- * Counts recognized browser caches without returning record contents or writing to Firestore.
- * Every item remains unresolved until ownership and schema are reviewed by an authorized operator.
- */
-export function buildLocalDataMigrationPreview(
-  storage: Pick<Storage, 'getItem'>,
-  authenticatedUid: string | null
-): LocalDataMigrationPreview {
-  const sources = LOCAL_DATA_MIGRATION_SOURCES.map(({ key, suggestedCollection }) => {
-    const raw = storage.getItem(key);
-    if (raw === null || raw.trim() === '') {
-      return {
-        sourceKey: key,
-        suggestedCollection,
-        itemCount: 0,
-        byteLength: 0,
-        parseError: false,
-        status: 'empty' as const,
-      };
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      return {
-        sourceKey: key,
-        suggestedCollection,
-        itemCount: 0,
-        byteLength: new TextEncoder().encode(raw).length,
-        parseError: true,
-        status: 'invalid_json' as const,
-      };
-    }
-
+function countItems(raw: string): { itemCount: number; parseError: boolean } {
+  try {
+    const parsed: unknown = JSON.parse(raw);
     const itemCount = Array.isArray(parsed)
       ? parsed.length
       : parsed && typeof parsed === 'object'
         ? Object.keys(parsed).length
         : 1;
+    return { itemCount, parseError: false };
+  } catch {
+    return { itemCount: 0, parseError: true };
+  }
+}
+
+function getSourceKeys(storage: Pick<Storage, 'getItem' | 'length' | 'key'>, source: LocalDataMigrationSource): string[] {
+  if (source.match === 'exact') return storage.getItem(source.key) === null ? [] : [source.key];
+  const matches: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (key?.startsWith(source.key)) matches.push(key);
+  }
+  return matches;
+}
+
+/**
+ * Counts recognized browser caches without returning record contents or writing to Firestore.
+ * UID suffixes are used only to find account-scoped caches and are never returned in the report.
+ */
+export function buildLocalDataMigrationPreview(
+  storage: Pick<Storage, 'getItem' | 'length' | 'key'>,
+  authenticatedUid: string | null
+): LocalDataMigrationPreview {
+  const sources = LOCAL_DATA_MIGRATION_SOURCES.map(({ key, suggestedCollection, match }) => {
+    let itemCount = 0;
+    let byteLength = 0;
+    let parseError = false;
+    for (const storageKey of getSourceKeys(storage, { key, suggestedCollection, match })) {
+      const raw = storage.getItem(storageKey);
+      if (raw === null || raw.trim() === '') continue;
+      byteLength += new TextEncoder().encode(raw).length;
+      const parsed = countItems(raw);
+      itemCount += parsed.itemCount;
+      parseError ||= parsed.parseError;
+    }
 
     return {
       sourceKey: key,
       suggestedCollection,
       itemCount,
-      byteLength: new TextEncoder().encode(raw).length,
-      parseError: false,
-      status: itemCount > 0 ? ('requires_identity_review' as const) : ('empty' as const),
+      byteLength,
+      parseError,
+      status: parseError ? 'invalid_json' as const : itemCount > 0 ? 'requires_identity_review' as const : 'empty' as const,
     };
   });
 

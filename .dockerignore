@@ -1,0 +1,14 @@
+.git
+.firebase
+.aistudio
+.kilo
+node_modules
+functions/node_modules
+functions/lib
+dist
+output
+technical_table
+.env
+.env.*
+!.env.example
+*.log

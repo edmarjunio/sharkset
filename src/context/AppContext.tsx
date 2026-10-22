@@ -305,7 +305,6 @@ interface AppContextType {
     onlyConfirmedPairs?: boolean
   ) => BracketMatch[];
   updateLiveRefereeMatch: (matchId: string, updater: (prev: BracketMatch) => BracketMatch) => void;
-  liveSpectatorsCount: number;
   addOrUpdateAthlete: (data: {
     name: string;
     email: string;
@@ -684,16 +683,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             }
           }
 
-          // Migrate and save full athlete profile to Firestore
+          // Create the private user profile on first sign-in; public ranking data is optional.
           if (!cloudProfile && user.email) {
-            void persistFullAthleteProfileToFirestore({
-              id: user.uid,
-              name: profile.name,
+            void persistUserProfileToFirestore({
+              displayName: profile.name,
               phone: profile.phone,
-              level: profile.level || 'iniciante',
-              photoURL: profile.photoURL || user.photoURL || '',
-              tournamentTokens: 0,
-            }).catch(() => {});
+              level: profile.level,
+            }).catch((error) => {
+              console.error('Falha ao criar o perfil privado do usuário no Firestore.', error);
+              window.dispatchEvent(new CustomEvent('sharkset:firestore-sync-error', {
+                detail: { message: 'Não foi possível criar seu perfil. Verifique sua conexão e tente novamente.' },
+              }));
+            });
           }
         } catch {
           if (!isCurrent || auth.currentUser?.uid !== user.uid) return;
@@ -991,16 +992,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [registeredPairs, cacheOwner]);
 
   const [tournamentMatches, setTournamentMatches] = useState<BracketMatch[]>(getInitialTournamentMatches);
+  const liveStateRevisions = useRef(new Map<string, number>());
+  const liveStateQueues = useRef(new Map<string, Promise<void>>());
 
   const matchesByTournament = useMemo(() => tournamentMatches.reduce<Record<string, BracketMatch[]>>((acc, match) => {
     (acc[match.tournamentId] ||= []).push(match); return acc;
   }, {}), [tournamentMatches]);
 
-  const [liveSpectatorsCount, setLiveSpectatorsCount] = useState<number>(0);
-
   useEffect(() => {
     if (!activeTournamentId) return;
     return listenToTournamentMatches(activeTournamentId, (cloudMatches) => {
+      for (const match of cloudMatches) {
+        liveStateRevisions.current.set(match.id, match.liveStateRevision ?? 0);
+      }
       setTournamentMatches(current => {
         const previous = new Map(current.filter(match => match.tournamentId === activeTournamentId).map(match => [match.id, match]));
         const incoming = cloudMatches.map(match => {
@@ -1015,9 +1019,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, [activeTournamentId]);
 
-  // Real-Time Synchronization via Server-Sent Events (SSE) + BroadcastChannel + Storage Event
+  // Firestore is the cross-device source for active tournament state; BroadcastChannel is a same-browser fast path.
   useEffect(() => {
-    let es: EventSource | null = null;
     let bc: BroadcastChannel | null = null;
 
     const applyRemoteMatchUpdate = (payload: {
@@ -1045,30 +1048,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
     };
 
-    try {
-      es = new EventSource('/api/live-matches/stream');
-      es.addEventListener('presence', (ev) => {
-        try {
-          const data = JSON.parse((ev as MessageEvent).data);
-          if (typeof data.spectators === 'number') {
-            setLiveSpectatorsCount(Math.max(0, data.spectators));
-          }
-        } catch {
-          // Ignore malformed event
-        }
-      });
-      es.addEventListener('match:updated', (ev) => {
-        try {
-          const data = JSON.parse((ev as MessageEvent).data);
-          applyRemoteMatchUpdate(data);
-        } catch {
-          // Ignore malformed event
-        }
-      });
-    } catch {
-      // Fallback if SSE is unavailable
-    }
-
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       bc = new BroadcastChannel('sharkset_live_bracket');
       bc.onmessage = (ev) => {
@@ -1077,7 +1056,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     return () => {
-      es?.close();
       bc?.close();
     };
   }, []);
@@ -1946,11 +1924,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       status: updatedTarget.status,
       liveReferee: updatedTarget.liveReferee,
     };
-    fetch('/api/live-matches/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).catch(() => {});
+    const currentUser = auth.currentUser;
+    if (currentUser?.emailVerified && updatedTarget.liveReferee) {
+      const queue = liveStateQueues.current.get(matchId) || Promise.resolve();
+      const nextQueue = queue.catch(() => {}).then(async () => {
+        const expectedRevision = liveStateRevisions.current.get(matchId) ?? previousMatch.liveStateRevision ?? 0;
+        const response = await fetch(`/api/tournaments/${encodeURIComponent(updatedTarget.tournamentId)}/matches/${encodeURIComponent(matchId)}/live-state`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await currentUser.getIdToken()}` },
+          body: JSON.stringify({ expectedRevision, liveReferee: updatedTarget.liveReferee }),
+          cache: 'no-store',
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !Number.isSafeInteger(result.revision)) throw new Error(result.error || 'Falha ao sincronizar o placar.');
+        liveStateRevisions.current.set(matchId, result.revision);
+        setTournamentMatches(matches => matches.map(match => match.id === matchId ? { ...match, liveStateRevision: result.revision } : match));
+      }).catch(error => {
+        console.error('Falha ao sincronizar o placar oficial da partida.', error);
+        window.dispatchEvent(new CustomEvent('sharkset:firestore-sync-error', {
+          detail: { message: error instanceof Error ? error.message : 'Não foi possível sincronizar o placar com o servidor.' },
+        }));
+      }).finally(() => {
+        if (liveStateQueues.current.get(matchId) === nextQueue) liveStateQueues.current.delete(matchId);
+      });
+      liveStateQueues.current.set(matchId, nextQueue);
+    }
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       const bc = new BroadcastChannel('sharkset_live_bracket');
       bc.postMessage(payload);
@@ -2416,7 +2414,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         togglePairPresence,
         startTournamentWithDraw,
         updateLiveRefereeMatch,
-        liveSpectatorsCount,
         addOrUpdateAthlete,
         updateAthleteProfile,
         updateAthleteGameStats,

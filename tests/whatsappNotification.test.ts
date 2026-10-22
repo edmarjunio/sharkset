@@ -72,7 +72,7 @@ test('extractDistinctRecipients collects unique athlete phone numbers and names'
   assert.equal(recipients[2].name, 'Atleta Gama');
 });
 
-test('WhatsApp server routes handle status, simulation, and idempotency gracefully', async () => {
+test('WhatsApp server reports automatic messaging unavailable without sending messages', async () => {
   const app = express();
   app.use(express.json());
   registerWhatsAppRoutes(app);
@@ -90,7 +90,9 @@ test('WhatsApp server routes handle status, simulation, and idempotency graceful
     const statusData = await statusRes.json();
     assert.equal(typeof statusData.configured, 'boolean');
 
-    // 2. Tournament start alert (simulation when env vars not provided)
+    assert.equal(statusData.available, false);
+
+    // Arbitrary recipients provided by clients are never dispatched.
     const tournStartRes = await fetch(`${baseUrl}/api/notifications/whatsapp/tournament-start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -106,33 +108,10 @@ test('WhatsApp server routes handle status, simulation, and idempotency graceful
       }),
     });
 
-    assert.equal(tournStartRes.status, 200);
+    assert.equal(tournStartRes.status, 503);
     const tournStartData = await tournStartRes.json();
-    assert.equal(tournStartData.success, true);
-    assert.equal(tournStartData.dispatchedCount, 2);
-    assert.equal(tournStartData.skippedCount, 0);
-
-    // 3. Second call with same tournament & phones is idempotent (skippedCount = 2)
-    const idempotentTournRes = await fetch(`${baseUrl}/api/notifications/whatsapp/tournament-start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tournamentId: 'tourn-mock-123',
-        tournamentName: 'Torneio Teste Mineiros',
-        arenaName: 'Arena Central',
-        pairsCount: 8,
-        recipients: [
-          { name: 'Gabriel', phone: '(64) 99999-8888' },
-          { name: 'Rodrigo', phone: '(64) 98888-7777' },
-        ],
-      }),
-    });
-
-    assert.equal(idempotentTournRes.status, 200);
-    const idempotentTournData = await idempotentTournRes.json();
-    assert.equal(idempotentTournData.success, true);
-    assert.equal(idempotentTournData.dispatchedCount, 0);
-    assert.equal(idempotentTournData.skippedCount, 2);
+    assert.equal(tournStartData.ok, false);
+    assert.equal(tournStartData.available, false);
 
     // 4. Match result alert
     const matchRes = await fetch(`${baseUrl}/api/notifications/whatsapp/match-result`, {
@@ -153,10 +132,10 @@ test('WhatsApp server routes handle status, simulation, and idempotency graceful
       }),
     });
 
-    assert.equal(matchRes.status, 200);
+    assert.equal(matchRes.status, 503);
     const matchData = await matchRes.json();
-    assert.equal(matchData.success, true);
-    assert.equal(matchData.dispatchedCount, 2);
+    assert.equal(matchData.ok, false);
+    assert.equal(matchData.available, false);
   } finally {
     server.close();
   }

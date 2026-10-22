@@ -316,6 +316,47 @@ service cloud.firestore {
         set.score2 is int && set.score2 >= 0 && set.score2 <= 99;
     }
 
+    function isValidPublicLiveReferee(data) {
+      return data is map &&
+        data.keys().hasAll(['refereeName', 'targetPoints', 'servingTeam', 'serverRotationIndex', 'serviceOrderLabels',
+          'team1TimeoutsUsed', 'team2TimeoutsUsed', 'maxTimeoutsPerTeam', 'courtSwapsCount', 'currentSidesSwapped',
+          'updatedAt', 'pointHistory', 'timeoutHistory']) &&
+        data.keys().hasOnly(['refereeName', 'targetPoints', 'servingTeam', 'serverRotationIndex', 'serviceOrderLabels',
+          'serviceOrderTeams', 'firstServers', 'team1TimeoutsUsed', 'team2TimeoutsUsed', 'maxTimeoutsPerTeam',
+          'activeTimeout', 'courtSwapsCount', 'currentSidesSwapped', 'startedAt', 'updatedAt',
+          'pointHistory', 'timeoutHistory', 'cardsHistory']) &&
+        data.refereeName is string && data.refereeName.size() >= 1 && data.refereeName.size() <= 80 &&
+        data.targetPoints is int && data.targetPoints >= 1 && data.targetPoints <= 99 &&
+        data.servingTeam in [1, 2] && data.serverRotationIndex is int && data.serverRotationIndex >= 0 && data.serverRotationIndex <= 3 &&
+        data.serviceOrderLabels is list && data.serviceOrderLabels.size() == 4 &&
+        data.serviceOrderLabels[0] is string && data.serviceOrderLabels[0].size() <= 80 &&
+        data.serviceOrderLabels[1] is string && data.serviceOrderLabels[1].size() <= 80 &&
+        data.serviceOrderLabels[2] is string && data.serviceOrderLabels[2].size() <= 80 &&
+        data.serviceOrderLabels[3] is string && data.serviceOrderLabels[3].size() <= 80 &&
+        data.team1TimeoutsUsed is int && data.team1TimeoutsUsed >= 0 && data.team1TimeoutsUsed <= 5 &&
+        data.team2TimeoutsUsed is int && data.team2TimeoutsUsed >= 0 && data.team2TimeoutsUsed <= 5 &&
+        data.maxTimeoutsPerTeam is int && data.maxTimeoutsPerTeam >= 0 && data.maxTimeoutsPerTeam <= 5 &&
+        data.team1TimeoutsUsed <= data.maxTimeoutsPerTeam && data.team2TimeoutsUsed <= data.maxTimeoutsPerTeam &&
+        data.courtSwapsCount is int && data.courtSwapsCount >= 0 && data.courtSwapsCount <= 20 &&
+        data.currentSidesSwapped is bool && data.updatedAt is string && data.updatedAt.size() <= 40 &&
+        data.pointHistory is list && data.pointHistory.size() <= 300 &&
+        data.timeoutHistory is list && data.timeoutHistory.size() <= 20 &&
+        (!('cardsHistory' in data) || (data.cardsHistory is list && data.cardsHistory.size() <= 30)) &&
+        (!('startedAt' in data) || (data.startedAt is string && data.startedAt.size() <= 40)) &&
+        (!('serviceOrderTeams' in data) || (data.serviceOrderTeams is list && data.serviceOrderTeams.size() == 4 &&
+          data.serviceOrderTeams[0] in [1, 2] && data.serviceOrderTeams[1] in [1, 2] &&
+          data.serviceOrderTeams[2] in [1, 2] && data.serviceOrderTeams[3] in [1, 2])) &&
+        (!('firstServers' in data) || (data.firstServers is map && data.firstServers.keys().hasOnly(['team1', 'team2']) &&
+          (!('team1' in data.firstServers) || data.firstServers.team1 in [0, 1]) &&
+          (!('team2' in data.firstServers) || data.firstServers.team2 in [0, 1]))) &&
+        (!('activeTimeout' in data) || data.activeTimeout == null ||
+          (data.activeTimeout is map && data.activeTimeout.keys().hasAll(['type', 'label', 'startedAt']) &&
+            data.activeTimeout.keys().hasOnly(['type', 'label', 'startedAt']) &&
+            data.activeTimeout.type in ['team1', 'team2', 'technical'] &&
+            data.activeTimeout.label is string && data.activeTimeout.label.size() <= 80 &&
+            data.activeTimeout.startedAt is string && data.activeTimeout.startedAt.size() <= 40));
+    }
+
     function isValidPublicBracketMatch(data, tournamentId, matchId) {
       return data.keys().hasAll(['id', 'tournamentId', 'matchNumber', 'stage', 'round', 'stageName', 'status', 'revision']) &&
         data.keys().hasOnly([
@@ -323,7 +364,7 @@ service cloud.firestore {
           'source1', 'source2', 'initialLowerSource', 'region', 'rules', 'sets', 'resultMode', 'officialAt',
           'team1', 'team2', 'score1', 'score2', 'winnerId', 'loserId', 'courtId', 'courtName', 'scheduledTime',
           'nextMatchWinnerId', 'winnerDestinationSlot', 'nextMatchLoserId', 'loserDestinationSlot', 'linkedBroadcastId', 'semifinalDecision',
-          'serverValidatedRevision'
+          'serverValidatedRevision', 'liveReferee', 'liveStateRevision'
         ]) &&
         data.id == matchId && data.tournamentId == tournamentId &&
         isValidId(data.id) && isValidId(data.tournamentId) &&
@@ -354,7 +395,9 @@ service cloud.firestore {
         (!('courtName' in data) || (data.courtName is string && data.courtName.size() <= 100)) &&
         (!('courtId' in data) || (data.courtId is string && data.courtId.size() <= 64)) &&
         (!('scheduledTime' in data) || (data.scheduledTime is string && data.scheduledTime.size() <= 40)) &&
-        (!('linkedBroadcastId' in data) || (data.linkedBroadcastId is string && data.linkedBroadcastId.size() <= 64));
+        (!('linkedBroadcastId' in data) || (data.linkedBroadcastId is string && data.linkedBroadcastId.size() <= 64)) &&
+        (!('liveReferee' in data) || isValidPublicLiveReferee(data.liveReferee)) &&
+        (!('liveStateRevision' in data) || (data.liveStateRevision is int && data.liveStateRevision >= 1 && data.liveStateRevision <= 1000000));
     }
 
     function isValidCourtBlock(data) {
@@ -571,9 +614,12 @@ service cloud.firestore {
       match /matches/{matchId} {
         allow read: if true;
         allow create: if canManageTournamentMatches(tournamentId) && isValidId(matchId) &&
-          !('serverValidatedRevision' in incoming()) && isValidPublicBracketMatch(incoming(), tournamentId, matchId);
+          !('serverValidatedRevision' in incoming()) && !('liveReferee' in incoming()) &&
+          !('liveStateRevision' in incoming()) && isValidPublicBracketMatch(incoming(), tournamentId, matchId);
         allow update: if canManageTournamentMatches(tournamentId) && isValidId(matchId) &&
           isValidPublicBracketMatch(incoming(), tournamentId, matchId) &&
+          (!('liveReferee' in incoming()) || incoming().liveReferee == existing().liveReferee) &&
+          (!('liveStateRevision' in incoming()) || incoming().liveStateRevision == existing().liveStateRevision) &&
           ((!('serverValidatedRevision' in existing()) && !('serverValidatedRevision' in incoming())) ||
             ('serverValidatedRevision' in existing() && 'serverValidatedRevision' in incoming() &&
               incoming().serverValidatedRevision == existing().serverValidatedRevision));

@@ -8,16 +8,7 @@ import { registerBroadcastRoutes } from './server/broadcasts';
 import { registerBookingRoutes } from './server/bookings';
 import { registerLivekitProxy } from './server/livekitProxy';
 import { registerWhatsAppRoutes } from './server/whatsapp';
-
-interface LiveMatchPayload {
-  matchId: string;
-  tournamentId: string;
-  score1: number;
-  score2: number;
-  status: string;
-  liveReferee?: unknown;
-  updatedAt: string;
-}
+import { registerTournamentLiveStateRoutes } from './server/tournamentLiveStates';
 
 async function startServer() {
   const app = express();
@@ -29,7 +20,7 @@ async function startServer() {
   let vite: Awaited<ReturnType<typeof createViteServer>> | undefined;
 
   app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
-  app.use(express.json());
+  app.use(express.json({ limit: '256kb' }));
   app.use((req, res, next) => {
     let pathname: string;
     try { pathname = decodeURIComponent(req.path).replaceAll('\\', '/'); }
@@ -42,91 +33,15 @@ async function startServer() {
   registerBookingRoutes(app);
   registerLivekitProxy(app);
   registerWhatsAppRoutes(app);
+  registerTournamentLiveStateRoutes(app);
 
-  // Authoritative in-memory store for real-time live matches + connected SSE clients
-  const liveMatchesState = new Map<string, LiveMatchPayload>();
-  const sseClients = new Set<express.Response>();
-
-  function broadcastEvent(eventName: string, payload: unknown) {
-    const message = `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;
-    for (const client of sseClients) {
-      try {
-        client.write(message);
-      } catch {
-        sseClients.delete(client);
-      }
-    }
-  }
-
-  // Clean Code API: Health & Status
+  // Health output contains service status only; it never reports process-local audience counts.
   app.get('/api/health', (_req, res) => {
     res.json({
       status: 'ok',
-      service: 'SHARK SET Backend Engine',
-      connectedSpectators: sseClients.size,
+      service: 'SHARKSET API',
       timestamp: new Date().toISOString(),
     });
-  });
-
-  // Real-Time Server-Sent Events (SSE) Stream for Live Bracket Spectators & Referees
-  app.get('/api/live-matches/stream', (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders?.();
-
-    // Send initial authoritative snapshot
-    const initialSnapshot = Array.from(liveMatchesState.values());
-    res.write(`event: init\ndata: ${JSON.stringify({ matches: initialSnapshot, spectators: sseClients.size + 1 })}\n\n`);
-
-    sseClients.add(res);
-    broadcastEvent('presence', { spectators: sseClients.size });
-
-    req.on('close', () => {
-      sseClients.delete(res);
-      broadcastEvent('presence', { spectators: sseClients.size });
-    });
-  });
-
-  // Real-Time Referee Score / Service Order / Timeout Broadcast Endpoint
-  app.post('/api/live-matches/broadcast', (req, res) => {
-    const payload = req.body as LiveMatchPayload;
-    if (!payload || !payload.matchId) {
-      res.status(400).json({ error: 'Missing matchId in payload' });
-      return;
-    }
-
-    const authoritativeRecord: LiveMatchPayload = {
-      ...payload,
-      updatedAt: new Date().toISOString(),
-    };
-    liveMatchesState.set(payload.matchId, authoritativeRecord);
-
-    broadcastEvent('match:updated', authoritativeRecord);
-    res.status(200).json({ ok: true, broadcastedTo: sseClients.size, match: authoritativeRecord });
-  });
-
-  // Clean Code API: Push Notification & Smart Alert Dispatch Endpoint
-  app.post('/api/notifications/dispatch', (req, res) => {
-    const { type, title, body, recipientName, recipientPhone } = req.body || {};
-    if (!type || !title || !body) {
-      res.status(400).json({ error: 'Missing required notification fields (type, title, body).' });
-      return;
-    }
-
-    const notificationRecord = {
-      dispatched: true,
-      id: `push-${Date.now()}`,
-      type,
-      title,
-      body,
-      recipientName: recipientName || 'Atleta SHARK SET',
-      recipientPhone: recipientPhone || '',
-      deliveredAt: new Date().toISOString(),
-    };
-
-    broadcastEvent('notification:dispatched', notificationRecord);
-    res.status(200).json(notificationRecord);
   });
 
   if (process.env.NODE_ENV !== 'production') {

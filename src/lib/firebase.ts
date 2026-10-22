@@ -11,6 +11,7 @@ import {
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocFromServer,
@@ -699,18 +700,18 @@ export async function persistFullAthleteProfileToFirestore(
       country: athlete.country || 'Brasil',
       state: athlete.state || 'GO',
       city: athlete.city || 'Mineiros',
-      arenaId: athlete.arenaId || '',
-      arenaName: athlete.arenaName || '',
       stats: athlete.stats || { aces: 0, errors: 0, sharkAttacks: 0, pingoPoints: 0, defenses: 0 },
       achievements: athlete.achievements || [],
-      role: existingData.role === 'admin' ? 'admin' : 'athlete',
+      role: existingData.role || 'athlete',
       ownerId: uid,
+      ...(!existingData.createdAt ? { createdAt: new Date().toISOString() } : {}),
       updatedAt: new Date().toISOString(),
     };
 
     await setDoc(userDocRef, profileData, { merge: true });
 
-    // Also sync to public athlete ranking collection
+    // Publish ranking data only after the athlete has a valid arena association.
+    if (!athlete.arenaId || !/^[\w-]{1,64}$/.test(athlete.arenaId)) return;
     const publicRef = doc(db, 'athletes_public', uid);
     await setDoc(
       publicRef,
@@ -1004,7 +1005,14 @@ export async function persistTournamentMatchChanges(
   );
   const removed = previousMatches.filter((match) => !nextById.has(match.id));
   const operations: Array<{ id: string; data?: Record<string, unknown> }> = [
-    ...changed.map((match) => ({ id: match.id, data: publicBracketMatch(match) })),
+    ...changed.map((match) => {
+      const data = publicBracketMatch(match);
+      const previousData = publicBracketMatch(previousById.get(match.id) || ({} as BracketMatch));
+      for (const key of Object.keys(previousData)) {
+        if (!(key in data)) data[key] = deleteField();
+      }
+      return { id: match.id, data };
+    }),
     ...removed.map((match) => ({ id: match.id })),
   ];
 
@@ -1013,7 +1021,7 @@ export async function persistTournamentMatchChanges(
     for (const operation of operations.slice(offset, offset + 450)) {
       if (!/^[\w-]{1,64}$/.test(operation.id)) throw new Error('Identificador de partida inválido.');
       const matchRef = doc(db, 'tournaments', tournamentId, 'matches', operation.id);
-      if (operation.data) batch.set(matchRef, operation.data);
+      if (operation.data) batch.set(matchRef, operation.data, { merge: true });
       else batch.delete(matchRef);
     }
     await batch.commit();

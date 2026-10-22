@@ -399,6 +399,8 @@ export interface BracketMatch {
   revision?: number;
   /** Revision confirmed by the server-side result validator. */
   serverValidatedRevision?: number;
+  /** Optimistic concurrency revision for authenticated in-progress referee updates. */
+  liveStateRevision?: number;
   semifinalDecision?: 'waiting' | 'fixed' | 'swap' | 'blocked' | 'exception';
   exceptionReason?: string;
   exceptionFingerprint?: string;

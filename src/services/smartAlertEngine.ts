@@ -165,21 +165,6 @@ export async function dispatchPushNotificationChannel(item: SmartNotificationIte
     }
   }
 
-  // Non-blocking backend dispatch
-  fetch('/api/notifications/dispatch', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      type: item.type,
-      title: item.title,
-      body: item.body,
-      recipientName: item.recipientName,
-      recipientPhone: item.recipientPhone,
-    }),
-  }).catch(() => {
-    // Graceful fallback in preview
-  });
-
   // Non-blocking Firestore persistence when user is authenticated
   persistNotificationToFirestore({
     id: item.id,
