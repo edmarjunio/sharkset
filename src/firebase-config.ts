@@ -96,7 +96,9 @@ export async function enableFirestoreOfflinePersistence(
   }
 }
 
-export const offlinePersistenceReady: Promise<boolean> = enableFirestoreOfflinePersistence(db);
+// Whole-database persistence may contain private profiles. Keep it opt-in on trusted
+// devices; the public shell and redacted arena catalogue have their own bounded caches.
+export const offlinePersistenceReady: Promise<boolean> = Promise.resolve(false);
 
 export function isOfflinePersistenceEnabled(): boolean {
   return offlinePersistenceActive;

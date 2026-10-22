@@ -1,3 +1,6 @@
+import { readPublicArenas, writePublicArenas } from '../services/publicArenaCache';
+import { arenaCatalog, tournamentCatalog } from '../services/catalogResources';
+import { readNavigation } from '../hooks/useNavigationHistory';
 import { BOOKING_DEMO } from '../services/bookingMode';
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
 import {
@@ -90,6 +93,7 @@ import {
   addManagerToArenaInFirestore,
   removeManagerFromArenaInFirestore,
   persistTournamentToFirestore,
+  updateTournamentMetadataInFirestore,
   persistTournamentMatchChanges,
   listenToTournamentMatches,
   fetchTournamentsFromFirestore,
@@ -271,7 +275,7 @@ interface AppContextType {
         | 'category'
       >
     >
-  ) => void;
+  ) => Promise<void>;
   registerDouble: (data: {
     tournamentId: string;
     player1Id?: string;
@@ -394,17 +398,22 @@ const STORAGE_KEYS = {
   CLASS_STUDENTS: 'sharkset_v3_class_students',
 };
 
+function readAccountArray<T>(key: string, uid: string | null, fallback: T[]): T[] {
+  if (!uid) return fallback;
+  try {
+    const value = JSON.parse(localStorage.getItem(key + ':' + uid) || 'null');
+    return Array.isArray(value) ? value : fallback;
+  } catch { return fallback; }
+}
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [cacheOwner, setCacheOwner] = useState<string | null>(null);
+  const cacheOwnerRef = useRef<string | null>(null);
   // Arenas state
   const [arenasMap, setArenasMap] = useState<Record<string, TenantConfig>>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.ARENAS);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-          return parsed;
-        }
-      }
+      const saved = readPublicArenas();
+      if (saved) return saved;
       return TENANTS;
     } catch {
       return TENANTS;
@@ -412,11 +421,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ARENAS, JSON.stringify(arenasMap));
+    // Remove the old unbounded cache, which also stored manager identities.
+    try { localStorage.removeItem(STORAGE_KEYS.ARENAS); } catch { /* Storage may be unavailable. */ }
   }, [arenasMap]);
 
   const [tenantId, setTenantIdState] = useState<string>(() => {
-    return localStorage.getItem(STORAGE_KEYS.TENANT) || '';
+    return readNavigation().arena || localStorage.getItem(STORAGE_KEYS.TENANT) || '';
   });
 
   const tenant = useMemo(() => {
@@ -436,6 +446,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updateArena = async (arena: TenantConfig) => {
     await persistArenaToFirestore(arena);
+    arenaCatalog.invalidate();
     setArenasMap((prev) => ({
       ...prev,
       [arena.id]: arena,
@@ -444,6 +455,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const addArena = async (arena: TenantConfig) => {
     await persistArenaToFirestore(arena);
+    arenaCatalog.invalidate();
     setArenasMap((prev) => ({
       ...prev,
       [arena.id]: arena,
@@ -514,7 +526,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [selectedSport, setSelectedSport] = useState<'all' | SportType>('all');
 
   // Navigation tabs — Clean Home ('home') with eye-catching highlights + Arenas + Torneios + Ranking
-  const [activeTab, setActiveTab] = useState<MainTab>('home');
+  const [activeTab, setActiveTab] = useState<MainTab>(() => readNavigation().tab);
   const [arenaSubTab, setArenaSubTab] = useState<ArenaSubTab>('agendamentos');
 
   // Modals & Palettes
@@ -618,6 +630,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let isCurrent = true;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       useSharkStore.getState().setFirebaseUserEmail(user?.email || null);
+      const nextOwner = user?.uid || null;
+      if (cacheOwnerRef.current !== nextOwner) {
+        cacheOwnerRef.current = nextOwner; setCacheOwner(nextOwner);
+        setBookings(readAccountArray(STORAGE_KEYS.BOOKINGS, nextOwner, INITIAL_BOOKINGS));
+        setWaitlist(readAccountArray(STORAGE_KEYS.WAITLIST, nextOwner, INITIAL_WAITLIST));
+        setAthletes(readAccountArray(STORAGE_KEYS.ATHLETES, nextOwner, INITIAL_ATHLETES));
+        setRankingLogs(readAccountArray(STORAGE_KEYS.RANKING_LOGS, nextOwner, INITIAL_RANKING_LOGS));
+        setClassStudents(readAccountArray(STORAGE_KEYS.CLASS_STUDENTS, nextOwner, INITIAL_CLASS_STUDENTS));
+        setRegisteredPairs(readAccountArray(STORAGE_KEYS.PAIRS, nextOwner, INITIAL_PAIRS));
+        setWaitlistNotifications([]); setCoupons([]);
+      }
+      // Coupons are private and must be loaded only for the current signed-in account.
+      if (user) void fetchCouponsFromFirestore().then(data => {
+        if (isCurrent && auth.currentUser?.uid === user.uid) setCoupons(data);
+      });
+
       if (user) {
         let savedLevel: AthleteLevel | null = null;
         try {
@@ -699,38 +727,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     });
 
-    // Boot synchronization of Arenas, Tournaments and Coupons from Firestore
-    void fetchArenasFromFirestore().then((cloudArenas) => {
-      if (!isCurrent || !cloudArenas.length) return;
-      setArenasMap((prev) => {
-        const merged = { ...prev };
-        for (const a of cloudArenas) {
-          merged[a.id] = { ...merged[a.id], ...a };
-        }
-        return merged;
-      });
-    });
-
-    void fetchTournamentsFromFirestore().then((cloudTournaments) => {
-      if (!isCurrent || !cloudTournaments.length) return;
-      setTournaments((prev) => {
-        const existingIds = new Set(prev.map((t) => t.id));
-        const newOnes = cloudTournaments.filter((t) => !existingIds.has(t.id));
-        return [...newOnes, ...prev];
-      });
-    });
-
-    void fetchCouponsFromFirestore().then((cloudCoupons) => {
-      if (!isCurrent || !cloudCoupons.length) return;
-      setCoupons(cloudCoupons);
-    });
-
     return () => {
       isCurrent = false;
       unsubscribe();
     };
   }, []);
 
+
+  useEffect(() => {
+    const syncArenas = () => {
+      const snapshot = arenaCatalog.getSnapshot();
+      const data = snapshot.data;
+      if (snapshot.loading) return;
+      if (!data && snapshot.error) setArenasMap(readPublicArenas() || TENANTS);
+      if (data) {
+        if (!snapshot.error) writePublicArenas(data, undefined, snapshot.updatedAt);
+        setArenasMap(previous => {
+        const next = Object.fromEntries(data.map(arena => [arena.id, arena]));
+        return JSON.stringify(previous) === JSON.stringify(next) ? previous : next;
+        });
+      }
+    };
+    const syncTournaments = () => {
+      const snapshot = tournamentCatalog.getSnapshot();
+      const data = snapshot.data;
+      if (snapshot.loading) return;
+      if (!data && snapshot.error) setTournaments(INITIAL_TOURNAMENTS);
+      if (data) setTournaments(previous => JSON.stringify(previous) === JSON.stringify(data) ? previous : data);
+    };
+    const stopArenas = arenaCatalog.subscribe(syncArenas);
+    const stopTournaments = tournamentCatalog.subscribe(syncTournaments);
+    syncArenas(); syncTournaments();
+    return () => { stopArenas(); stopTournaments(); };
+  }, []);
 
   const resetAllDataToCleanSlate = () => {
     if (!window.confirm('Atenção: Isso irá apagar todo o histórico de teste em cache e iniciar o Sharkset completamente do zero. Deseja continuar?')) {
@@ -786,7 +815,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Bookings state
   const [bookings, setBookings] = useState<Booking[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
+      const stored = cacheOwner ? localStorage.getItem(STORAGE_KEYS.BOOKINGS + ':' + cacheOwner) : null;
       return stored ? JSON.parse(stored) : INITIAL_BOOKINGS;
     } catch {
       return INITIAL_BOOKINGS;
@@ -794,13 +823,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
-  }, [bookings]);
+    if (cacheOwner && cacheOwner === auth.currentUser?.uid) {
+      try { localStorage.setItem(STORAGE_KEYS.BOOKINGS + ':' + cacheOwner, JSON.stringify(bookings)); } catch { /* Storage may be unavailable. */ }
+    }
+  }, [bookings, cacheOwner]);
 
   // Waitlist state
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.WAITLIST);
+      const stored = cacheOwner ? localStorage.getItem(STORAGE_KEYS.WAITLIST + ':' + cacheOwner) : null;
       return stored ? JSON.parse(stored) : INITIAL_WAITLIST;
     } catch {
       return INITIAL_WAITLIST;
@@ -808,8 +839,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.WAITLIST, JSON.stringify(waitlist));
-  }, [waitlist]);
+    if (cacheOwner && cacheOwner === auth.currentUser?.uid) {
+      try { localStorage.setItem(STORAGE_KEYS.WAITLIST + ':' + cacheOwner, JSON.stringify(waitlist)); } catch { /* Storage may be unavailable. */ }
+    }
+  }, [waitlist, cacheOwner]);
 
   const [waitlistNotifications, setWaitlistNotifications] = useState<WaitlistNotification[]>([]);
 
@@ -840,7 +873,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Athletes Ranking state
   const [athletes, setAthletes] = useState<AthleteProfile[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.ATHLETES);
+      const stored = cacheOwner ? localStorage.getItem(STORAGE_KEYS.ATHLETES + ':' + cacheOwner) : null;
       const rawList: AthleteProfile[] = stored ? JSON.parse(stored) : INITIAL_ATHLETES;
       const usedEmails = new Set<string>();
       return rawList.map((athlete: AthleteProfile) => {
@@ -856,8 +889,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ATHLETES, JSON.stringify(athletes));
-  }, [athletes]);
+    if (cacheOwner && cacheOwner === auth.currentUser?.uid) {
+      try { localStorage.setItem(STORAGE_KEYS.ATHLETES + ':' + cacheOwner, JSON.stringify(athletes)); } catch { /* Storage may be unavailable. */ }
+    }
+  }, [athletes, cacheOwner]);
 
   // Ensure authenticated Firebase user is registered in site athletes list (by unique email, 0 points)
   useEffect(() => {
@@ -904,7 +939,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Ranking Match Logs state
   const [rankingLogs, setRankingLogs] = useState<RankingMatchLog[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.RANKING_LOGS);
+      const stored = cacheOwner ? localStorage.getItem(STORAGE_KEYS.RANKING_LOGS + ':' + cacheOwner) : null;
       return stored ? JSON.parse(stored) : INITIAL_RANKING_LOGS;
     } catch {
       return INITIAL_RANKING_LOGS;
@@ -912,13 +947,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.RANKING_LOGS, JSON.stringify(rankingLogs));
-  }, [rankingLogs]);
+    if (cacheOwner && cacheOwner === auth.currentUser?.uid) {
+      try { localStorage.setItem(STORAGE_KEYS.RANKING_LOGS + ':' + cacheOwner, JSON.stringify(rankingLogs)); } catch { /* Storage may be unavailable. */ }
+    }
+  }, [rankingLogs, cacheOwner]);
 
   // Class Students state
   const [classStudents, setClassStudents] = useState<ClassStudent[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.CLASS_STUDENTS);
+      const stored = cacheOwner ? localStorage.getItem(STORAGE_KEYS.CLASS_STUDENTS + ':' + cacheOwner) : null;
       return stored ? JSON.parse(stored) : INITIAL_CLASS_STUDENTS;
     } catch {
       return INITIAL_CLASS_STUDENTS;
@@ -926,29 +963,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CLASS_STUDENTS, JSON.stringify(classStudents));
-  }, [classStudents]);
-
-  // Tournaments state
-  const [tournaments, setTournaments] = useState<Tournament[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.TOURNAMENTS);
-      return stored ? JSON.parse(stored) : INITIAL_TOURNAMENTS;
-    } catch {
-      return INITIAL_TOURNAMENTS;
+    if (cacheOwner && cacheOwner === auth.currentUser?.uid) {
+      try { localStorage.setItem(STORAGE_KEYS.CLASS_STUDENTS + ':' + cacheOwner, JSON.stringify(classStudents)); } catch { /* Storage may be unavailable. */ }
     }
-  });
+  }, [classStudents, cacheOwner]);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TOURNAMENTS, JSON.stringify(tournaments));
-  }, [tournaments]);
+  // Public metadata is revalidated from the server, without an unbounded browser snapshot.
+  const [tournaments, setTournaments] = useState<Tournament[]>(INITIAL_TOURNAMENTS);
 
-  const [activeTournamentId, setActiveTournamentId] = useState<string>('');
+  const [activeTournamentId, setActiveTournamentId] = useState<string>(() => readNavigation().tournament);
 
   // Registered Pairs state
   const [registeredPairs, setRegisteredPairs] = useState<TeamPair[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.PAIRS);
+      const stored = cacheOwner ? localStorage.getItem(STORAGE_KEYS.PAIRS + ':' + cacheOwner) : null;
       return stored ? JSON.parse(stored) : INITIAL_PAIRS;
     } catch {
       return INITIAL_PAIRS;
@@ -957,33 +985,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const pairRegistrationLocks = useRef(new Set<string>());
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PAIRS, JSON.stringify(registeredPairs));
-  }, [registeredPairs]);
-
-  // Tournament Matches state
-  const [tournamentMatches, setTournamentMatches] = useState<BracketMatch[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.MATCHES);
-      return stored ? JSON.parse(stored) : getInitialTournamentMatches();
-    } catch {
-      return getInitialTournamentMatches();
+    if (cacheOwner && cacheOwner === auth.currentUser?.uid) {
+      try { localStorage.setItem(STORAGE_KEYS.PAIRS + ':' + cacheOwner, JSON.stringify(registeredPairs)); } catch { /* Storage may be unavailable. */ }
     }
-  });
+  }, [registeredPairs, cacheOwner]);
+
+  const [tournamentMatches, setTournamentMatches] = useState<BracketMatch[]>(getInitialTournamentMatches);
+
+  const matchesByTournament = useMemo(() => tournamentMatches.reduce<Record<string, BracketMatch[]>>((acc, match) => {
+    (acc[match.tournamentId] ||= []).push(match); return acc;
+  }, {}), [tournamentMatches]);
 
   const [liveSpectatorsCount, setLiveSpectatorsCount] = useState<number>(0);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(tournamentMatches));
-  }, [tournamentMatches]);
-
-  useEffect(() => {
     if (!activeTournamentId) return;
     return listenToTournamentMatches(activeTournamentId, (cloudMatches) => {
-      if (cloudMatches.length === 0) return;
-      setTournamentMatches((current) => [
-        ...current.filter((match) => match.tournamentId !== activeTournamentId),
-        ...cloudMatches,
-      ]);
+      setTournamentMatches(current => {
+        const previous = new Map(current.filter(match => match.tournamentId === activeTournamentId).map(match => [match.id, match]));
+        const incoming = cloudMatches.map(match => {
+          const old = previous.get(match.id);
+          return old && JSON.stringify(old) === JSON.stringify(match) ? old : match;
+        });
+        if (previous.size === incoming.length && incoming.every(match => previous.get(match.id) === match)) return current;
+        return [...current.filter(match => match.tournamentId !== activeTournamentId), ...incoming];
+      });
     }, (error) => {
       console.error('Falha ao acompanhar a tabela oficial do campeonato.', error);
     });
@@ -1002,10 +1028,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       liveReferee?: BracketMatch['liveReferee'];
       fullMatches?: BracketMatch[];
     }) => {
-      if (payload.fullMatches && Array.isArray(payload.fullMatches)) {
-        setTournamentMatches(payload.fullMatches);
-        return;
-      }
+      if (payload.fullMatches) return;
       if (!payload.matchId) return;
       setTournamentMatches((prev) =>
         prev.map((m) =>
@@ -1053,28 +1076,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       };
     }
 
-    const handleStorageSync = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEYS.MATCHES && e.newValue) {
-        try {
-          setTournamentMatches(JSON.parse(e.newValue));
-        } catch {
-          // Ignore parse error
-        }
-      }
-      if (e.key === STORAGE_KEYS.PAIRS && e.newValue) {
-        try {
-          setRegisteredPairs(JSON.parse(e.newValue));
-        } catch {
-          // Ignore parse error
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageSync);
     return () => {
       es?.close();
       bc?.close();
-      window.removeEventListener('storage', handleStorageSync);
     };
   }, []);
 
@@ -1579,6 +1583,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     await persistTournamentToFirestore(newTourn, { spendToken });
+    tournamentCatalog.invalidate();
     if (spendToken) {
       setUserProfileState((prev) => ({ ...prev, tournamentTokens: Math.max(0, prev.tournamentTokens - 1) }));
     }
@@ -1588,7 +1593,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return newTourn;
   };
 
-  const updateTournamentConfig = (
+  const updateTournamentConfig = async (
     tournamentId: string,
     updates: Partial<
       Pick<
@@ -1606,7 +1611,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       >
     >
   ) => {
+    await updateTournamentMetadataInFirestore(tournamentId, updates);
     setTournaments((prev) => prev.map((t) => (t.id === tournamentId ? { ...t, ...updates } : t)));
+    tournamentCatalog.invalidate();
 
     // Editing the tournament description must never regenerate and erase played matches.
     // A new draw is an explicit operation with its previous version archived.
@@ -2367,11 +2374,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeTournamentId,
         setActiveTournamentId,
         tournamentMatches,
-        matchesByTournament: tournamentMatches.reduce<Record<string, BracketMatch[]>>((acc, m) => {
-          if (!acc[m.tournamentId]) acc[m.tournamentId] = [];
-          acc[m.tournamentId].push(m);
-          return acc;
-        }, {}),
+        matchesByTournament,
         registeredPairs,
         athletes,
         rankingLogs,

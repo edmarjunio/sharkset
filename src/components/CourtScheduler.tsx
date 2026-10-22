@@ -1,3 +1,4 @@
+import { useRememberedState } from '../hooks/useRememberedState';
 import { DropdownUI } from './DropdownUI';
 import { BOOKING_DEMO } from '../services/bookingMode';
 import { STATE_LABELS } from '../services/bookingAvailability';
@@ -119,7 +120,7 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
   const [showWhiteLabelModal, setShowWhiteLabelModal] = useState(false);
 
   // Filter by specific court inside the arena agenda
-  const [selectedCourtId, setSelectedCourtId] = useState<string>('all');
+  const [selectedCourtId, setSelectedCourtId] = useRememberedState<string>(`scheduler:${tenant.id}:selectedCourtId`, 'all');
 
   // Date selection
   const todayStr = arenaDate();
@@ -163,10 +164,10 @@ export const CourtScheduler: React.FC<{ administration?: boolean }> = ({ adminis
   const [newClassMonthly, setNewClassMonthly] = useState(220);
   const [newClassDaily, setNewClassDaily] = useState(40);
   const [newClassMaxStudents, setNewClassMaxStudents] = useState<number>(8);
-  const [selectedHourFilter, setSelectedHourFilter] = useState<string | null>(null);
+  const [selectedHourFilter, setSelectedHourFilter] = useRememberedState<string | null>(`scheduler:${tenant.id}:selectedHourFilter`, null);
   const isOwnerView = administration;
   const [selectedTournBracketId, setSelectedTournBracketId] = useState<string | null>(null);
-  const [selectedClassSportFilter, setSelectedClassSportFilter] = useState<'all' | SportType>('all');
+  const [selectedClassSportFilter, setSelectedClassSportFilter] = useRememberedState<'all' | SportType>(`scheduler:${tenant.id}:selectedClassSportFilter`, 'all');
 
   // Tournament Creation Form state
   const [showCreateTournModal, setShowCreateTournModal] = useState(false);

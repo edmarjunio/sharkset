@@ -28,6 +28,7 @@ async function startServer() {
   const httpServer = createServer(app);
   let vite: Awaited<ReturnType<typeof createViteServer>> | undefined;
 
+  app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
   app.use(express.json());
   app.use((req, res, next) => {
     let pathname: string;
@@ -140,8 +141,12 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, { setHeaders(res, file) {
+      const relative = path.relative(distPath, file).replaceAll('\\', '/');
+      res.setHeader('Cache-Control', relative.startsWith('assets/') ? 'public, max-age=31536000, immutable' : relative.startsWith('brand/') ? 'public, max-age=3600, must-revalidate' : 'no-cache');
+    } }));
     app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

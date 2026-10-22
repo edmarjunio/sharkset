@@ -1,3 +1,5 @@
+import logo256 from '../assets/brand/logo-256.png';
+import logo512 from '../assets/brand/logo-512.png';
 import React from 'react';
 
 interface SharksetLogoProps {
@@ -24,7 +26,7 @@ export const SharksetLogo: React.FC<SharksetLogoProps> = ({
     return (
       <span className={`inline-flex items-center shrink-0 ${className}`}>
         <img
-          src="/brand/sharkset-logo-transparent.png"
+          src={logo256} srcSet={`${logo256} 256w, ${logo512} 512w`} sizes={`${px}px`}
           alt="SHARKSET"
           width={px}
           height={px}
@@ -43,7 +45,7 @@ export const SharksetLogo: React.FC<SharksetLogoProps> = ({
   return (
     <span className={`inline-flex items-center gap-2.5 shrink-0 ${className}`}>
       <img
-        src="/brand/sharkset-logo-transparent.png"
+        src={logo256} srcSet={`${logo256} 256w, ${logo512} 512w`} sizes={`${px}px`}
         alt="SHARKSET"
         width={px}
         height={px}

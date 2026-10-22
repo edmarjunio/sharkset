@@ -1,3 +1,4 @@
+import { useRememberedState } from '../hooks/useRememberedState';
 import { DropdownUI } from './DropdownUI';
 import { LocationScopeFilter } from './LocationScopeFilter';
 import { useScopedCatalog } from '../hooks/useScopedCatalog';
@@ -21,7 +22,7 @@ export const HomeHighlights: React.FC = () => {
     setActiveTab,
     setActiveTournamentId,
   } = useApp();
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useRememberedState('home:filter', 'all');
   const { coords, status: locationStatus, request: requestLocation } = useBookingLocation();
   const { filter: scopeFilter, setFilter: setScopeFilter } = useDirectoryScope();
 

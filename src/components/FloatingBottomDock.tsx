@@ -1,3 +1,5 @@
+import logo256 from '../assets/brand/logo-256.png';
+import logo512 from '../assets/brand/logo-512.png';
 import React, { useEffect, useState } from 'react';
 import { Radio, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -107,7 +109,7 @@ export function FloatingBottomDock({ onSelectSlot }: Props) {
             aria-label="SHARKSET Início"
           >
             <img
-              src="/brand/sharkset-logo-transparent.png"
+              src={logo256} srcSet={`${logo256} 256w, ${logo512} 512w`} sizes="64px" decoding="async"
               alt="SHARKSET"
               className="w-full h-full object-contain rounded-full pointer-events-none drop-shadow-md transition-transform duration-300 group-hover:scale-105"
             />

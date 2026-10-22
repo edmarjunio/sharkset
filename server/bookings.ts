@@ -3,14 +3,20 @@ import { adminDatabase } from './firebaseAdmin';
 import { addDays, arenaDate, buildArenaAvailability, minutes, validDate, type Occupancy, type AvailabilityBlock } from '../src/services/bookingAvailability';
 import type { TenantConfig } from '../src/types';
 
+interface AvailabilityRecords {
+  config: { exists: boolean; data(): unknown };
+  bookings: { docs: Array<{ data(): unknown }> };
+  blocks: { docs: Array<{ data(): unknown }> };
+}
+
 export function registerBookingRoutes(app: Express, getDatabase = adminDatabase) {
-  const readAvailability = async (tenantId: unknown, date: unknown): Promise<{ status: number; body: Record<string, unknown> }> => {
+  const readAvailability = async (tenantId: unknown, date: unknown, records?: AvailabilityRecords): Promise<{ status: number; body: Record<string, unknown> }> => {
     if (typeof tenantId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(tenantId) || typeof date !== 'string' || !validDate(date)) {
       return { status: 400, body: { error: 'Arena ou data inválida.' } };
     }
     try {
-      const db = getDatabase();
-      const config = await db.collection('arenas').doc(tenantId).get();
+      const db = records ? undefined : getDatabase();
+      const config = records?.config || await db!.collection('arenas').doc(tenantId).get();
       const arena = config.data() as TenantConfig & { bookingHorizonDays?: number; timeZone?: string };
       if (!config.exists || !Array.isArray(arena.courts) || !arena.operatingHours) {
         return { status: 503, body: { error: 'Agenda online ainda não configurada pela arena. Consulte a arena para verificar disponibilidade.' } };
@@ -25,9 +31,9 @@ export function registerBookingRoutes(app: Express, getDatabase = adminDatabase)
       const horizonDays = Math.min(90, Math.max(1, Math.floor(arena.bookingHorizonDays || 7)));
       const maxDate = addDays(today, horizonDays - 1);
       if (date < today || date > maxDate) { return { status: 400, body: { error: 'Data fora da janela de agendamento.', maxDate } }; }
-      const [bookings, blocks] = await Promise.all([
-        db.collection('bookings').where('tenantId', '==', tenantId).where('date', '==', date).get(),
-        db.collection('booking_blocks').where('tenantId', '==', tenantId).where('date', '==', date).get(),
+      const [bookings, blocks] = records ? [records.bookings, records.blocks] : await Promise.all([
+        db!.collection('bookings').where('tenantId', '==', tenantId).where('date', '==', date).get(),
+        db!.collection('booking_blocks').where('tenantId', '==', tenantId).where('date', '==', date).get(),
       ]);
       const reservations = bookings.docs.map(doc => doc.data() as Occupancy);
       const administrativeBlocks = blocks.docs.map(doc => doc.data() as AvailabilityBlock);
@@ -51,49 +57,66 @@ export function registerBookingRoutes(app: Express, getDatabase = adminDatabase)
     const result = await readAvailability(req.query.tenantId, req.query.date);
     res.status(result.status).json(result.body);
   });
+  // One upstream subscription set per arena/date, shared by this process's viewers.
+  const channels = new Map<string, {
+    clients: Set<import('express').Response>; stop: () => void; last?: string;
+  }>();
   app.get('/api/booking/stream', (req, res) => {
     const { tenantId, date } = req.query;
     if (typeof tenantId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(tenantId) || typeof date !== 'string' || !validDate(date)) {
       res.status(400).json({ error: 'Arena ou data inválida.' }); return;
     }
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Cache-Control', 'no-store, no-transform');
     res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
-    res.write('retry: 15000\n\n');
-    let closed = false, sequence = 0;
-    let debounce: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribers: (() => void)[] = [];
-    const emit = (event: string, body: unknown) => { if (!closed) res.write('event: ' + event + '\ndata: ' + JSON.stringify(body) + '\n\n'); };
-    // Reuse the exact validated public projection from the HTTP route.
-    const publish = async () => {
-      const revision = ++sequence;
-      const result = await readAvailability(tenantId, date);
-      if (revision === sequence) emit(result.status === 200 ? 'availability' : 'availability-error', result.body);
-    };
-    const schedule = () => { if (debounce) clearTimeout(debounce); debounce = setTimeout(() => { void publish(); }, 75); };
-    const tick = setInterval(() => { void publish(); }, 30000);
-    const cleanup = () => {
-      if (closed) return;
-      closed = true;
-      clearInterval(tick);
-      if (debounce) clearTimeout(debounce);
-      unsubscribers.forEach(unsubscribe => unsubscribe());
-    };
-    const fail = () => {
-      if (closed) return;
-      emit('availability-error', { error: 'A conexão com a agenda foi interrompida. Reconectando…' });
-      cleanup();
-      res.end();
-    };
-    req.on('close', cleanup);
-    try {
-      const db = getDatabase();
-      unsubscribers.push(db.collection('arenas').doc(tenantId).onSnapshot(schedule, fail));
-      for (const name of ['bookings', 'booking_blocks']) {
-        unsubscribers.push(db.collection(name).where('tenantId', '==', tenantId).where('date', '==', date).onSnapshot(schedule, fail));
-      }
-    } catch { fail(); }
+    res.flushHeaders(); res.write('retry: 15000\n\n');
+    const key = tenantId + ':' + date;
+    let channel = channels.get(key);
+    if (channel) {
+      channel.clients.add(res);
+      if (channel.last) res.write(channel.last);
+    } else {
+      channel = { clients: new Set([res]), stop: () => {} }; channels.set(key, channel);
+      const target = channel;
+      let closed = false;
+      let debounce: ReturnType<typeof setTimeout> | undefined;
+      const unsubscribers: (() => void)[] = [];
+      const records: Partial<AvailabilityRecords> = {};
+      const emit = (event: string, body: unknown) => {
+        if (closed) return;
+        const message = 'event: ' + event + '\ndata: ' + JSON.stringify(body) + '\n\n';
+        if (event === 'availability') target.last = message;
+        for (const client of target.clients) client.write(message);
+      };
+      const publish = async () => {
+        if (!records.config || !records.bookings || !records.blocks || closed) return;
+        const result = await readAvailability(tenantId, date, records as AvailabilityRecords);
+        emit(result.status === 200 ? 'availability' : 'availability-error', result.body);
+      };
+      const schedule = () => {
+        if (debounce) clearTimeout(debounce);
+        debounce = setTimeout(() => { void publish(); }, 75);
+      };
+      // Recompute time-dependent slot expiry from the same snapshots; no Firestore reads.
+      const tick = setInterval(() => { void publish(); }, 30_000);
+      target.stop = () => {
+        if (closed) return;
+        closed = true; clearInterval(tick); clearTimeout(debounce);
+        unsubscribers.forEach(unsubscribe => unsubscribe()); channels.delete(key);
+      };
+      const fail = () => {
+        emit('availability-error', { error: 'A conexão com a agenda foi interrompida. Reconectando.' });
+        const clients = [...target.clients]; target.stop(); clients.forEach(client => client.end());
+      };
+      try {
+        const db = getDatabase();
+        unsubscribers.push(db.collection('arenas').doc(tenantId).onSnapshot(snapshot => { records.config = snapshot; schedule(); }, fail));
+        unsubscribers.push(db.collection('bookings').where('tenantId', '==', tenantId).where('date', '==', date).onSnapshot(snapshot => { records.bookings = snapshot; schedule(); }, fail));
+        unsubscribers.push(db.collection('booking_blocks').where('tenantId', '==', tenantId).where('date', '==', date).onSnapshot(snapshot => { records.blocks = snapshot; schedule(); }, fail));
+      } catch { fail(); }
+    }
+    const target = channel;
+    req.on('close', () => { target.clients.delete(res); if (!target.clients.size) target.stop(); });
   });
   // No provider is configured. Fail closed: no lock, booking, charge or financial confirmation.
   app.post('/api/booking/checkout', (_req, res) => {

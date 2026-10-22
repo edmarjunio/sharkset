@@ -1,3 +1,4 @@
+import { useRememberedState } from '../hooks/useRememberedState';
 import { DropdownUI } from './DropdownUI';
 import { useRankingAthletes } from '../hooks/useRankingAthletes';
 import React, { useState, useMemo } from 'react';
@@ -80,20 +81,20 @@ export const RankingBoard: React.FC<RankingBoardProps> = ({
   const [reportTarget, setReportTarget] = useState<{ id: string; name: string } | null>(null);
 
   // 5 Segmented Scopes: GERAL | PAÍS | ESTADO | CIDADE | ARENA
-  const [rankingScope, setRankingScope] = useState<RankingScope>(initialScope || 'geral');
-  const [selectedCountry, setSelectedCountry] = useState<string>('Brasil');
-  const [selectedState, setSelectedState] = useState<string>('GO');
-  const [selectedCity, setSelectedCity] = useState<string>('Mineiros');
-  const [selectedArenaId, setSelectedArenaId] = useState<string>(tenant.id);
+  const [rankingScope, setRankingScope] = useRememberedState<RankingScope>('ranking:rankingScope', initialScope || 'geral');
+  const [selectedCountry, setSelectedCountry] = useRememberedState<string>('ranking:selectedCountry', 'Brasil');
+  const [selectedState, setSelectedState] = useRememberedState<string>('ranking:selectedState', 'GO');
+  const [selectedCity, setSelectedCity] = useRememberedState<string>('ranking:selectedCity', 'Mineiros');
+  const [selectedArenaId, setSelectedArenaId] = useRememberedState<string>('ranking:selectedArenaId', tenant.id);
 
   // View Mode: Cards 3D (TCG) vs Table
-  const [rankingViewMode, setRankingViewMode] = useState<'cards' | 'table'>('cards');
+  const [rankingViewMode, setRankingViewMode] = useRememberedState<'cards' | 'table'>('ranking:rankingViewMode', 'cards');
 
   // Filters & Sorting
-  const [selectedCategory, setSelectedCategory] = useState<AthleteLevel | 'all'>('all');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'points' | 'winRate' | 'wins' | 'titles'>('points');
-  const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
+  const [selectedCategory, setSelectedCategory] = useRememberedState<AthleteLevel | 'all'>('ranking:selectedCategory', 'all');
+  const [searchTerm, setSearchTerm] = useRememberedState<string>('ranking:searchTerm', '');
+  const [sortBy, setSortBy] = useRememberedState<'points' | 'winRate' | 'wins' | 'titles'>('ranking:sortBy', 'points');
+  const [sortDirection, setSortDirection] = useRememberedState<'desc' | 'asc'>('ranking:sortDirection', 'desc');
 
   // New Athlete Modal Form State
   const [newAthName, setNewAthName] = useState('');

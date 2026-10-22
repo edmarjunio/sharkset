@@ -1,29 +1,34 @@
+import { ConnectionStatus } from './components/ConnectionStatus';
 ﻿import { LiveDirectory } from './components/LiveDirectory';
-import { BroadcastWatchScreen } from './components/BroadcastWatchScreen';
 import { useBroadcastNavigation } from './store/useBroadcastNavigation';
 import { FreeSlotsDateTimeFilter } from './components/FreeSlotsDateTimeFilter';
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
+import { routeModules } from './services/routeModules';
+import { recordMetric } from './services/performanceMetrics';
+import { useNavigationHistory } from './hooks/useNavigationHistory';
+const ArenaAdmin = lazy(routeModules.arena_admin);
+const CourtScheduler = lazy(routeModules.scheduler);
+const DoubleEliminationBracket = lazy(routeModules.tournaments);
+const DoublesRegistration = lazy(routeModules.register_dupla);
+const RankingBoard = lazy(routeModules.ranking_athletes);
+const MyBookings = lazy(routeModules.my_bookings);
+const SaaSConversionHub = lazy(routeModules.saas_hub);
+const SharkAcademyCommunity = lazy(routeModules.shark_academy);
+const ArenasDirectory = lazy(routeModules.arenas_directory);
+const LiveBookingBroadcastModal = lazy(() => import('./components/LiveBookingBroadcastModal').then(m => ({ default: m.LiveBookingBroadcastModal })));
+const BroadcastWatchScreen = lazy(() => import('./components/BroadcastWatchScreen').then(m => ({ default: m.BroadcastWatchScreen })));
+const PageLoading = () => <div role="status" aria-label="Carregando" className="min-h-64 max-w-7xl mx-auto px-6 py-8"><div className="h-8 w-48 rounded bg-cyan-100/10 mb-6" /><div className="h-40 rounded-2xl bg-cyan-100/5" /></div>;
 import { AquariumBackground } from './components/AquariumBackground';
 import { SportBallIcon } from './components/icons/SportBallIcon';
 import { TournamentResultNotifications } from './components/TournamentResultNotifications';
 import { AppProvider, useApp } from './context/AppContext';
-import { ArenaAdmin } from './components/ArenaAdmin';
 import { Navbar } from './components/Navbar';
 import { SmartNotificationBanner } from './components/SmartNotificationBanner';
 import { PersistentLiveStreamDock } from './components/PersistentLiveStreamDock';
 import { HomeHighlights } from './components/HomeHighlights';
-import { ArenasDirectory } from './components/ArenasDirectory';
-import { CourtScheduler } from './components/CourtScheduler';
-import { DoubleEliminationBracket } from './components/DoubleEliminationBracket';
-import { DoublesRegistration } from './components/DoublesRegistration';
-import { RankingBoard } from './components/RankingBoard';
-import { MyBookings } from './components/MyBookings';
-import { SaaSConversionHub } from './components/SaaSConversionHub';
 import { CommandPalette } from './components/CommandPalette';
 import { TenantSelectorModal } from './components/TenantSelectorModal';
 import { SharksetLogo } from './components/SharksetLogo';
-import { SharkAcademyCommunity } from './components/SharkAcademyCommunity';
-import { LiveBookingBroadcastModal } from './components/LiveBookingBroadcastModal';
 import { AthleteOnboardingModal } from './components/AthleteOnboardingModal';
 import { auth, listenToBroadcastTournamentId } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -62,6 +67,9 @@ const MainContent: React.FC = () => {
     focusMode,
     toggleFocusMode,
   } = useApp();
+  useNavigationHistory();
+  const navigationStart = React.useRef({ tab: activeTab, at: performance.now() });
+  if (navigationStart.current.tab !== activeTab) navigationStart.current = { tab: activeTab, at: performance.now() };
   const watchSource = useBroadcastNavigation((state) => state.source);
   const [publishedWatchTournamentId, setPublishedWatchTournamentId] = React.useState<string | null>(null);
   const [unexpectedError, setUnexpectedError] = React.useState(false);
@@ -151,7 +159,7 @@ const MainContent: React.FC = () => {
       }
     >
       <AquariumBackground />
-      <GlobalToast />
+      <GlobalToast /><ConnectionStatus />
       {unexpectedError && <div role="alert" className="fixed bottom-4 left-1/2 z-[2000] -translate-x-1/2 max-w-lg rounded-xl border border-amber-300/40 bg-slate-950/95 px-4 py-3 text-sm font-semibold text-white shadow-2xl">Ocorreu algo inesperado. O erro foi registrado para suporte. <button type="button" onClick={() => setUnexpectedError(false)} className="ml-3 underline">Fechar</button></div>}
       <TournamentResultNotifications tournamentIds={resultNotificationTournamentIds} onOpenMatch={openResultMatch} />
 
@@ -188,6 +196,7 @@ const MainContent: React.FC = () => {
       {!focusMode && !['home', 'tournaments', 'arenas_directory', 'register_dupla'].includes(activeTab) && <PersistentLiveStreamDock />}
 
       <main className={`site-content relative flex-1 min-w-0 w-full ${focusMode ? 'pt-4 px-2 sm:px-4' : 'pb-6 sm:pb-10'}`}>
+        <Suspense fallback={<PageLoading />}>
         {activeTab === 'arena_admin' && <ArenaAdmin />}
         {activeTab === 'home' && <HomeHighlights />}
         {activeTab === 'live' && <LiveDirectory />}
@@ -199,6 +208,8 @@ const MainContent: React.FC = () => {
         {activeTab === 'arenas_directory' && <ArenasDirectory />}
         {activeTab === 'saas_hub' && <SaaSConversionHub />}
         {activeTab === 'my_bookings' && <MyBookings />}
+        <PageReady startedAt={navigationStart.current.at} route={activeTab} />
+        </Suspense>
       </main>
 
       {!focusMode && (
@@ -294,10 +305,10 @@ const MainContent: React.FC = () => {
       />
 
       {activeLiveBroadcastBookingId && (
-        <LiveBookingBroadcastModal
+        <Suspense fallback={<PageLoading />}><LiveBookingBroadcastModal
           bookingId={activeLiveBroadcastBookingId}
           onClose={() => setActiveLiveBroadcastBookingId(null)}
-        />
+        /></Suspense>
       )}
 
       <AthleteOnboardingModal
@@ -313,12 +324,25 @@ const MainContent: React.FC = () => {
   );
 };
 
+function PageReady({ startedAt, route }: { startedAt: number; route: string }) {
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => recordMetric('route-ready-ms', performance.now() - startedAt));
+    return () => cancelAnimationFrame(frame);
+  }, [startedAt, route]);
+  return null;
+}
+
+function WatchLayer() {
+  const source = useBroadcastNavigation(state => state.source);
+  return source ? <Suspense fallback={<PageLoading />}><BroadcastWatchScreen /></Suspense> : null;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
       <MainContent />
-      <BroadcastWatchScreen />
+      <WatchLayer />
     </AppProvider>
     </ErrorBoundary>
   );

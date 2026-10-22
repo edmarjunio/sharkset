@@ -1,0 +1,183 @@
+{
+  "measuredAt": "2026-10-22T15:39:41.912Z",
+  "baselineAt": "2026-10-22T15:32:10.236Z",
+  "method": "Sum of JS script/modulepreload URLs in production index.html. Node gzip per file. Build artifacts, not browser network or Core Web Vitals.",
+  "before": {
+    "files": 7,
+    "bytes": 2790793,
+    "gzip": 769127,
+    "assets": [
+      {
+        "name": "AccessLockedAction-DRcegmi-.js",
+        "bytes": 679414,
+        "gzip": 201854
+      },
+      {
+        "name": "app-ClSUWfFO.js",
+        "bytes": 1909184,
+        "gzip": 519098
+      },
+      {
+        "name": "html2canvas-XfOnhokb.js",
+        "bytes": 199461,
+        "gzip": 46554
+      },
+      {
+        "name": "modulepreload-polyfill-P2Xu9kJm.js",
+        "bytes": 670,
+        "gzip": 389
+      },
+      {
+        "name": "rolldown-runtime-WkwZ5CU-.js",
+        "bytes": 599,
+        "gzip": 368
+      },
+      {
+        "name": "typeof-B5XbjTb1.js",
+        "bytes": 271,
+        "gzip": 169
+      },
+      {
+        "name": "useBroadcastNavigation-DuotuHKS.js",
+        "bytes": 1194,
+        "gzip": 695
+      }
+    ]
+  },
+  "after": {
+    "files": 24,
+    "bytes": 1119689,
+    "gzip": 336734,
+    "assets": [
+      {
+        "name": "AccessLockedAction-DyVdRA5l.js",
+        "bytes": 2244,
+        "gzip": 1039
+      },
+      {
+        "name": "app-4jF8QiXd.js",
+        "bytes": 378615,
+        "gzip": 106613
+      },
+      {
+        "name": "AppContext-Drx5ADCN.js",
+        "bytes": 74687,
+        "gzip": 24356
+      },
+      {
+        "name": "dialog-U8rKlpUi.js",
+        "bytes": 63,
+        "gzip": 80
+      },
+      {
+        "name": "DropdownUI-BYcAGsg2.js",
+        "bytes": 807,
+        "gzip": 509
+      },
+      {
+        "name": "firebase-BoCcO3EJ.js",
+        "bytes": 588173,
+        "gzip": 174183
+      },
+      {
+        "name": "icons-bWCyRXhC.js",
+        "bytes": 34381,
+        "gzip": 11843
+      },
+      {
+        "name": "jsx-runtime-BZi9cxqW.js",
+        "bytes": 435,
+        "gzip": 306
+      },
+      {
+        "name": "livekitApi-K4wpKyjA.js",
+        "bytes": 1710,
+        "gzip": 1019
+      },
+      {
+        "name": "modulepreload-polyfill-P2Xu9kJm.js",
+        "bytes": 670,
+        "gzip": 389
+      },
+      {
+        "name": "performanceMetrics-wTjs0Xus.js",
+        "bytes": 6124,
+        "gzip": 2308
+      },
+      {
+        "name": "preload-helper-BLdHbfdN.js",
+        "bytes": 1519,
+        "gzip": 797
+      },
+      {
+        "name": "QuickBookingPaymentModal-bm6FpYw0.js",
+        "bytes": 11131,
+        "gzip": 4778
+      },
+      {
+        "name": "react-dom-C2U2M6fz.js",
+        "bytes": 3903,
+        "gzip": 1415
+      },
+      {
+        "name": "react-Dvf2gWht.js",
+        "bytes": 690,
+        "gzip": 421
+      },
+      {
+        "name": "rolldown-runtime-WkwZ5CU-.js",
+        "bytes": 599,
+        "gzip": 368
+      },
+      {
+        "name": "searchSuggestions-DBLL7BAJ.js",
+        "bytes": 1153,
+        "gzip": 547
+      },
+      {
+        "name": "SharksetLogo-C6z57GOV.js",
+        "bytes": 1310,
+        "gzip": 621
+      },
+      {
+        "name": "tournamentRules-BZw98WDg.js",
+        "bytes": 1547,
+        "gzip": 859
+      },
+      {
+        "name": "useBroadcastNavigation-Cogn94Iv.js",
+        "bytes": 127,
+        "gzip": 124
+      },
+      {
+        "name": "useRankingAthletes-UDObCPYl.js",
+        "bytes": 382,
+        "gzip": 285
+      },
+      {
+        "name": "useRememberedState-CFcHUwqK.js",
+        "bytes": 451,
+        "gzip": 315
+      },
+      {
+        "name": "useScopedCatalog-DvwJE5L_.js",
+        "bytes": 8128,
+        "gzip": 3161
+      },
+      {
+        "name": "useToastStore-DEO_FxES.js",
+        "bytes": 840,
+        "gzip": 398
+      }
+    ]
+  },
+  "reduction": {
+    "bytesPercent": 59.879181293632314,
+    "gzipPercent": 56.21867389910899
+  },
+  "logo": {
+    "beforeBytes": 5543214,
+    "responsive256Bytes": 139613,
+    "responsive512Bytes": 523908
+  }
+}

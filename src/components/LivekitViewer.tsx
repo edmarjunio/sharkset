@@ -1,3 +1,4 @@
+import { recordMetric } from '../services/performanceMetrics';
 import { useEffect, useRef, useState } from 'react';
 import { Room, RoomEvent, Track, type RemoteTrack } from 'livekit-client';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -15,13 +16,14 @@ export function LivekitViewer({ arenaId, muted }: { arenaId: string; muted: bool
   useEffect(() => onAuthStateChanged(auth, setUser), []);
   useEffect(() => {
     let closed = false;
+    const startedAt = performance.now();
     const room = new Room({ adaptiveStream: true });
     connection.current = room;
     if (!user) { setStatus('Entre na sua conta para assistir.'); return () => { closed = true; connection.current = null; }; }
     const detach = (track: RemoteTrack) => { track.detach(); };
     room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
       if (participant.identity !== publisherIdentity) return;
-      if (publication.source === Track.Source.Camera && video.current) { track.attach(video.current); setStatus(''); }
+      if (publication.source === Track.Source.Camera && video.current) { track.attach(video.current); recordMetric('livekit-track-attached-ms', performance.now() - startedAt); setStatus(''); }
       if (publication.source === Track.Source.Microphone && audio.current) track.attach(audio.current);
     });
     room.on(RoomEvent.TrackUnsubscribed, (track) => { detach(track); if (track.kind === Track.Kind.Video) setStatus('Aguardando a câmera…'); });
@@ -40,7 +42,7 @@ export function LivekitViewer({ arenaId, muted }: { arenaId: string; muted: bool
         if (closed) await room.disconnect().catch(() => {});
       } catch { if (!closed) setStatus('Não foi possível conectar. Confira se a transmissão ainda está ao vivo.'); }
     })();
-    return () => { closed = true; room.removeAllListeners(); void room.disconnect().catch(() => {}); connection.current = null; };
+    return () => { closed = true; room.remoteParticipants.forEach(participant => participant.trackPublications.forEach(publication => publication.track?.detach())); room.removeAllListeners(); void room.disconnect().catch(() => {}); connection.current = null; };
   }, [arenaId, user?.uid]);
   useEffect(() => { if (audio.current) audio.current.muted = muted; }, [muted]);
   return <div className="w-full h-full relative">

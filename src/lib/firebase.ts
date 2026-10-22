@@ -1,3 +1,4 @@
+import { createSharedSubscription } from '../services/sharedSubscription';
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,
@@ -14,6 +15,7 @@ import {
   getDoc,
   getDocFromServer,
   getDocs,
+  getDocsFromServer,
   getFirestore,
   increment,
   limit,
@@ -103,7 +105,7 @@ export async function testFirestoreConnection(): Promise<void> {
   }
 }
 
-testFirestoreConnection();
+// Connection is verified by actual queries; avoid a billed boot probe.
 
 export async function signInWithGooglePopup() {
   return signInWithPopup(auth, googleProvider);
@@ -411,7 +413,7 @@ export async function fetchTopAthletesFromFirestore(
     const collRef = collection(db, path);
     const q = query(collRef, where('ownerId', '==', currentUser.uid), limit(limitCount));
 
-    const snap = await getDocs(q);
+    const snap = await getDocsFromServer(q);
     if (snap.empty) {
       return [];
     }
@@ -813,7 +815,7 @@ export async function hasActiveTournamentSubscription(uid: string): Promise<bool
 export async function fetchArenasFromFirestore(): Promise<TenantConfig[]> {
   const path = 'arenas';
   try {
-    const snap = await getDocs(collection(db, path));
+    const snap = await getDocsFromServer(collection(db, path));
     if (snap.empty) return [];
     const list: TenantConfig[] = [];
     snap.forEach((docSnap) => {
@@ -821,8 +823,7 @@ export async function fetchArenasFromFirestore(): Promise<TenantConfig[]> {
     });
     return list;
   } catch (error) {
-    console.warn('Fallback to local arenas cache:', error);
-    return [];
+    handleFirestoreError(error, OperationType.LIST, path);
   }
 }
 
@@ -1019,13 +1020,33 @@ export async function persistTournamentMatchChanges(
   }
 }
 
+export type TournamentMetadataUpdates = Partial<Pick<Tournament,
+  'name' | 'date' | 'location' | 'modalityFormat' | 'specificRules' | 'maxPairs' |
+  'semiFormat' | 'responsibleName' | 'responsiblePhone' | 'category'>>;
+
+/** Metadata must survive catalogue revalidation; do not overwrite owner/token fields. */
+export async function updateTournamentMetadataInFirestore(id: string, updates: TournamentMetadataUpdates): Promise<void> {
+  if (!auth.currentUser?.emailVerified) throw new Error('Entre com uma conta verificada para editar o torneio.');
+  if (!/^[\w-]{1,64}$/.test(id)) throw new Error('Campeonato inválido.');
+  const allowed = new Set(['name', 'date', 'location', 'modalityFormat', 'specificRules', 'maxPairs', 'semiFormat', 'responsibleName', 'responsiblePhone', 'category']);
+  if (Object.keys(updates).some(key => !allowed.has(key))) throw new Error('Campo de edição inválido.');
+  await runTransaction(db, async transaction => {
+    const reference = doc(db, 'tournaments', id);
+    const current = await transaction.get(reference);
+    if (!current.exists()) throw new Error('Campeonato não encontrado.');
+    if (current.data().isFinished) throw new Error('Campeonatos finalizados não podem ser editados.');
+    transaction.update(reference, { ...updates, updatedAt: new Date().toISOString() });
+  });
+}
+
+const shareMatches = createSharedSubscription<BracketMatch[]>();
 export function listenToTournamentMatches(
   tournamentId: string,
   onUpdate: (matches: BracketMatch[]) => void,
   onError?: (error: unknown) => void
 ): () => void {
   const matchesRef = collection(db, 'tournaments', tournamentId, 'matches');
-  return onSnapshot(
+  return shareMatches(tournamentId, (next, fail) => onSnapshot(
     matchesRef,
     (snapshot) => {
       const matches = snapshot.docs
@@ -1037,10 +1058,10 @@ export function listenToTournamentMatches(
           return match;
         })
         .sort((left, right) => left.matchNumber - right.matchNumber);
-      onUpdate(matches);
+      next(matches);
     },
-    (error) => onError?.(error)
-  );
+    fail
+  ), onUpdate, onError);
 }
 
 export type TournamentResultEvent = {
@@ -1062,21 +1083,22 @@ export type TournamentResultEvent = {
   officialAt: string;
 };
 
+const shareResults = createSharedSubscription<{ events: TournamentResultEvent[]; changes: Array<{ type: string; id: string }> }>();
 export function listenToTournamentResultEvents(
   tournamentId: string,
   onUpdate: (events: TournamentResultEvent[], changes: Array<{ type: string; id: string }>) => void,
   onError?: (error: unknown) => void
 ): () => void {
   const eventsRef = collection(db, 'tournaments', tournamentId, 'result_events');
-  return onSnapshot(
+  return shareResults(tournamentId, (next, fail) => onSnapshot(
     query(eventsRef, orderBy('createdAt', 'desc'), limit(20)),
     (snapshot) => {
       const events = snapshot.docs.map((eventDoc) => ({ ...eventDoc.data(), eventId: eventDoc.id } as TournamentResultEvent));
       const changes = snapshot.docChanges().map((change) => ({ type: change.type, id: change.doc.id }));
-      onUpdate(events, changes);
+      next({ events, changes });
     },
-    (error) => onError?.(error)
-  );
+    fail
+  ), value => onUpdate(value.events, value.changes), onError);
 }
 
 export function listenToBroadcastTournamentId(
@@ -1100,7 +1122,7 @@ export function listenToBroadcastTournamentId(
 export async function fetchTournamentsFromFirestore(): Promise<Tournament[]> {
   const path = 'tournaments';
   try {
-    const snap = await getDocs(collection(db, path));
+    const snap = await getDocsFromServer(collection(db, path));
     if (snap.empty) return [];
     const list: Tournament[] = [];
     snap.forEach((docSnap) => {
@@ -1108,8 +1130,7 @@ export async function fetchTournamentsFromFirestore(): Promise<Tournament[]> {
     });
     return list;
   } catch (error) {
-    console.warn('Fallback to local tournaments cache:', error);
-    return [];
+    handleFirestoreError(error, OperationType.LIST, path);
   }
 }
 

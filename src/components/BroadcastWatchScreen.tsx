@@ -8,7 +8,9 @@ import { useBroadcastNavigation, type WatchSource } from '../store/useBroadcastN
 import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { watchSessionReducer } from '../services/watchSession';
 import { ImmersiveSurface } from './ImmersiveSurface';
-import { FutevoleiVisualBracketCanvas } from './FutevoleiVisualBracketCanvas';
+const FutevoleiVisualBracketCanvas = lazy(() => import('./FutevoleiVisualBracketCanvas').then(m => ({ default: m.FutevoleiVisualBracketCanvas })));
+import { recordMetric } from '../services/performanceMetrics';
+import { listenToTournamentMatches } from '../lib/firebase';
 import { BroadcastOverlay } from './BroadcastOverlay';
 import { isYouTubeUrl, getYouTubeEmbedUrl } from '../utils/videoUtils';
 import { matchRules } from '../services/tournamentRules';
@@ -35,6 +37,13 @@ function WatchScreen({ source }: { source: WatchSource }) {
   const linkedTournament = source.kind === 'match' && source.tournamentId ? source.tournamentId : source.tournamentId || Object.entries(matchesByTournament).find(([, matches]) => publishedId && matches.some(item => item.linkedBroadcastId === publishedId))?.[0] || '';
   const [session, dispatch] = useReducer(watchSessionReducer, { view: 'video', tournamentId: linkedTournament });
   const [tableOpened, setTableOpened] = useState(false);
+  const [liveTable, setLiveTable] = useState<{ id: string; matches: import('../types').BracketMatch[] } | null>(null);
+  useEffect(() => {
+    if (!tableOpened || !session.tournamentId) return;
+    return listenToTournamentMatches(session.tournamentId, matches => setLiveTable({ id: session.tournamentId, matches }));
+  }, [tableOpened, session.tournamentId]);
+  const startedAt = useRef(performance.now());
+  const firstPlayback = useRef(false);
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(timer); }, []);
   const [published, setPublished] = useState<PublishedVideo | null>(null);
@@ -138,6 +147,9 @@ function WatchScreen({ source }: { source: WatchSource }) {
               muted={muted}
               playsInline
               className="watch-media"
+              preload="metadata"
+              onWaiting={() => recordMetric('player-waiting', 1)}
+              onPlaying={() => { if (!firstPlayback.current) { firstPlayback.current = true; recordMetric('player-start-ms', performance.now() - startedAt.current); } }}
               onPlay={() => setPaused(false)}
               onPause={() => setPaused(true)}
               onError={() => setError('O vídeo está indisponível ou não é compatível com este navegador.')}
@@ -204,7 +216,7 @@ function WatchScreen({ source }: { source: WatchSource }) {
           <label className="text-xs flex items-center gap-2">Campeonato<DropdownUI value={session.tournamentId} onChange={event => dispatch({ type: 'select', tournamentId: event.target.value })} className="bg-slate-800 rounded-lg px-3 py-2 max-w-[40vw]"><option value="">Selecione</option>{tournaments.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</DropdownUI></label>
           <button onClick={() => setFullscreen(value => !value)} className="watch-control" aria-label={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>{fullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}</button>
         </header>
-        {tournament ? <FutevoleiVisualBracketCanvas key={tournament.id} readOnly matches={matchesByTournament[tournament.id] || []} semiFormat={tournament.semiFormat} isSingles={tournament.modalityFormat === 'simples'} formatParticipantName={pairName} getInlineScore={(item, side) => String((side === 's1' ? item.score1 : item.score2) ?? '')} onInlineScoreChange={noop} onInlineSubmit={noop} onOpenRefereeModal={noop} onOpenMatchEditor={noop} onToggleFullscreen={() => setFullscreen(true)} /> : <p className="p-6 text-slate-300">{tournaments.length ? 'Selecione um campeonato para acompanhar a tabela.' : 'Nenhum campeonato disponível.'}</p>}
+        <Suspense fallback={<p role="status" className="p-6">Carregando tabela.</p>}>{tournament ? <FutevoleiVisualBracketCanvas key={tournament.id} readOnly matches={liveTable?.id === tournament.id ? liveTable.matches : matchesByTournament[tournament.id] || []} semiFormat={tournament.semiFormat} isSingles={tournament.modalityFormat === 'simples'} formatParticipantName={pairName} getInlineScore={(item, side) => String((side === 's1' ? item.score1 : item.score2) ?? '')} onInlineScoreChange={noop} onInlineSubmit={noop} onOpenRefereeModal={noop} onOpenMatchEditor={noop} onToggleFullscreen={() => setFullscreen(true)} /> : <p className="p-6 text-slate-300">{tournaments.length ? 'Selecione um campeonato para acompanhar a tabela.' : 'Nenhum campeonato disponível.'}</p>}</Suspense>
         {session.view === 'table' && (
           <div className="fixed bottom-6 right-6 z-[120] flex flex-col sm:flex-row items-end sm:items-center gap-2.5 pointer-events-auto" data-testid="watch-table-fab-dock">
             <button

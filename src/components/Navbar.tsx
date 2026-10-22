@@ -1,9 +1,10 @@
+import { prefetchRoute } from '../services/routeModules';
 import React, { useState, useEffect } from 'react';
 import { useApp, ArenaSubTab } from '../context/AppContext';
 import { useSharkStore } from '../store/useSharkStore';
 import { SharksetLogo } from './SharksetLogo';
 import { AccessLockedAction } from './AccessLockedAction';
-import { UserProfileModal } from './UserProfileModal';
+const UserProfileModal = React.lazy(() => import('./UserProfileModal').then(m => ({ default: m.UserProfileModal })));
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import {
@@ -371,6 +372,8 @@ export const Navbar: React.FC = () => {
                         key={item.id}
                         type="button"
                         aria-current={isActive ? 'page' : undefined}
+                        onPointerEnter={() => prefetchRoute(item.id)}
+                        onFocus={() => prefetchRoute(item.id)}
                         onClick={() => item.id === 'home' ? goHome() : setActiveTab(item.id)}
                         className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all active:translate-y-0.5 cursor-pointer whitespace-nowrap shadow-md ${
                           isActive
@@ -693,10 +696,10 @@ export const Navbar: React.FC = () => {
 
       </div>
 
-      <UserProfileModal
+      {profileModalOpen && <React.Suspense fallback={null}><UserProfileModal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
-      />
+      /></React.Suspense>}
 
       <TopBarSlotDetailsModal
         isOpen={Boolean(selectedSlotModal)}

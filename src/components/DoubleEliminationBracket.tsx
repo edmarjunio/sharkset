@@ -1,3 +1,4 @@
+import { useRememberedState } from '../hooks/useRememberedState';
 import { DropdownUI } from './DropdownUI';
 import { LocationScopeFilter } from './LocationScopeFilter';
 import { PodiumCardStudio } from './PodiumCardStudio';
@@ -118,7 +119,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   const [activeStageTab, setActiveStageTab] = useState<
     'all' | 'standings' | 'winners' | 'losers' | 'final'
   >('all');
-  const [bracketViewMode, setBracketViewMode] = useState<'chaveamento' | 'lista'>('chaveamento');
+  const [bracketViewMode, setBracketViewMode] = useRememberedState<'chaveamento' | 'lista'>('tournament:bracketViewMode', 'chaveamento');
   const [editingMatch, setEditingMatch] = useState<BracketMatch | null>(null);
   const [operationsMatchId, setOperationsMatchId] = useState('');
   const [refereeModalMatchId, setRefereeModalMatchId] = useState<string | null>(null);
@@ -201,9 +202,9 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   const [tokenPurchaseNotice, setTokenPurchaseNotice] = useState(false);
 
   // Tournament Filters & Search State
-  const [tournamentSearch, setTournamentSearch] = useState('');
-  const [tournamentStatusFilter, setTournamentStatusFilter] = useState<'all' | 'live' | 'open' | 'finished'>('all');
-  const [tournamentCategoryFilter, setTournamentCategoryFilter] = useState<'all' | TournamentCategory>('all');
+  const [tournamentSearch, setTournamentSearch] = useRememberedState('tournament:tournamentSearch', '');
+  const [tournamentStatusFilter, setTournamentStatusFilter] = useRememberedState<'all' | 'live' | 'open' | 'finished'>('tournament:tournamentStatusFilter', 'all');
+  const [tournamentCategoryFilter, setTournamentCategoryFilter] = useRememberedState<'all' | TournamentCategory>('tournament:tournamentCategoryFilter', 'all');
 
   // Quick Registration Modal inside Tournament View
   const [showQuickEnrollModal, setShowQuickEnrollModal] = useState(false);
@@ -490,7 +491,7 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
         toast.success(`Torneio "${created.name}" criado com sucesso!`);
         triggerToast(`Torneio "${created.name}" criado com sucesso!`);
       } else if (showTournamentModal === 'edit' && activeTournament) {
-        updateTournamentConfig(activeTournament.id, {
+        await updateTournamentConfig(activeTournament.id, {
           name: formName.trim(),
           date: formDate,
           location: formLocation.trim(),
@@ -817,8 +818,9 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
     setEditingMatch(null);
   };
 
-  const handleSwitchSemiFormat = (newFormat: SemiFormat) => {
-    updateTournamentConfig(activeTournament.id, { semiFormat: newFormat });
+  const handleSwitchSemiFormat = async (newFormat: SemiFormat) => {
+    try { await updateTournamentConfig(activeTournament.id, { semiFormat: newFormat }); }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar o campeonato.'); return; }
     triggerToast(
       newFormat === 'semi_direta'
         ? 'Formato alterado para Semifinal Direta (Padrão Futevôlei: Semifinais + Grande Final + DISPUTA DE 3º)!'

@@ -1,3 +1,4 @@
+import { readLivePage } from '../services/livePageCache';
 import { livekitApiPath } from '../services/livekitApi';
 import { LocationScopeFilter } from './LocationScopeFilter';
 import { useDirectoryScope } from '../store/useDirectoryScope';
@@ -31,24 +32,13 @@ export function LiveDirectory({ compact = false }: { compact?: boolean }) {
       if (filter.mode === 'city') { params.set('city', filter.city); if (filter.state) params.set('state', filter.state); }
       if (filter.mode === 'nearby' && coords) { params.set('lat', String(coords.lat)); params.set('lng', String(coords.lng)); }
       if (after) params.set('cursor', after);
-      const response = await fetch((import.meta.env.VITE_LIVEKIT_ENABLED === 'true' ? livekitApiPath('directory') : '/api/broadcasts') + '?' + params, { signal: controller.signal });
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        if (version === generation.current) {
-          setItems([]);
-          setCursor(null);
-        }
-        return;
-      }
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Não foi possível consultar as transmissões.');
+      const data = await readLivePage((import.meta.env.VITE_LIVEKIT_ENABLED === 'true' ? livekitApiPath('directory') : '/api/broadcasts') + '?' + params);
       if (version !== generation.current) return;
       setItems(previous => after ? [...new Map([...previous, ...data.items].map((item: LiveItem) => [item.id, item])).values()] : data.items);
       setCursor(data.nextCursor);
     } catch (failure) {
       if (version === generation.current && !controller.signal.aborted) {
-        // Se for erro de parse ou offline, manter lista vazia limpa sem alarmar o usuário
-        setItems([]);
+        setError(failure instanceof Error ? failure.message : 'Não foi possível atualizar as transmissões.');
       }
     } finally { if (version === generation.current) { pending.current = false; setLoading(false); } }
   }, [canSearch, filter, coords?.lat, coords?.lng]);

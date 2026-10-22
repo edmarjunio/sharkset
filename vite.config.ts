@@ -1,3 +1,4 @@
+import { staticWorkerPlugin } from './scripts/staticWorkerPlugin.ts';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -5,9 +6,11 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), staticWorkerPlugin()],
     build: {
-      rollupOptions: {
+      manifest: true,
+      rolldownOptions: {
+        output: { codeSplitting: { groups: [{ name: 'icons', test: /node_modules[\\/]lucide-react[\\/]/ }] } },
         input: {
           app: path.resolve(import.meta.dirname, 'index.html'),
           aquarium: path.resolve(import.meta.dirname, 'aquarium-preview.html'),

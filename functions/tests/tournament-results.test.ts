@@ -61,7 +61,8 @@ test('rejects a result with an invalid set, inconsistent winner, or wrong tourna
 test('marks changed official scores as corrections and identical retries as duplicates', () => {
   const before = { ...baseMatch };
   assert.equal(didOfficialResultChange(before, { ...baseMatch }), false);
-  assert.equal(didOfficialResultChange(before, { ...baseMatch, score1: 51, revision: 2 }), true);
+  assert.equal(didOfficialResultChange(before, { ...baseMatch, revision: 2 }), false);
+  assert.equal(didOfficialResultChange(before, { ...baseMatch, score1: 52, revision: 2 }), true);
 
   const correction = validateOfficialResult({
     tournamentId: 'tournament-1', matchId: 'match-1',
@@ -74,7 +75,7 @@ test('marks changed official scores as corrections and identical retries as dupl
 test('supports walkovers without fabricating a score', () => {
   const walkover = validateOfficialResult({
     tournamentId: 'tournament-1', matchId: 'match-1',
-    match: { ...baseMatch, resultMode: 'walkover', sets: [], score1: undefined, score2: undefined, winnerId: 'pair-a' },
+    match: { ...baseMatch, resultMode: 'walkover', sets: [], score1: undefined, score2: undefined, winnerId: 'pair-a', loserId: 'pair-b' },
     tournamentName: 'Open', isCorrection: false,
   });
   assert.equal(walkover?.resultMode, 'walkover');

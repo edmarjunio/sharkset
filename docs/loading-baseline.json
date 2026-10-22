@@ -1,0 +1,77 @@
+{
+  "at": "2026-10-22T15:32:10.236Z",
+  "source": "Clean git HEAD before implementation, rebuilt with the same installed dependencies",
+  "html": "<!doctype html>\r\n<html lang=\"en\">\r\n  <head>\r\n    <meta charset=\"UTF-8\" />\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\r\n    <script>\r\n      (function () {\r\n        try {\r\n          var originalFetch = window.fetch;\r\n          if (originalFetch) {\r\n            Object.defineProperty(window, 'fetch', {\r\n              configurable: true,\r\n              enumerable: true,\r\n              get: function () {\r\n                return originalFetch;\r\n              },\r\n              set: function (newFetch) {\r\n                if (typeof newFetch === 'function') {\r\n                  originalFetch = newFetch;\r\n                }\r\n              },\r\n            });\r\n          }\r\n        } catch (_err) {\r\n          // Ignore if non-configurable in strict sandbox\r\n        }\r\n\r\n        window.addEventListener(\r\n          'error',\r\n          function (event) {\r\n            if (\r\n              (event.filename && event.filename.indexOf('chrome-extension://') === 0) ||\r\n              (event.message && event.message.indexOf('Cannot set property fetch') !== -1)\r\n            ) {\r\n              event.stopImmediatePropagation();\r\n              event.preventDefault();\r\n            }\r\n          },\r\n          true\r\n        );\r\n      })();\r\n    </script>\r\n    <title>SHARK SET - Agendamento & Campeonatos de Areia</title>\r\n    <meta name=\"description\" content=\"SHARK SET — Sistema minimalista e intuitivo para agendamento de quadras de areia, ranking e gestão de campeonatos de Futevôlei, Beach Tennis e Vôlei de Praia.\" />\r\n    <meta property=\"og:title\" content=\"SHARK SET - Agendamento & Campeonatos de Areia\" />\r\n    <meta property=\"og:description\" content=\"SHARK SET — Sistema minimalista e intuitivo para agendamento de quadras de areia, ranking e gestão de campeonatos de Futevôlei, Beach Tennis e Vôlei de Praia.\" />\r\n    <meta property=\"og:type\" content=\"website\" />\r\n    <meta name=\"twitter:card\" content=\"summary_large_image\" />\r\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\r\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\r\n    <link href=\"https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap\" rel=\"stylesheet\" />\r\n    <script type=\"module\" crossorigin src=\"/assets/app-ClSUWfFO.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/rolldown-runtime-WkwZ5CU-.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/modulepreload-polyfill-P2Xu9kJm.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/AccessLockedAction-DRcegmi-.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/useBroadcastNavigation-DuotuHKS.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/typeof-B5XbjTb1.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/html2canvas-XfOnhokb.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/app-BBK9U-T0.css\">\n  </head>\r\n  <body>\r\n    <div id=\"root\"></div>\r\r\n  </body>\r\n</html>\r\n\r\n",
+  "assets": [
+    {
+      "name": "AccessLockedAction-DRcegmi-.js",
+      "bytes": 679414,
+      "gzip": 201854
+    },
+    {
+      "name": "app-ClSUWfFO.js",
+      "bytes": 1909184,
+      "gzip": 519098
+    },
+    {
+      "name": "aquarium-BGpkUrL2.js",
+      "bytes": 4768,
+      "gzip": 2320
+    },
+    {
+      "name": "ArenaLivePublisher-Cej4vK8V.js",
+      "bytes": 5111,
+      "gzip": 2141
+    },
+    {
+      "name": "html2canvas-CdgxoGYV.js",
+      "bytes": 65,
+      "gzip": 83
+    },
+    {
+      "name": "html2canvas-XfOnhokb.js",
+      "bytes": 199461,
+      "gzip": 46554
+    },
+    {
+      "name": "index.es-hWrlGI-c.js",
+      "bytes": 151426,
+      "gzip": 48530
+    },
+    {
+      "name": "livekit-client.esm-DfUmX_TU.js",
+      "bytes": 532271,
+      "gzip": 137080
+    },
+    {
+      "name": "LivekitViewer-Czf9WkRf.js",
+      "bytes": 2502,
+      "gzip": 1263
+    },
+    {
+      "name": "modulepreload-polyfill-P2Xu9kJm.js",
+      "bytes": 670,
+      "gzip": 389
+    },
+    {
+      "name": "purify.es-BZxk_wWO.js",
+      "bytes": 29026,
+      "gzip": 11386
+    },
+    {
+      "name": "rolldown-runtime-WkwZ5CU-.js",
+      "bytes": 599,
+      "gzip": 368
+    },
+    {
+      "name": "typeof-B5XbjTb1.js",
+      "bytes": 271,
+      "gzip": 169
+    },
+    {
+      "name": "useBroadcastNavigation-DuotuHKS.js",
+      "bytes": 1194,
+      "gzip": 695
+    }
+  ]
+}

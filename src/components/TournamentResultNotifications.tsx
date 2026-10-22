@@ -1,3 +1,4 @@
+import { rankingCatalog, tournamentCatalog } from '../services/catalogResources';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, Check, ExternalLink, Trophy, X } from 'lucide-react';
 import { listenToTournamentResultEvents, type TournamentResultEvent } from '../lib/firebase';
@@ -27,7 +28,7 @@ export function TournamentResultNotifications({ tournamentIds, onOpenMatch }: To
           setHistoryById((previous) => {
             const next = { ...previous };
             for (const event of events) next[event.eventId] = event;
-            return next;
+            return Object.fromEntries(Object.values(next).sort((a, b) => Date.parse(b.officialAt) - Date.parse(a.officialAt)).slice(0, 40).map(event => [event.eventId, event]));
           });
 
           if (!initialized.current.has(tournamentId)) {
@@ -43,6 +44,7 @@ export function TournamentResultNotifications({ tournamentIds, onOpenMatch }: To
             .sort((left, right) => Date.parse(left.officialAt) - Date.parse(right.officialAt));
 
           if (newEvents.length) {
+            rankingCatalog.invalidate(); tournamentCatalog.invalidate();
             for (const event of newEvents) seen.current.add(event.eventId);
             setQueue((previous) => [...previous, ...newEvents]);
           }
