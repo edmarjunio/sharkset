@@ -30,8 +30,18 @@ Com o servico Cloud Run criado em `southamerica-east1`, publique apenas o fronte
 firebase deploy --only hosting --project sharkset-70de4
 ```
 
-Depois, confira o login Google, criacao de `user_profiles/{uid}`, disponibilidade de agenda e placar autenticado. Checkout segue fechado enquanto nao houver provedor de pagamento.
+Antes do Hosting, configure e publique as Functions e as regras atualizadas:
+
+```powershell
+firebase functions:secrets:set MERCADO_PAGO_ACCESS_TOKEN
+firebase functions:secrets:set MERCADO_PAGO_WEBHOOK_SECRET
+firebase deploy --only firestore:rules,functions --project sharkset-70de4
+```
+
+Configure também o Webhook da aplicação Mercado Pago para `https://us-central1-sharkset-70de4.cloudfunctions.net/mercadoPagoWebhook`, com eventos de pagamento. Veja [MERCADO_PAGO_TOKENS.md](MERCADO_PAGO_TOKENS.md) para o fluxo e os preços.
+
+Depois que Functions e Cloud Run estiverem `Ready`, publique Hosting. Confira login Google, criação do perfil, compra aprovada de token, saldo refletido no perfil, criação de campeonato e autorização de posts. A agenda online e o vínculo obrigatório de live com partida continuam pendentes de implementação.
 
 ## Regras e indices
 
-Rules e indices foram publicados pelo proprietario no deploy relatado. Para mudancas futuras, valide as Rules no Emulator Suite ou em staging antes de publicar. O projeto Firebase e o banco `(default)` estao confirmados pelo log.
+Rules e índices anteriores foram publicados pelo proprietário no deploy relatado. As regras desta versão alteram escritas de torneio, perfil e posts; publique-as junto com as Functions correspondentes. Não inclua `--only firestore` se não quiser sincronizar/excluir índices do projeto.

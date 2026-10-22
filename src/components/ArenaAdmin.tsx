@@ -1,7 +1,7 @@
 import { DropdownUI } from './DropdownUI';
 import React, { useEffect, useState, useMemo } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocsFromServer, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocsFromServer, query, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { useApp } from '../context/AppContext';
 import { CourtScheduler } from './CourtScheduler';
@@ -151,12 +151,47 @@ export const ArenaAdmin: React.FC = () => {
 
   // Cupons tab state
   const [couponCode, setCouponCode] = useState('');
-  const [couponType, setCouponType] = useState<CouponDiscountType>('fixed');
+  const [couponType, setCouponType] = useState<CouponDiscountType>('percent');
   const [couponValue, setCouponValue] = useState<number>(10);
   const [couponScope, setCouponScope] = useState<CouponScope>('arena');
   const [couponMinBooking, setCouponMinBooking] = useState<number>(0);
   const [couponMaxUses, setCouponMaxUses] = useState<number>(100);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [couponPinned, setCouponPinned] = useState(false);
+  const [couponExpiresOn, setCouponExpiresOn] = useState(() => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date()).reduce<Record<string, string>>((values, part) => {
+      if (part.type !== 'literal') values[part.type] = part.value;
+      return values;
+    }, {});
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  });
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkPlatformAdmin = async () => {
+      const user = auth.currentUser;
+      if (!user) return setIsPlatformAdmin(false);
+      try {
+        const token = await user.getIdTokenResult();
+        const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+        setIsPlatformAdmin(
+          user.email?.toLowerCase() === 'edmarjuniob@gmail.com' ||
+          token.claims.platformAdmin === true ||
+          adminDoc.exists()
+        );
+        if (
+          user.email?.toLowerCase() === 'edmarjuniob@gmail.com' ||
+          token.claims.platformAdmin === true ||
+          adminDoc.exists()
+        ) setCouponScope('global');
+      } catch {
+        setIsPlatformAdmin(user.email?.toLowerCase() === 'edmarjuniob@gmail.com');
+      }
+    };
+    void checkPlatformAdmin();
+  }, []);
 
   // Save changes state
   const [savingGeneral, setSavingGeneral] = useState(false);
@@ -371,6 +406,10 @@ export const ArenaAdmin: React.FC = () => {
   const handleCreateCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!couponCode.trim()) return;
+    if (couponPinned && (couponScope !== 'global' || couponType !== 'percent' || couponValue !== 10 || !couponExpiresOn)) {
+      toast.error('A oferta fixada precisa ser global, dar 10% e ter validade definida para hoje.');
+      return;
+    }
     setCouponLoading(true);
     try {
       const created = await createCoupon({
@@ -381,12 +420,18 @@ export const ArenaAdmin: React.FC = () => {
         arenaId: couponScope === 'arena' ? tenant.id : undefined,
         arenaName: couponScope === 'arena' ? tenant.name : undefined,
         minBookingValue: couponMinBooking > 0 ? couponMinBooking : undefined,
-        maxUses: couponMaxUses > 0 ? couponMaxUses : undefined,
+        maxUses: couponPinned ? undefined : couponMaxUses > 0 ? couponMaxUses : undefined,
+        expiresAt: couponExpiresOn
+          ? new Date(`${couponExpiresOn}T23:59:59.999-03:00`).toISOString()
+          : undefined,
+        pinned: couponPinned,
+        bannerMessage: couponPinned ? 'TODOS OS HORÁRIOS COM 10% DE DESCONTO • SÓ HOJE!' : undefined,
         active: true,
       });
       toast.success(`Cupom "${created.code}" criado com sucesso!`);
       setCouponCode('');
       setCouponValue(10);
+      setCouponPinned(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Falha ao criar cupom.');
     } finally {
@@ -1222,7 +1267,7 @@ export const ArenaAdmin: React.FC = () => {
                   Criar Promoção / Cupom de Desconto
                 </h3>
                 <p className="text-xs text-slate-300 mt-1">
-                  Gere cupons promocionais para atrair novos atletas para sua arena.
+                  Crie cupons para esta arena ou, como administrador do app, para todas as arenas. A validade inicial termina hoje às 23:59 em Brasília.
                 </p>
               </div>
 
@@ -1272,6 +1317,63 @@ export const ArenaAdmin: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {isPlatformAdmin && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-200 mb-1">Abrangência</label>
+                      <DropdownUI
+                        value={couponScope}
+                        onChange={(e) => setCouponScope(e.target.value as CouponScope)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-cyan-700/70 text-xs text-white"
+                      >
+                        <option value="global">Todas as arenas</option>
+                        <option value="arena">Somente esta arena</option>
+                      </DropdownUI>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-200 mb-1">Válido até (horário de Brasília)</label>
+                    <input
+                      type="date"
+                      value={couponExpiresOn}
+                      onChange={(e) => setCouponExpiresOn(e.target.value)}
+                      disabled={couponPinned}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-cyan-700/70 text-xs text-white"
+                    />
+                  </div>
+                  {isPlatformAdmin && couponScope === 'global' && (
+                    <label className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-950/20 px-3 py-2.5 text-xs font-bold text-amber-100 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={couponPinned}
+                        onChange={(e) => {
+                          const pinned = e.target.checked;
+                          setCouponPinned(pinned);
+                          if (!pinned) return;
+                          const parts = new Intl.DateTimeFormat('en-US', {
+                            timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+                          }).formatToParts(new Date()).reduce<Record<string, string>>((values, part) => {
+                            if (part.type !== 'literal') values[part.type] = part.value;
+                            return values;
+                          }, {});
+                          setCouponScope('global');
+                          setCouponType('percent');
+                          setCouponValue(10);
+                          setCouponExpiresOn(`${parts.year}-${parts.month}-${parts.day}`);
+                        }}
+                        className="accent-amber-400"
+                      />
+                      Fixar oferta no site
+                    </label>
+                  )}
+                </div>
+                {couponPinned && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 px-4 py-3 text-xs text-amber-100">
+                    O banner público mostrará “CUPOM: DEU A LOUCA NO SHARKINHO!” com 10% de desconto e o código criado por você.
+                    Defina a validade para hoje para a oferta sair do site automaticamente após 23:59 (Brasília).
+                  </div>
+                )}
+
                 <div className="flex justify-end pt-2">
                   <button
                     type="submit"
@@ -1307,6 +1409,7 @@ export const ArenaAdmin: React.FC = () => {
                           <span className="text-[11px] text-slate-300">
                             {c.discountType === 'percent' ? `${c.discountValue}% OFF` : `R$ ${c.discountValue} OFF`}
                           </span>
+                          {c.pinned && <span className="block text-[10px] font-bold text-amber-300">Fixado no site</span>}
                         </div>
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
                           Ativo

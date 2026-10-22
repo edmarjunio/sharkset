@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { AcademyCategory, AcademyMediaType, AcademyPost } from '../types';
 import { useApp } from '../context/AppContext';
-import { persistAcademyPostToFirestore } from '../lib/firebase';
+import { fetchAcademyPostsFromFirestore, likeAcademyPostInFirestore, persistAcademyPostToFirestore } from '../lib/firebase';
 import { SharksetLogo } from './SharksetLogo';
 import { AccessLockedAction } from './AccessLockedAction';
 import { auth, signInWithGooglePopup } from '../lib/firebase';
@@ -234,10 +234,6 @@ const TACTICAL_MODULES: TacticalModule[] = [
   },
 ];
 
-const INITIAL_ACADEMY_POSTS: AcademyPost[] = [];
-
-const LOCAL_ACADEMY_STORAGE_KEY = 'sharkset_v6_academy_posts';
-
 const CATEGORY_LABELS: Record<AcademyCategory, string> = {
   marcacao_padrao: 'Marcação Padrão',
   posicionamento_quadra: 'Posicionamento na Quadra',
@@ -258,18 +254,24 @@ export const SharkAcademyCommunity: React.FC = () => {
   const [mediaFilter, setMediaFilter] = useState<'all' | AcademyMediaType>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | AcademyCategory>('all');
 
-  const [posts, setPosts] = useState<AcademyPost[]>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_ACADEMY_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // ignore
-    }
-    return INITIAL_ACADEMY_POSTS;
-  });
+  const [posts, setPosts] = useState<AcademyPost[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [publisherType, setPublisherType] = useState<'user' | 'arena'>('user');
+  const canPublishAsArena = !!firebaseUser && !!tenant.id && (
+    tenant.ownerId === firebaseUser.uid ||
+    tenant.managers?.some(manager => manager === firebaseUser.uid || manager.toLowerCase() === firebaseUser.email?.toLowerCase()) ||
+    firebaseUser.email?.toLowerCase() === 'edmarjuniob@gmail.com'
+  );
+
+  useEffect(() => {
+    let active = true;
+    setIsLoadingPosts(true);
+    void fetchAcademyPostsFromFirestore()
+      .then(data => { if (active) setPosts(data); })
+      .catch(() => { if (active) showToast('Não foi possível carregar os materiais da comunidade.'); })
+      .finally(() => { if (active) setIsLoadingPosts(false); });
+    return () => { active = false; };
+  }, []);
 
   // New Post Modal State
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -304,18 +306,17 @@ export const SharkAcademyCommunity: React.FC = () => {
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  const handleLikePost = (postId: string) => {
-    setPosts((prev) => {
-      const updated = prev.map((p) =>
-        p.id === postId ? { ...p, likesCount: p.likesCount + 1 } : p
-      );
-      try {
-        localStorage.setItem(LOCAL_ACADEMY_STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-      return updated;
-    });
+  const handleLikePost = async (postId: string) => {
+    if (!auth.currentUser) {
+      setLoginError('Entre na sua conta para curtir uma publicação.');
+      return;
+    }
+    try {
+      const result = await likeAcademyPostInFirestore(postId);
+      setPosts(previous => previous.map(post => post.id === postId ? { ...post, likesCount: result.likesCount } : post));
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível registrar sua curtida.');
+    }
   };
 
   const handleCreatePost = async (e: React.FormEvent) => {
@@ -341,20 +342,26 @@ export const SharkAcademyCommunity: React.FC = () => {
       summary: newSummary.trim(),
       tacticalKeyPoints: points,
       authorName: newAuthor.trim(),
-      arenaName: tenant.name,
+      ...(publisherType === 'arena' && canPublishAsArena ? { arenaName: tenant.name } : {}),
       level: newLevel,
       likesCount: 0,
       createdAt: new Date().toISOString(),
     };
 
-    await persistAcademyPostToFirestore(created);
+    const selectedPublisher = publisherType === 'arena' && canPublishAsArena
+      ? { type: 'arena' as const, arenaId: tenant.id, arenaName: tenant.name }
+      : { type: 'user' as const };
+    created.publisherType = selectedPublisher.type;
+    created.publisherId = selectedPublisher.type === 'arena' ? selectedPublisher.arenaId : auth.currentUser.uid;
+    if (selectedPublisher.type === 'arena') created.arenaId = selectedPublisher.arenaId;
+    try {
+      await persistAcademyPostToFirestore(created, selectedPublisher);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível publicar o material.');
+      return;
+    }
     const nextPosts = [created, ...posts];
     setPosts(nextPosts);
-    try {
-      localStorage.setItem(LOCAL_ACADEMY_STORAGE_KEY, JSON.stringify(nextPosts));
-    } catch {
-      // ignore
-    }
 
     setNewTitle('');
     setNewMediaUrl('');
@@ -362,7 +369,7 @@ export const SharkAcademyCommunity: React.FC = () => {
     setNewKeyPointsText('');
     setShowCreateModal(false);
     showToast(
-      `Material "${created.title}" publicado na Comunidade SHARKSET e sincronizado com o Firestore!`
+      `Material "${created.title}" publicado no Firestore.`
     );
   };
 
@@ -853,6 +860,8 @@ export const SharkAcademyCommunity: React.FC = () => {
 
         {/* Community Posts Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {isLoadingPosts && <div className="py-10 text-center text-sm text-slate-300">Carregando materiais…</div>}
+          {!isLoadingPosts && filteredPosts.length === 0 && <div className="py-10 text-center text-sm text-slate-400">Ainda não há materiais publicados nesta comunidade.</div>}
           {filteredPosts.map((post) => (
             <div
               key={post.id}
@@ -908,7 +917,7 @@ export const SharkAcademyCommunity: React.FC = () => {
                 <div className="text-xs">
                   <span className="font-black text-white block">{post.authorName}</span>
                   <span className="text-[10px] text-slate-400">
-                    {post.arenaName || tenant.name} · {post.createdAt || 'Recente'}
+                    {post.publisherType === 'arena' ? post.arenaName || 'Arena' : 'Perfil pessoal'} · {post.createdAt || 'Recente'}
                   </span>
                 </div>
 
@@ -1032,6 +1041,17 @@ export const SharkAcademyCommunity: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreatePost} className="space-y-3 text-xs">
+              {canPublishAsArena && <div>
+                <label className="font-bold text-slate-300 block mb-1">Publicar como</label>
+                <DropdownUI
+                  value={publisherType}
+                  onChange={(event) => setPublisherType(event.target.value as 'user' | 'arena')}
+                  className="w-full px-3 py-2 rounded-xl bg-[#030B17] border border-[#145A9B] text-white font-semibold"
+                >
+                  <option value="user">Meu perfil — {firebaseUser?.displayName || 'Usuário'}</option>
+                  <option value="arena">Arena — {tenant.name}</option>
+                </DropdownUI>
+              </div>}
               <div>
                 <label className="font-bold text-slate-300 block mb-1">
                   Título da Aula / Dica Técnica *

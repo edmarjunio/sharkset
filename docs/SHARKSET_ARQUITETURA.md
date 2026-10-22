@@ -1,32 +1,36 @@
-# Arquitetura de persistência SHARKSET
+# Arquitetura SHARKSET
 
-## Diretriz
+## Fontes de verdade
 
-Firebase Authentication identifica usuários; Firestore guarda registros estruturados; Cloud Functions/Admin SDK valida operações de negócio privilegiadas. O cliente pode ler e editar somente dados explicitamente autorizados por regras. Arquivos binários compartilhados devem usar Cloud Storage, com referência e metadados no Firestore. `localStorage`/IndexedDB ficam restritos a preferências e cache offline.
+- Firebase Auth identifica a conta pelo UID.
+- `user_profiles/{uid}` contém perfil privado e saldo exibido; o saldo é escrito apenas por Functions.
+- `token_orders/{orderId}` guarda pedidos do Mercado Pago; `user_profiles/{uid}/token_ledger/{entryId}` mantém créditos e débitos auditáveis.
+- `arenas/{arenaId}` identifica dono e gestores. `tournaments/{tournamentId}` tem `tenantId` apontando para a arena, e partidas ficam em `tournaments/{id}/matches`.
+- `academy_posts/{postId}` guarda materiais públicos com `publisherType` e `publisherId`. Mídia binária deve ficar no Cloud Storage ou no provedor de vídeo.
+- `localStorage` é cache/preferência; ainda há domínios legados que precisam ser migrados antes de ser tratado como não autoritativo.
 
-```mermaid
-flowchart LR
-  UI[React / Hosting] --> Auth[Firebase Authentication]
-  UI --> Repo[Repositórios Web: consultas autorizadas]
-  Repo --> Rules[Firestore Security Rules]
-  Rules --> DB[(Cloud Firestore)]
-  UI --> API[Cloud Functions: regras críticas]
-  API --> Admin[Firebase Admin SDK]
-  Admin --> DB
-  UI --> Storage[Cloud Storage: arquivos]
-  Local[localStorage / IndexedDB: preferências e cache] -. não é fonte de verdade .-> UI
-```
+## Permissões
 
-## Fluxo alvo
+O administrador global é reconhecido pelo e-mail operacional legado, pelo custom claim `platformAdmin` ou por `admins/{uid}`. Donos e gestores de arena ficam limitados à arena associada. A assinatura libera operações premium por `arena_access/{uid}`. Usuário gratuito pode acompanhar o conteúdo público e compra tokens para criar campeonatos em arenas onde tem permissão.
 
-1. Auth retorna o UID, que vincula perfil e registros; email e nome são atributos mutáveis, não chaves.
-2. Tela chama repositório tipado ou endpoint de domínio, sem escrever estado de negócio somente em cache.
-3. Regras do Firestore validam proprietário/arena e formato para CRUD simples; resultados, ranking, reservas e papéis privilegiados devem ser validados no servidor.
-4. UI informa sucesso após confirmação persistente e apresenta erro acionável quando a gravação falhar.
-5. Leitura em outro dispositivo consulta Firestore; o cache offline só acelera leitura e reconcilia mudanças pendentes.
+## Token e campeonato
 
-## Estado atual e lacunas
+1. Cliente autenticado chama `createTournamentTokenCheckout`.
+2. Function cria pedido no Firestore e preferência Checkout Pro a preço fixo de R$ 19,90 por token.
+3. `mercadoPagoWebhook` valida `x-signature` e confirma o estado, moeda e valor na API Mercado Pago.
+4. Uma transação credita o saldo uma vez e grava recibo e ledger.
+5. `createArenaTournament` valida arena, papel e plano; grava campeonato e debita um token na mesma transação.
 
-Hosting é SPA estática. `server.ts` não está conectado como serviço de produção no `firebase.json`; as únicas Cloud Functions declaradas são LiveKit. Portanto, qualquer regra de domínio que dependa de Admin SDK ainda precisa de um endpoint Cloud Function implantável antes de ser considerada segura em produção.
+Nunca confiar no retorno do navegador como confirmação de pagamento.
 
-Não há configuração de Cloud Storage, índices versionados ou ambiente staging declarado. Backups, PITR e custos não foram alterados nem auditados nesta etapa.
+## Publicação
+
+As Functions estão na região `us-central1`. O Webhook do Mercado Pago usa URL direta do Cloud Functions. O site Hosting mantém rewrite `/api/**` para o serviço Express `sharkset-api` em `southamerica-east1`; esse serviço precisa existir antes do deploy do Hosting. O Express fornece agenda, diretório de transmissão e outras rotas ainda não substituídas por Functions.
+
+## Cache e mídia
+
+O shell e assets versionados podem ser cacheados. Consultas públicas usam caches curtos. Dados privados devem ser isolados por conta e não ficam persistidos offline por padrão. YouTube segue no player oficial: a aplicação pode atrasar a criação do iframe até a interação, mas não armazena o vídeo.
+
+## Pendências
+
+Reservas ainda não são criadas online, transmissão ainda pode começar sem uma partida vinculada, ranking tem partes locais/client-side e campeonatos ainda não foram migrados para subcoleções físicas da arena. Essas lacunas exigem uma migração compatível antes de afirmar consistência total multi-dispositivo.

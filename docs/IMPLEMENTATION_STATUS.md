@@ -1,35 +1,23 @@
-# Status da refatoração arquitetural
+# SHARKSET — estado da arquitetura
 
-Data: 22/10/2026. Escopo: código, regras e configuração local. Nenhuma consulta ou escrita em dados reais de produção e nenhum deploy.
+Atualizado em 22/10/2026. Este documento descreve o código local; não significa que as mudanças já estejam publicadas em produção.
 
-| Área | Estado | Pendência |
+| Área | Estado no código | Falta para produção |
 | --- | --- | --- |
-| Cache do shell | Service Worker adicionado para assets versionados e fallback do HTML | Verificar em browser/staging, especialmente atualização de versão |
-| Cache do YouTube | Explicitamente fora do Service Worker; vídeo permanece no player do provedor | Confirmar consentimento/UX e reprodução em dispositivos reais |
-| Hosting/API | Rewrite `/api/**` configurado para `sharkset-api` em `southamerica-east1` | Criar/deploy Cloud Run antes de publicar Hosting |
-| Placar ao vivo | Rota autenticada, autorização por torneio/arena, validação de estado e revisão otimista | Testes de rota e Rules no Emulator Suite |
-| Escritas de partidas | Merge preserva projeção do placar ao vivo; regras negam edição direta do estado ao vivo pelo cliente | Validar Rules e índices antes de deploy |
-| Multi-tenant | Arena e `tenantId` existentes; membership por UID usada no endpoint do placar | Uniformizar vínculos legados por UID/papel nas demais rotas |
-| Agenda | Disponibilidade server-side via Express/SSE | Express ainda não publicado; checkout permanece fechado sem provedor |
-| Pagamentos/assinaturas/tokens | Modelos/documentação parciais | Provedor, credenciais, webhook e conciliação |
-| Ranking | Validação/cálculo no cliente e consultas limitadas | Ledger/projeção oficial no backend |
-| Migração local | Preview sem escrita, reconhecimento de chaves UID-scoped | Resolver itens legados/orfãos com decisão do titular e staging |
-| Escala/FinOps | Cache e limites documentados | Teste de carga e telemetria controlada |
+| Login/perfil | Perfil básico é criado ao criar conta; primeira gravação do app também inclui nível padrão | Publicar Functions e regras; validar conta Google nova |
+| Papéis globais | Rules e Functions reconhecem e-mail do dono, `platformAdmin` e `admins/{uid}` | Provisionar gestores de plataforma com acesso administrativo controlado |
+| Arena/campeonato | Campeonato exige arena e sua criação/token são gravados numa transação de servidor | Publicar Functions e rules; migrar documentos legados se necessário |
+| Tokens | Checkout Pro cria pedido pendente; webhook valida assinatura, consulta pagamento e credita saldo uma vez | Cadastrar os dois secrets, configurar Webhook e testar pagamento aprovado |
+| Comunidade/aulas | Feed lê Firestore; post informa autoria de perfil ou arena; curtida é idempotente por conta | Publicar Functions e rules; revisar/migrar posts antigos que só existam no navegador |
+| YouTube/cache | Vídeos seguem no player do YouTube; caches do site não copiam a mídia | Verificar reprodução e consentimento em dispositivos reais |
+| Carregamento | Code splitting e caches de leitura permanecem parciais | Auditar rotas e telemetria após publicação |
+| Agenda/reserva | Disponibilidade server-side existe; reserva e cancelamento online ainda estão bloqueados | Publicar o backend Express no Cloud Run e concluir o fluxo de reserva/confirmar com a arena |
+| Transmissão | LiveKit e player YouTube existem; ainda há transmissões que não exigem partida/reserva como origem | Associar cada sessão a reserva ou partida e validar início/fim |
+| Ranking | Parte do estado e cálculo ainda depende do cliente/localStorage | Migrar para ledger e projeção oficial idempotente no backend |
+| Firestore | Mudanças de regra local protegem saldo e pagamentos; root `tournaments` ainda usa `tenantId` como vínculo com arena | Publicar as regras; planejar migração para hierarquia física de subcoleções sem duplicar dados |
 
-## Entregas desta etapa
+## Publicação das mudanças desta etapa
 
-- Arquitetura, schema, fluxo de dados, multi-tenancy, modelo de segurança, cache, FinOps, migração e publicação documentados.
-- `public/sw.js` com cache same-origin para assets versionados e shell; APIs e domínios YouTube permanecem fora.
-- Rewrite do Hosting e `Dockerfile` para o backend Express no Cloud Run.
-- Endpoint de gravação do estado de arbitragem com Firebase ID token, papel e controle de concorrência.
-- `firestore.indexes.json` com os dois índices compostos usados pela disponibilidade.
-- Nenhuma mudança nas regras esportivas de geração/avanço da tabela, BYEs, semis ou ranking.
+Depois de cadastrar os secrets descritos em [MERCADO_PAGO_TOKENS.md](MERCADO_PAGO_TOKENS.md), publique `firestore:rules` e `functions`. Publique o Hosting em um comando separado somente depois de confirmar que `sharkset-api` existe em `southamerica-east1`, porque o rewrite `/api/**` depende desse Cloud Run.
 
-## Verificação
-
-- `npm run lint`: passou.
-- `npm run build`: passou; Vite emitiu o aviso já conhecido sobre `/brand/deep-ocean.jpg` ausente e chunks Firebase/LiveKit grandes.
-- Testes direcionados de placar ao vivo e migração local: 6/6 passaram.
-- Emulator Suite não iniciou porque Java não está instalado/disponível (`spawn java ENOENT`); as regras ainda precisam de validação automatizada.
-- Browser/staging, teste de carga e deploy continuam pendentes.
-- `technical_table/` permanece fora do Git e do contexto público.
+Não publicar a pasta privada `technical_table/` em Hosting, Git ou bundles.

@@ -18,7 +18,6 @@ import {
   getDocs,
   getDocsFromServer,
   getFirestore,
-  increment,
   limit,
   onSnapshot,
   query,
@@ -29,6 +28,7 @@ import {
   writeBatch,
   orderBy,
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   AcademyPost,
   AthleteProfile,
@@ -49,6 +49,39 @@ import {
   offlinePersistenceReady,
   isOfflinePersistenceEnabled,
 } from '../firebase-config';
+
+const functions = getFunctions(app, 'us-central1');
+
+export async function createTournamentTokenCheckout(quantity: number): Promise<string> {
+  const callable = httpsCallable<{ quantity: number }, { orderId: string; checkoutUrl: string }>(functions, 'createTournamentTokenCheckout');
+  const result = await callable({ quantity });
+  if (!result.data.checkoutUrl.startsWith('https://')) throw new Error('O link de pagamento retornado é inválido.');
+  return result.data.checkoutUrl;
+}
+
+export async function createArenaTournamentInFirestore(tournament: Tournament): Promise<{ tournament: Tournament; creatorTokensSpent: number }> {
+  const callable = httpsCallable<{ tournament: Tournament }, { tournament: Tournament; creatorTokensSpent: number }>(functions, 'createArenaTournament');
+  const result = await callable({ tournament });
+  return result.data;
+}
+
+export function listenToTournamentTokenBalance(uid: string, onBalance: (balance: number) => void): () => void {
+  return onSnapshot(doc(db, 'user_profiles', uid), snapshot => {
+    const balance = snapshot.data()?.tournamentTokens;
+    onBalance(typeof balance === 'number' && balance >= 0 ? balance : 0);
+  });
+}
+
+export async function fetchAcademyPostsFromFirestore(): Promise<AcademyPost[]> {
+  const snapshot = await getDocsFromServer(query(collection(db, 'academy_posts'), orderBy('createdAt', 'desc'), limit(100)));
+  return snapshot.docs.map(item => ({ ...item.data(), id: item.id } as AcademyPost));
+}
+
+export async function likeAcademyPostInFirestore(postId: string): Promise<{ likesCount: number; liked: boolean }> {
+  const callable = httpsCallable<{ postId: string }, { likesCount: number; liked: boolean }>(functions, 'likeAcademyPost');
+  const result = await callable({ postId });
+  return result.data;
+}
 
 export {
   app,
@@ -215,6 +248,10 @@ export async function persistUserProfileToFirestore(profile: {
         id: currentUser.uid,
         displayName: cleanName,
         email: String(existing.exists() ? existing.data().email : currentUser.email).slice(0, 160),
+        level: profile.level || 'iniciante',
+        experienceCategory: existing.exists() && ['amador', 'profissional'].includes(existing.data().experienceCategory)
+          ? existing.data().experienceCategory
+          : 'amador',
         ...(currentUser.photoURL ? { photoURL: currentUser.photoURL.slice(0, 500) } : {}),
         ...(profile.phone.trim() ? { phone: profile.phone.trim().slice(0, 30) } : {}),
         ...(profile.level ? { level: profile.level } : {}),
@@ -635,7 +672,10 @@ export async function fetchMvpVotesFromFirestore(matchId?: string): Promise<Matc
 /**
  * Persists a tactical training post to Firestore (/academy_posts/{postId}).
  */
-export async function persistAcademyPostToFirestore(post: AcademyPost): Promise<void> {
+export async function persistAcademyPostToFirestore(
+  post: AcademyPost,
+  publisher: { type: 'user' | 'arena'; arenaId?: string; arenaName?: string } = { type: 'user' },
+): Promise<void> {
   const currentUser = auth.currentUser;
   if (!currentUser || !currentUser.emailVerified) return;
 
@@ -649,10 +689,16 @@ export async function persistAcademyPostToFirestore(post: AcademyPost): Promise<
       mediaType: post.mediaType,
       mediaUrl: (post.mediaUrl || '').slice(0, 500),
       summary: post.summary.slice(0, 600),
+      tacticalKeyPoints: (post.tacticalKeyPoints || []).slice(0, 20).map(point => point.slice(0, 240)),
       authorName: post.authorName.slice(0, 100),
       level: post.level,
       likesCount: Number(post.likesCount) || 0,
       ownerId: currentUser.uid,
+      publisherType: publisher.type,
+      publisherId: publisher.type === 'arena' ? publisher.arenaId : currentUser.uid,
+      ...(publisher.type === 'arena' && publisher.arenaId ? { arenaId: publisher.arenaId } : {}),
+      ...(publisher.type === 'arena' && publisher.arenaName ? { arenaName: publisher.arenaName.slice(0, 100) } : {}),
+      createdAt: post.createdAt || new Date().toISOString(),
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -692,10 +738,6 @@ export async function persistFullAthleteProfileToFirestore(
       matchesPlayed: Number(athlete.matchesPlayed) || 0,
       titlesCount: Number(athlete.titlesCount) || 0,
       tournamentsPlayed: Number(athlete.tournamentsPlayed) || 0,
-      tournamentTokens:
-        athlete.tournamentTokens !== undefined
-          ? athlete.tournamentTokens
-          : (existingData.tournamentTokens ?? 0),
       preferredSport: athlete.preferredSport || 'futevolei',
       country: athlete.country || 'Brasil',
       state: athlete.state || 'GO',
@@ -739,34 +781,6 @@ export async function persistFullAthleteProfileToFirestore(
 }
 
 /**
- * Adds tournament tokens to a user's account in Firestore.
- */
-export async function addTournamentTokensInFirestore(uid: string, quantity: number): Promise<number> {
-  const userDocRef = doc(db, 'user_profiles', uid);
-  await updateDoc(userDocRef, {
-    tournamentTokens: increment(quantity),
-  });
-  const updated = await getDoc(userDocRef);
-  return updated.data()?.tournamentTokens ?? quantity;
-}
-
-/**
- * Spends 1 tournament token when creating a tournament.
- */
-export async function spendTournamentTokenInFirestore(uid: string): Promise<boolean> {
-  const userDocRef = doc(db, 'user_profiles', uid);
-  const snap = await getDoc(userDocRef);
-  const currentTokens = snap.data()?.tournamentTokens ?? 0;
-  if (currentTokens <= 0) {
-    return false;
-  }
-  await updateDoc(userDocRef, {
-    tournamentTokens: increment(-1),
-  });
-  return true;
-}
-
-/**
  * Persists an arena to Firestore.
  */
 export async function persistArenaToFirestore(arena: TenantConfig): Promise<void> {
@@ -791,7 +805,9 @@ export async function persistArenaToFirestore(arena: TenantConfig): Promise<void
 
 export async function getArenaCreationAccess(uid: string): Promise<{ allowed: boolean; reason: 'login' | 'plan' | 'granted' }> {
   if (!auth.currentUser || auth.currentUser.uid !== uid) return { allowed: false, reason: 'login' };
-  if (auth.currentUser.email?.toLowerCase() === 'edmarjuniob@gmail.com') {
+  const token = await auth.currentUser.getIdTokenResult();
+  const adminDoc = await getDoc(doc(db, 'admins', uid));
+  if (auth.currentUser.email?.toLowerCase() === 'edmarjuniob@gmail.com' || token.claims.platformAdmin === true || adminDoc.exists()) {
     return { allowed: true, reason: 'granted' };
   }
   const access = await getDoc(doc(db, 'arena_access', uid));
@@ -805,6 +821,9 @@ export async function getArenaCreationAccess(uid: string): Promise<{ allowed: bo
 
 export async function hasActiveTournamentSubscription(uid: string): Promise<boolean> {
   if (!auth.currentUser || auth.currentUser.uid !== uid) return false;
+  const token = await auth.currentUser.getIdTokenResult();
+  const adminDoc = await getDoc(doc(db, 'admins', uid));
+  if (auth.currentUser.email?.toLowerCase() === 'edmarjuniob@gmail.com' || token.claims.platformAdmin === true || adminDoc.exists()) return true;
   const access = await getDoc(doc(db, 'arena_access', uid));
   const data = access.data();
   return data?.active === true && ['arena_pro_99', 'arena_pro_149'].includes(data.plan);
@@ -873,53 +892,26 @@ export async function removeManagerFromArenaInFirestore(
 export async function persistTournamentToFirestore(
   tourn: Tournament,
   options: { spendToken?: boolean } = {}
-): Promise<void> {
+): Promise<number> {
   const currentUser = auth.currentUser;
   const path = `tournaments/${tourn.id}`;
-  if (!currentUser?.emailVerified) throw new Error('Entre com uma conta verificada para salvar o torneio.');
+  if (!currentUser?.emailVerified) throw new Error('Entre com uma conta verificada para salvar o campeonato.');
   try {
-    const tournamentRef = doc(db, 'tournaments', tourn.id);
-    const tournamentData = {
+    const result = await createArenaTournamentInFirestore({
       ...tourn,
-      ownerId: currentUser.uid,
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (!options.spendToken) {
-      await setDoc(tournamentRef, tournamentData);
-      return;
-    }
-
-    const profileRef = doc(db, 'user_profiles', currentUser.uid);
-    await runTransaction(db, async (transaction) => {
-      const [profileSnapshot, tournamentSnapshot] = await Promise.all([
-        transaction.get(profileRef),
-        transaction.get(tournamentRef),
-      ]);
-      if (!profileSnapshot.exists()) {
-        throw new Error('Você precisa de 1 Token de Campeonato ou de uma assinatura ativa para criar um campeonato.');
-      }
-      if (tournamentSnapshot.exists()) throw new Error('Este campeonato já existe. Atualize a tela e tente novamente.');
-
-      const currentTokens = profileSnapshot.data().tournamentTokens;
-      if (typeof currentTokens !== 'number' || currentTokens < 1) {
-        throw new Error('Você precisa de 1 Token de Campeonato ou de uma assinatura ativa para criar um campeonato.');
-      }
-
-      transaction.update(profileRef, { tournamentTokens: currentTokens - 1 });
-      transaction.set(tournamentRef, tournamentData);
+      tenantId: tourn.tenantId,
+      creatorUid: currentUser.uid,
+      createdScope: 'arena',
+      creatorTokensSpent: options.spendToken ? 1 : 0,
+      tableLicenseFee: options.spendToken ? 19.9 : 0,
     });
+    return result.creatorTokensSpent;
   } catch (error) {
-    if (error instanceof Error && error.message === 'Você precisa de 1 Token de Campeonato ou de uma assinatura ativa para criar um campeonato.') {
-      throw error;
-    }
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'permission-denied') {
-      throw new Error('Para criar um campeonato, assine um plano de R$ 99 ou R$ 149, ou adquira 1 Token de Campeonato.');
-    }
+    const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
+    if (message) throw new Error(message);
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
-
 function publicTeamPair(team?: TeamPair): Record<string, unknown> | undefined {
   if (!team) return undefined;
   return {
@@ -1186,6 +1178,32 @@ export async function fetchCouponsFromFirestore(arenaId?: string): Promise<Disco
   }
 }
 
+async function fetchPinnedPublicCoupons(): Promise<DiscountCoupon[]> {
+  try {
+    const snapshot = await getDocs(collection(db, 'public_promotions'));
+    const now = Date.now();
+    return snapshot.docs.flatMap((item) => {
+      const data = item.data();
+      const expiresAt = typeof data.expiresAt === 'string' ? data.expiresAt : undefined;
+      if (expiresAt && (!Number.isFinite(Date.parse(expiresAt)) || Date.parse(expiresAt) <= now)) return [];
+      if (typeof data.code !== 'string' || typeof data.discountValue !== 'number') return [];
+      return [{
+        id: item.id,
+        code: data.code,
+        discountType: data.discountType === 'percent' ? 'percent' : 'fixed',
+        discountValue: data.discountValue,
+        scope: 'global',
+        usedCount: 0,
+        active: true,
+        expiresAt,
+        createdAt: '',
+      } as DiscountCoupon];
+    });
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Validates and calculates discount for a given coupon code.
  */
@@ -1211,7 +1229,9 @@ export async function validateAndApplyCouponInFirestore(params: {
   }
 
   try {
-    const coupons = await fetchCouponsFromFirestore(params.arenaId);
+    const coupons = auth.currentUser
+      ? await fetchCouponsFromFirestore(params.arenaId)
+      : await fetchPinnedPublicCoupons();
     const target = coupons.find((c) => c.code.toUpperCase() === cleanCode && c.active);
 
     if (!target) {
@@ -1250,7 +1270,7 @@ export async function validateAndApplyCouponInFirestore(params: {
       };
     }
 
-    if (target.expiresAt && new Date(target.expiresAt) < new Date()) {
+    if (target.expiresAt && (!Number.isFinite(Date.parse(target.expiresAt)) || Date.parse(target.expiresAt) <= Date.now())) {
       return {
         valid: false,
         discountAmount: 0,

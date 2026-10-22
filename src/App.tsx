@@ -24,6 +24,7 @@ import { TournamentResultNotifications } from './components/TournamentResultNoti
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { SmartNotificationBanner } from './components/SmartNotificationBanner';
+import { PinnedCouponBanner } from './components/PinnedCouponBanner';
 import { PersistentLiveStreamDock } from './components/PersistentLiveStreamDock';
 import { HomeHighlights } from './components/HomeHighlights';
 import { CommandPalette } from './components/CommandPalette';
@@ -187,6 +188,7 @@ const MainContent: React.FC = () => {
       {!focusMode && (
         <>
           <Navbar />
+          <PinnedCouponBanner />
           {activeTab === 'home' && <SmartNotificationBanner />}
           {activeTab === 'home' && <FreeSlotsDateTimeFilter homeTop />}
         </>

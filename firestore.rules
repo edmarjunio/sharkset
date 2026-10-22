@@ -102,6 +102,7 @@ service cloud.firestore {
     function isAdmin() {
       return isVerifiedUser() && (
         request.auth.token.email == 'edmarjuniob@gmail.com' ||
+        request.auth.token.platformAdmin == true ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -114,21 +115,6 @@ service cloud.firestore {
           (get(/databases/$(database)/documents/arena_access/$(uid)).data.active == true &&
             get(/databases/$(database)/documents/arena_access/$(uid)).data.plan in ['arena_pro_99', 'arena_pro_149'])
         );
-    }
-
-    function spendsOneTournamentToken(uid) {
-      let profilePath = /databases/$(database)/documents/user_profiles/$(uid);
-      return isSignedIn() && request.auth.uid == uid && exists(profilePath) &&
-        get(profilePath).data.tournamentTokens is number &&
-        get(profilePath).data.tournamentTokens > 0 &&
-        getAfter(profilePath).data.tournamentTokens == get(profilePath).data.tournamentTokens - 1;
-    }
-
-    function hasActiveTournamentSubscription(uid) {
-      return isSignedIn() && request.auth.uid == uid &&
-        exists(/databases/$(database)/documents/arena_access/$(uid)) &&
-        get(/databases/$(database)/documents/arena_access/$(uid)).data.active == true &&
-        get(/databases/$(database)/documents/arena_access/$(uid)).data.plan in ['arena_pro_99', 'arena_pro_149'];
     }
 
     // Returns true if authenticated user is the arena owner, listed in managers (UID or email), or admin
@@ -224,7 +210,7 @@ service cloud.firestore {
         (!('amenities' in data) || (data.amenities is list && data.amenities.size() <= 30)) &&
         (!('courts' in data) || (data.courts is list && data.courts.size() <= 50)) &&
         (!('operatingHours' in data) || data.operatingHours is map) &&
-        (!('subscriptionPlan' in data) || (data.subscriptionPlan is string && data.subscriptionPlan in ['arena_pro_99', 'pay_per_table_20'])) &&
+        (!('subscriptionPlan' in data) || (data.subscriptionPlan is string && data.subscriptionPlan in ['arena_pro_99', 'pay_per_table_20', 'pay_per_token_19_90'])) &&
         (!('monthlyPlanPrice' in data) || (data.monthlyPlanPrice is number && data.monthlyPlanPrice >= 0)) &&
         (!('ownerName' in data) || (data.ownerName is string && data.ownerName.size() <= 120)) &&
         (!('managers' in data) || (data.managers is list && data.managers.size() <= 20)) &&
@@ -267,7 +253,7 @@ service cloud.firestore {
         (!('responsiblePhone' in data) || (data.responsiblePhone is string && data.responsiblePhone.size() <= 30)) &&
         (!('isOpenForRegistration' in data) || data.isOpenForRegistration is bool) &&
         (!('isFinished' in data) || data.isFinished is bool) &&
-        (!('tableLicenseStatus' in data) || (data.tableLicenseStatus is string && data.tableLicenseStatus in ['unlocked_single_20', 'unlocked_arena_pro_99'])) &&
+        (!('tableLicenseStatus' in data) || (data.tableLicenseStatus is string && data.tableLicenseStatus in ['unlocked_single_20', 'unlocked_single_token', 'unlocked_arena_pro_99'])) &&
         (!('tableLicenseFee' in data) || (data.tableLicenseFee is number && data.tableLicenseFee >= 0)) &&
         (!('createdScope' in data) || (data.createdScope is string && data.createdScope in ['arena', 'user'])) &&
         (!('creatorUid' in data) || (data.creatorUid is string && isValidId(data.creatorUid))) &&
@@ -498,7 +484,8 @@ service cloud.firestore {
       return data.keys().hasAll(['id', 'title', 'category', 'mediaType', 'summary', 'authorName', 'level', 'likesCount', 'ownerId']) &&
         data.keys().hasOnly([
           'id', 'title', 'category', 'mediaType', 'mediaUrl', 'summary',
-          'authorName', 'level', 'likesCount', 'ownerId'
+          'authorName', 'level', 'likesCount', 'ownerId', 'publisherType', 'tacticalKeyPoints',
+          'publisherId', 'arenaId', 'arenaName', 'createdAt', 'updatedAt'
         ]) &&
         data.id is string && isValidId(data.id) &&
         data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
@@ -506,10 +493,18 @@ service cloud.firestore {
           'marcacao_padrao', 'posicionamento_quadra', 'corrida_areia', 'base_defesa', 'ataque_shark', 'comunidade'
         ] &&
         data.mediaType is string && data.mediaType in ['video', 'document', 'image'] &&
+        (!('mediaUrl' in data) || (data.mediaUrl is string && data.mediaUrl.size() <= 500)) &&
         data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 600 &&
+        (!('tacticalKeyPoints' in data) || (data.tacticalKeyPoints is list && data.tacticalKeyPoints.size() <= 20)) &&
         data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100 &&
         data.level is string && data.level in ['iniciante', 'intermediario', 'avancado', 'todos'] &&
         data.likesCount is number && data.likesCount >= 0 &&
+        (!('publisherType' in data) || data.publisherType in ['user', 'arena']) &&
+        (!('publisherId' in data) || isValidId(data.publisherId)) &&
+        (!('arenaId' in data) || isValidId(data.arenaId)) &&
+        (!('arenaName' in data) || (data.arenaName is string && data.arenaName.size() <= 100)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 40)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40)) &&
         data.ownerId is string && isValidId(data.ownerId);
     }
 
@@ -518,7 +513,7 @@ service cloud.firestore {
         data.keys().hasOnly([
           'id', 'code', 'description', 'discountType', 'discountValue',
           'scope', 'arenaId', 'arenaName', 'minBookingValue', 'maxUses',
-          'usedCount', 'active', 'expiresAt', 'createdBy', 'createdAt'
+          'usedCount', 'active', 'expiresAt', 'pinned', 'bannerMessage', 'createdBy', 'createdAt'
         ]) &&
         data.id is string && isValidId(data.id) &&
         data.code is string && data.code.size() >= 1 && data.code.size() <= 40 &&
@@ -534,6 +529,8 @@ service cloud.firestore {
         data.usedCount is number && data.usedCount >= 0 &&
         data.active is bool &&
         (!('expiresAt' in data) || (data.expiresAt is string && data.expiresAt.size() <= 30)) &&
+        (!('pinned' in data) || data.pinned is bool) &&
+        (!('bannerMessage' in data) || (data.bannerMessage is string && data.bannerMessage.size() <= 160)) &&
         (!('createdBy' in data) || (data.createdBy is string && isValidId(data.createdBy))) &&
         data.createdAt is string && data.createdAt.size() >= 1 && data.createdAt.size() <= 40;
     }
@@ -596,17 +593,15 @@ service cloud.firestore {
     match /tournaments/{tournamentId} {
       allow get: if isValidId(tournamentId);
       allow list: if true;
-      allow create: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) &&
-        incoming().ownerId == request.auth.uid && incoming().creatorUid == request.auth.uid &&
-        (
-          isAdmin() ||
-          (incoming().creatorTokensSpent == 1 && spendsOneTournamentToken(request.auth.uid)) ||
-          (incoming().creatorTokensSpent == 0 && hasActiveTournamentSubscription(request.auth.uid))
-        );
+      // Championship creation and token debit are committed by the trusted callable function.
+      allow create: if false;
       allow update: if isVerifiedUser() && isValidId(tournamentId) && isValidTournament(incoming()) &&
         (isAdmin() || isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId)) &&
         incoming().id == existing().id &&
         incoming().tenantId == existing().tenantId &&
+        incoming().diff(existing()).affectedKeys().hasNone([
+          'ownerId', 'creatorUid', 'creatorTokensSpent', 'tableLicenseStatus', 'tableLicenseFee', 'createdScope'
+        ]) &&
         (isAdmin() || incoming().ownerId == existing().ownerId);
       allow delete: if isVerifiedUser() && isValidId(tournamentId) &&
         (isAdmin() || isOwner(existing().ownerId) || isArenaOrganizer(existing().tenantId));
@@ -663,10 +658,15 @@ service cloud.firestore {
       allow create: if isVerifiedUser() && isValidId(userId) &&
         (userId == request.auth.uid || isAdmin()) &&
         incoming().ownerId == userId &&
+        (!('tournamentTokens' in incoming()) || incoming().tournamentTokens == 0) &&
         isValidUserProfile(incoming());
       allow update: if isVerifiedUser() && isValidId(userId) &&
         (userId == request.auth.uid || isAdmin()) &&
         isValidUserProfile(incoming()) &&
+        (isAdmin() ||
+          ((!('tournamentTokens' in existing()) && !('tournamentTokens' in incoming())) ||
+            ('tournamentTokens' in existing() && 'tournamentTokens' in incoming() &&
+              incoming().tournamentTokens == existing().tournamentTokens))) &&
         incoming().id == existing().id &&
         incoming().ownerId == existing().ownerId &&
         (isAdmin() || incoming().role == existing().role);
@@ -720,14 +720,23 @@ service cloud.firestore {
 
     // Academy Posts: Tactical video and image library
     match /academy_posts/{postId} {
-      allow get: if isValidId(postId) && isOwner(existing().ownerId);
-      allow list: if isOwner(existing().ownerId);
-      allow create: if isVerifiedUser() && isValidId(postId) && isValidAcademyPost(incoming());
+      allow get: if isValidId(postId);
+      allow list: if true;
+      allow create: if isVerifiedUser() && isValidId(postId) && isValidAcademyPost(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().likesCount == 0 &&
+        ((incoming().publisherType == 'user' && incoming().publisherId == request.auth.uid) ||
+          (incoming().publisherType == 'arena' && incoming().publisherId == incoming().arenaId &&
+            isArenaOrganizer(incoming().arenaId)));
       allow update: if isVerifiedUser() && isValidId(postId) && isValidAcademyPost(incoming()) &&
         isOwner(existing().ownerId) &&
         incoming().ownerId == existing().ownerId &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'summary', 'likesCount']);
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'summary']);
       allow delete: if isVerifiedUser() && isValidId(postId) && isOwner(existing().ownerId);
+    }
+
+    match /academy_post_likes/{postId}/users/{uid} {
+      allow read, write: if false;
     }
 
     // Arena plan entitlements are provisioned by an administrator or billing backend.
@@ -735,6 +744,25 @@ service cloud.firestore {
       allow get: if isSignedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
+    }
+
+    match /admins/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
+    // Token orders may be read by their purchaser. Payment receipts and token ledger
+    // entries are written only by trusted server code.
+    match /token_orders/{orderId} {
+      allow get, list: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create, update, delete: if false;
+    }
+    match /mercado_pago_payments/{paymentId} {
+      allow read, write: if false;
+    }
+    match /user_profiles/{userId}/token_ledger/{entryId} {
+      allow get, list: if isOwner(userId) || isAdmin();
+      allow create, update, delete: if false;
     }
 
     // Coupons: Promo and discount vouchers for court bookings
@@ -756,6 +784,12 @@ service cloud.firestore {
         (existing().scope == 'global' && isAdmin()) ||
         (existing().scope == 'arena' && 'arenaId' in existing() && isArenaOrganizer(existing().arenaId))
       );
+    }
+
+    // Safe, server-generated public projection for pinned global coupon banners.
+    match /public_promotions/{promotionId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
   }
 }

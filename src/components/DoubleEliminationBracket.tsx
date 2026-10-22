@@ -200,6 +200,14 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
   const tournamentSaveLock = useRef(false);
   const tokenPurchaseSectionRef = useRef<HTMLDivElement | null>(null);
   const [tokenPurchaseNotice, setTokenPurchaseNotice] = useState(false);
+  const beginTokenCheckout = async (quantity: number) => {
+    try {
+      await buyTournamentTokens(quantity);
+      setTokenPurchaseNotice(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível abrir o pagamento.');
+    }
+  };
 
   // Tournament Filters & Search State
   const [tournamentSearch, setTournamentSearch] = useRememberedState('tournament:tournamentSearch', '');
@@ -2213,41 +2221,29 @@ export const DoubleEliminationBracket: React.FC<DoubleEliminationBracketProps> =
                         >Comprar Token de Campeonato</AccessLockedAction> : <div className="grid grid-cols-3 gap-2">
                           <button
                             type="button"
-                            onClick={async () => {
-                              await buyTournamentTokens(1);
-                              setTokenPurchaseNotice(false);
-                              toast.success('1 Token de Campeonato adicionado com sucesso!');
-                            }}
+                            onClick={() => void beginTokenCheckout(1)}
                             className="p-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-center transition-all cursor-pointer"
                           >
                             <span className="block font-extrabold text-amber-300 text-xs">+1 Token</span>
-                            <span className="block text-[10px] text-slate-300">R$ 20</span>
+                            <span className="block text-[10px] text-slate-300">R$ 19,90</span>
                           </button>
 
                           <button
                             type="button"
-                            onClick={async () => {
-                              await buyTournamentTokens(5);
-                              setTokenPurchaseNotice(false);
-                              toast.success('Pacote de 5 Tokens de Campeonato adicionado!');
-                            }}
+                            onClick={() => void beginTokenCheckout(5)}
                             className="p-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-center transition-all cursor-pointer"
                           >
                             <span className="block font-extrabold text-amber-300 text-xs">+5 Tokens</span>
-                            <span className="block text-[10px] text-slate-300">R$ 85 (-15%)</span>
+                            <span className="block text-[10px] text-slate-300">R$ 99,50</span>
                           </button>
 
                           <button
                             type="button"
-                            onClick={async () => {
-                              await buyTournamentTokens(10);
-                              setTokenPurchaseNotice(false);
-                              toast.success('Super Pacote de 10 Tokens de Campeonato adicionado!');
-                            }}
+                            onClick={() => void beginTokenCheckout(10)}
                             className="p-2 rounded-lg bg-amber-500/30 hover:bg-amber-500/40 border border-amber-400 text-center transition-all cursor-pointer ring-1 ring-amber-400/50"
                           >
                             <span className="block font-extrabold text-amber-300 text-xs">+10 Tokens</span>
-                            <span className="block text-[10px] text-emerald-300 font-bold">R$ 150 (-25%)</span>
+                            <span className="block text-[10px] text-emerald-300 font-bold">R$ 199,00</span>
                           </button>
                         </div>}
                       </div>

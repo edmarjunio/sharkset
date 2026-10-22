@@ -459,8 +459,8 @@ export interface Tournament {
   responsiblePhone: string;
   isOpenForRegistration: boolean;
   isFinished: boolean;
-  tableLicenseStatus?: 'unlocked_single_20' | 'unlocked_arena_pro_99';
-  tableLicenseFee?: number; // R$ 20 por tabela avulsa
+  tableLicenseStatus?: 'unlocked_single_20' | 'unlocked_single_token' | 'unlocked_arena_pro_99';
+  tableLicenseFee?: number;
   createdScope?: 'arena' | 'user'; // 'arena' = criado na arena fixa; 'user' = criado pelo usuário com escolha livre de arena
   creatorUid?: string;             // UID do usuário criador
   creatorTokensSpent?: number;     // Quantidade de tokens debitados (1 token)
@@ -499,7 +499,7 @@ export interface TenantConfig {
     open: string;
     close: string;
   };
-  subscriptionPlan?: 'arena_pro_99' | 'pay_per_table_20';
+  subscriptionPlan?: 'arena_pro_99' | 'pay_per_table_20' | 'pay_per_token_19_90';
   monthlyPlanPrice?: number; // R$ 99/mês
   ownerId?: string;
   ownerName?: string;
@@ -533,7 +533,9 @@ export interface DiscountCoupon {
   maxUses?: number;                  // Limite máximo de utilizações
   usedCount: number;                 // Total de vezes utilizado
   active: boolean;                   // Ativo ou pausado
-  expiresAt?: string;                // YYYY-MM-DD
+  expiresAt?: string;                // ISO timestamp; coupon is invalid after this instant
+  pinned?: boolean;                  // Shows this global coupon in the public site banner
+  bannerMessage?: string;
   createdBy?: string;                // UID do criador
   createdAt: string;
 }
@@ -662,6 +664,9 @@ export interface AcademyPost {
   likesCount: number;
   createdAt?: string;
   ownerId?: string;
+  publisherType?: 'user' | 'arena';
+  publisherId?: string;
+  arenaId?: string;
 }
 
 export type ReportTargetType = 'athlete' | 'match';

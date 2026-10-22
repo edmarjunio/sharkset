@@ -1,22 +1,21 @@
 # Modelo de segurança
 
-## Controles observados
+## Controles no código
 
-- Firestore Rules usa negação global por padrão e regras explícitas por coleção.
-- Firebase Auth fornece UID; perfis privados são associados ao proprietário.
-- API de lives valida ID token e usa revisão transacional para atualização concorrente.
-- Functions LiveKit são privadas para a identidade do gateway e validam o bearer recebido.
-- Reserva online falha fechada com 503, e não declara pagamento confirmado.
+- Firebase Auth associa as operações ao UID autenticado.
+- Admin global é verificado por e-mail legado, custom claim `platformAdmin` ou `admins/{uid}`. Donos e gestores de arena têm acesso limitado à arena correspondente.
+- Saldo de tokens e documentos de pagamento só são gravados por Cloud Functions com Admin SDK.
+- O webhook do Mercado Pago valida `x-signature` e consulta o pagamento na API do provedor antes de alterar saldo.
+- Criação de campeonato e débito do token ocorrem na mesma transação.
+- Curtidas de publicações são idempotentes por usuário.
 
-## Riscos pendentes
+## Pendências antes de considerar produção
 
-- Admin SDK ignora Firestore Rules: cada endpoint servidor precisa validar token, papel, arena e campos.
-- O Express não está configurado como backend de Hosting/Cloud Run. Endpoints locais não comprovam segurança nem disponibilidade em produção.
-- O mecanismo de administrador nas Rules mantém e-mail específico como exceção, além do documento `admins/{uid}`; remover essa dependência requer provisionamento testado.
-- Subcoleções de arena, leitura pública e campos protegidos exigem testes de Rules para cada perfil e isolamento cruzado.
-- App Check não está integrado de forma abrangente.
-- Pagamentos, webhooks, operações de reserva e ranking oficial dependem de backend autoritativo ainda incompleto.
+- Cadastrar `MERCADO_PAGO_ACCESS_TOKEN` e `MERCADO_PAGO_WEBHOOK_SECRET` no Secret Manager.
+- Publicar Functions e as regras Firestore atualizadas.
+- Executar a suíte de regras do Firebase Emulator para isolamento de arena e proteção do saldo.
+- Publicar/verificar o Cloud Run `sharkset-api`, exigido pelo rewrite `/api/**` no Hosting.
+- Implementar operações autoritativas para reservas e ranking e associar cada live a uma reserva ou partida.
+- Migrar dados legados do `localStorage` com identificação do dono antes de remover a fonte local.
 
-## Requisitos de publicação
-
-Executar testes do Firebase Emulator Suite para duas arenas e papéis distintos; revisar acesso de leitura e escrita a campos; validar IAM de cada serviço; manter segredos fora do frontend e do repositório. Nenhuma regra foi alterada nesta etapa, pois uma mudança geral poderia interromper fluxos existentes sem matriz completa de compatibilidade.
+Nunca colocar chaves do Mercado Pago em variáveis `VITE_*`, bundle, `localStorage`, documentação pública ou Git.

@@ -86,8 +86,8 @@ import {
   getUserProfileFromFirestore,
   persistUserProfileToFirestore,
   persistFullAthleteProfileToFirestore,
-  addTournamentTokensInFirestore,
-  spendTournamentTokenInFirestore,
+  createTournamentTokenCheckout,
+  listenToTournamentTokenBalance,
   persistArenaToFirestore,
   fetchArenasFromFirestore,
   addManagerToArenaInFirestore,
@@ -185,7 +185,6 @@ interface AppContextType {
     }
   ) => void;
   buyTournamentTokens: (quantity: number) => Promise<void>;
-  spendTournamentToken: () => Promise<boolean>;
   coupons: DiscountCoupon[];
   createCoupon: (coupon: Omit<DiscountCoupon, 'id' | 'createdAt' | 'usedCount'>) => Promise<DiscountCoupon>;
   toggleCouponStatus: (couponId: string) => Promise<void>;
@@ -491,10 +490,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const createCoupon = async (
     couponData: Omit<DiscountCoupon, 'id' | 'createdAt' | 'usedCount'>
   ): Promise<DiscountCoupon> => {
+    const code = couponData.code.trim().toUpperCase();
+    const couponSlug = code.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').slice(0, 32);
     const newCoupon: DiscountCoupon = {
       ...couponData,
-      id: `coupon-${couponData.code.toLowerCase()}-${Date.now()}`,
-      code: couponData.code.trim().toUpperCase(),
+      id: `coupon-${couponSlug || 'promo'}-${Date.now()}`,
+      code,
       usedCount: 0,
       createdAt: new Date().toISOString(),
       createdBy: auth.currentUser?.uid,
@@ -561,25 +562,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const buyTournamentTokens = async (quantity: number) => {
-    setUserProfileState((prev) => ({
-      ...prev,
-      tournamentTokens: (prev.tournamentTokens || 0) + quantity,
-    }));
-    if (auth.currentUser) {
-      await addTournamentTokensInFirestore(auth.currentUser.uid, quantity);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+      throw new Error('Escolha entre 1 e 10 tokens.');
     }
-  };
-
-  const spendTournamentToken = async (): Promise<boolean> => {
-    if (userProfile.tournamentTokens < 1) return false;
-    setUserProfileState((prev) => ({
-      ...prev,
-      tournamentTokens: Math.max(0, prev.tournamentTokens - 1),
-    }));
-    if (auth.currentUser) {
-      await spendTournamentTokenInFirestore(auth.currentUser.uid);
-    }
-    return true;
+    if (!auth.currentUser?.emailVerified) throw new Error('Entre com uma conta verificada para comprar tokens.');
+    const checkoutUrl = await createTournamentTokenCheckout(quantity);
+    window.location.assign(checkoutUrl);
   };
 
   const setUserProfile = (
@@ -627,7 +615,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     let isCurrent = true;
+    let unsubscribeTokenBalance: (() => void) | null = null;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      unsubscribeTokenBalance?.();
+      unsubscribeTokenBalance = null;
       useSharkStore.getState().setFirebaseUserEmail(user?.email || null);
       const nextOwner = user?.uid || null;
       if (cacheOwnerRef.current !== nextOwner) {
@@ -675,6 +666,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             tournamentsPlayed: typeof cloudData.tournamentsPlayed === 'number' ? cloudData.tournamentsPlayed : 0,
           };
           setUserProfileState(profile);
+          unsubscribeTokenBalance = listenToTournamentTokenBalance(user.uid, balance => {
+            if (isCurrent && auth.currentUser?.uid === user.uid) {
+              setUserProfileState(previous => ({ ...previous, tournamentTokens: balance }));
+            }
+          });
           if (cloudProfile) {
             try {
               localStorage.removeItem(`sharkset_user_level_${user.uid}`);
@@ -730,6 +726,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return () => {
       isCurrent = false;
+      unsubscribeTokenBalance?.();
       unsubscribe();
     };
   }, []);
@@ -1525,7 +1522,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!currentUser?.emailVerified) {
       throw new Error('Entre com uma conta verificada para criar o torneio.');
     }
-    const isUserScope = data.createdScope === 'user';
     const targetTenantId = data.tenantId || tenant.id;
     const hasSubscriptionAccess = await hasActiveTournamentSubscription(currentUser.uid);
     const isPlatformAdmin = currentUser.email?.toLowerCase() === 'edmarjuniob@gmail.com';
@@ -1553,18 +1549,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       responsiblePhone: data.responsiblePhone,
       isOpenForRegistration: true,
       isFinished: false,
-      tableLicenseStatus: spendToken ? 'unlocked_single_20' : 'unlocked_arena_pro_99',
-      tableLicenseFee: spendToken ? 20 : 0,
-      createdScope: isUserScope ? 'user' : 'arena',
+      tableLicenseStatus: spendToken ? 'unlocked_single_token' : 'unlocked_arena_pro_99',
+      tableLicenseFee: spendToken ? 19.9 : 0,
+      createdScope: 'arena',
       creatorUid: currentUser.uid,
       creatorTokensSpent: spendToken ? 1 : 0,
     };
 
     await persistTournamentToFirestore(newTourn, { spendToken });
     tournamentCatalog.invalidate();
-    if (spendToken) {
-      setUserProfileState((prev) => ({ ...prev, tournamentTokens: Math.max(0, prev.tournamentTokens - 1) }));
-    }
     setTournaments((prev) => [newTourn, ...prev]);
     setActiveTournamentId(newTourn.id);
 
@@ -2380,7 +2373,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         userProfile,
         setUserProfile,
         buyTournamentTokens,
-        spendTournamentToken,
         coupons,
         createCoupon,
         toggleCouponStatus,

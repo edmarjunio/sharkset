@@ -2,18 +2,23 @@ import { getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { defineBoolean, defineSecret, defineString } from 'firebase-functions/params';
-import { onRequest, type Request } from 'firebase-functions/v2/https';
+import { HttpsError, onCall, onRequest, type Request } from 'firebase-functions/v2/https';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { onUserCreated } from 'firebase-functions/v2/identity';
 import { FieldValue } from 'firebase-admin/firestore';
 import { WebhookReceiver } from 'livekit-server-sdk';
 import { LiveService, applyWebhook } from './service';
 import { listBroadcasts } from './directory';
 import { LiveError, PROJECT_ID, REGION, validId } from './policy';
 import { didOfficialResultChange, validateOfficialResult } from './tournament-results';
+import { createTokenOrder, processMercadoPagoNotification } from './mercado-pago';
+import { createTournamentWithEntitlement } from './tournaments';
 
 const apiKey = defineSecret('LIVEKIT_API_KEY');
 const apiSecret = defineSecret('LIVEKIT_API_SECRET');
 const serverUrl = defineSecret('LIVEKIT_URL');
+const mercadoPagoAccessToken = defineSecret('MERCADO_PAGO_ACCESS_TOKEN');
+const mercadoPagoWebhookSecret = defineSecret('MERCADO_PAGO_WEBHOOK_SECRET');
 // Keep this default aligned with firebase-applet-config.json and firebase.json.
 const firestoreDatabaseId = defineString('FIRESTORE_DATABASE_ID', {
   default: '(default)',
@@ -23,6 +28,147 @@ const allowIssuerDisclosure = defineBoolean('LIVEKIT_ALLOW_JWT_ISSUER_DISCLOSURE
 const origins = ['https://sharkset.web.app', 'https://sharkset.firebaseapp.com', 'http://localhost:369', 'http://localhost:5173'];
 // Only the gateway identity may invoke these services; never allUsers/allAuthenticatedUsers.
 const common = { region: REGION, invoker: [`livekit-gateway@${PROJECT_ID}.iam.gserviceaccount.com`], minInstances: 0, maxInstances: 2, concurrency: 20, memory: '256MiB' as const, timeoutSeconds: 30, cors: origins };
+
+/** Creates a pending token order and a Mercado Pago Checkout Pro preference. */
+export const createTournamentTokenCheckout = onCall({
+  region: REGION,
+  secrets: [mercadoPagoAccessToken],
+  maxInstances: 2,
+  cors: origins,
+}, async (request) => {
+  if (!request.auth || request.auth.token.email_verified !== true) {
+    throw new HttpsError('unauthenticated', 'Entre com uma conta verificada para comprar tokens.');
+  }
+  const quantity = Number(request.data?.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+    throw new HttpsError('invalid-argument', 'Escolha entre 1 e 10 tokens por compra.');
+  }
+  try {
+    return await createTokenOrder(database(), mercadoPagoAccessToken.value(), {
+      uid: request.auth.uid,
+      email: typeof request.auth.token.email === 'string' ? request.auth.token.email : '',
+      quantity,
+    });
+  } catch {
+    throw new HttpsError('unavailable', 'Não foi possível iniciar o pagamento. Tente novamente.');
+  }
+});
+
+/** Creates a championship and consumes one paid token atomically when the account has no plan. */
+export const createArenaTournament = onCall({ region: REGION, maxInstances: 4, cors: origins }, async (request) => {
+  if (!request.auth || request.auth.token.email_verified !== true) {
+    throw new HttpsError('unauthenticated', 'Entre com uma conta verificada para criar um campeonato.');
+  }
+  if (!request.data?.tournament || typeof request.data.tournament !== 'object' || Array.isArray(request.data.tournament)) {
+    throw new HttpsError('invalid-argument', 'Dados do campeonato inválidos.');
+  }
+  try {
+    const result = await createTournamentWithEntitlement(database(), {
+      uid: request.auth.uid,
+      email: typeof request.auth.token.email === 'string' ? request.auth.token.email : '',
+      isPlatformAdmin: String(request.auth.token.email || '').toLowerCase() === 'edmarjuniob@gmail.com' || request.auth.token.platformAdmin === true,
+      payload: request.data.tournament as Record<string, unknown>,
+    });
+    return result;
+  } catch (error) {
+    const code = error instanceof Error ? error.message : '';
+    const messages: Record<string, string> = {
+      ARENA_REQUIRED: 'Escolha uma arena para sediar o campeonato.',
+      INVALID_TOURNAMENT: 'Confira os dados do campeonato.',
+      ARENA_NOT_FOUND: 'A arena selecionada não existe mais.',
+      TOURNAMENT_EXISTS: 'Este campeonato já foi criado. Atualize a tela.',
+      PROFILE_REQUIRED: 'Seu perfil ainda está sendo preparado. Tente novamente em alguns instantes.',
+      ARENA_FORBIDDEN: 'Você não tem permissão para criar campeonatos nesta arena.',
+      TOKEN_REQUIRED: 'Compre um token ou ative um plano para criar este campeonato.',
+    };
+    if (messages[code]) throw new HttpsError(code === 'ARENA_FORBIDDEN' ? 'permission-denied' : 'failed-precondition', messages[code]);
+    throw new HttpsError('unavailable', 'Não foi possível salvar o campeonato. Tente novamente.');
+  }
+});
+
+/** Initializes a private profile when Firebase Authentication creates an account. */
+export const initializeUserProfile = onUserCreated({ region: REGION, maxInstances: 4 }, async (event) => {
+  const user = event.data;
+  if (!user?.uid) return;
+  const profileRef = database().doc(`user_profiles/${user.uid}`);
+  await profileRef.create({
+    id: user.uid,
+    displayName: String(user.displayName || 'Atleta').slice(0, 120),
+    ...(user.email ? { email: user.email.slice(0, 160) } : {}),
+    ...(user.photoURL ? { photoURL: user.photoURL.slice(0, 500) } : {}),
+    role: 'athlete',
+    ownerId: user.uid,
+    level: 'iniciante',
+    experienceCategory: 'amador',
+    tournamentTokens: 0,
+    points: 0,
+    wins: 0,
+    matchesPlayed: 0,
+    titlesCount: 0,
+    tournamentsPlayed: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }).catch(async error => {
+    if ((error as { code?: number }).code !== 6) throw error;
+    await profileRef.set({
+      displayName: String(user.displayName || 'Atleta').slice(0, 120),
+      ...(user.email ? { email: user.email.slice(0, 160) } : {}),
+      ...(user.photoURL ? { photoURL: user.photoURL.slice(0, 500) } : {}),
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  });
+});
+
+export const likeAcademyPost = onCall({ region: REGION, maxInstances: 4, cors: origins }, async request => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Entre na sua conta para curtir uma publicação.');
+  const postId = request.data?.postId;
+  if (typeof postId !== 'string' || !/^[\w-]{1,64}$/.test(postId)) {
+    throw new HttpsError('invalid-argument', 'Publicação inválida.');
+  }
+  const db = database();
+  const postRef = db.doc(`academy_posts/${postId}`);
+  const likeRef = db.doc(`academy_post_likes/${postId}/users/${request.auth.uid}`);
+  try {
+    return await db.runTransaction(async transaction => {
+      const [postSnapshot, likeSnapshot] = await Promise.all([transaction.get(postRef), transaction.get(likeRef)]);
+      if (!postSnapshot.exists) throw new HttpsError('not-found', 'A publicação não existe mais.');
+      const count = Number(postSnapshot.data()?.likesCount || 0);
+      if (!likeSnapshot.exists) {
+        transaction.create(likeRef, { ownerId: request.auth!.uid, createdAt: FieldValue.serverTimestamp() });
+        transaction.update(postRef, { likesCount: count + 1, updatedAt: new Date().toISOString() });
+        return { likesCount: count + 1, liked: true };
+      }
+      return { likesCount: count, liked: true };
+    });
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('unavailable', 'Não foi possível atualizar a curtida.');
+  }
+});
+
+/** Public provider callback. Credits are granted only after signature and payment API verification. */
+export const mercadoPagoWebhook = onRequest({
+  region: REGION,
+  secrets: [mercadoPagoAccessToken, mercadoPagoWebhookSecret],
+  maxInstances: 4,
+  timeoutSeconds: 30,
+  cors: false,
+}, async (req, res) => {
+  if (req.method !== 'POST') { res.sendStatus(405); return; }
+  try {
+    await processMercadoPagoNotification(database(), {
+      accessToken: mercadoPagoAccessToken.value(),
+      webhookSecret: mercadoPagoWebhookSecret.value(),
+      signature: String(req.get('x-signature') || ''),
+      requestId: String(req.get('x-request-id') || ''),
+      dataId: typeof req.query['data.id'] === 'string' ? req.query['data.id'] : '',
+    });
+    res.sendStatus(200);
+  } catch {
+    // Provider retries transient errors; invalid signatures return without mutation above.
+    res.sendStatus(503);
+  }
+});
 
 function database() {
   const project = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT;
@@ -166,5 +312,50 @@ export const tournamentBroadcastLink = onDocumentWritten({
     if (nextRef && (next?.tournamentId !== tournamentId || next?.matchId !== matchId)) {
       transaction.set(nextRef, { tournamentId, matchId });
     }
+  });
+});
+
+// Expose only safe display fields for active, pinned, global coupons.
+export const pinnedCouponPromotion = onDocumentWritten({
+  document: 'coupons/{couponId}',
+  region: REGION,
+  maxInstances: 2,
+  retry: true,
+}, async (event) => {
+  const { couponId } = event.params;
+  if (!validId(couponId)) return;
+  const db = database();
+  const couponRef = db.doc(`coupons/${couponId}`);
+  const promotionRef = db.doc(`public_promotions/${couponId}`);
+  const current = await couponRef.get();
+  const coupon = current.data();
+  if (!current.exists || coupon?.scope !== 'global' || coupon?.active !== true || coupon?.pinned !== true) {
+    await promotionRef.delete().catch(() => undefined);
+    return;
+  }
+
+  const expiresAt = typeof coupon.expiresAt === 'string' ? coupon.expiresAt : '';
+  if (expiresAt && (!Number.isFinite(Date.parse(expiresAt)) || Date.parse(expiresAt) <= Date.now())) {
+    await promotionRef.delete().catch(() => undefined);
+    return;
+  }
+  if (typeof coupon.code !== 'string' || coupon.code.length > 40) {
+    await promotionRef.delete().catch(() => undefined);
+    return;
+  }
+
+  await promotionRef.set({
+    id: couponId,
+    code: coupon.code,
+    discountType: coupon.discountType === 'percent' ? 'percent' : 'fixed',
+    discountValue: typeof coupon.discountValue === 'number' ? coupon.discountValue : 0,
+    title: 'CUPOM: DEU A LOUCA NO SHARKINHO!',
+    message: typeof coupon.bannerMessage === 'string' && coupon.bannerMessage.length <= 160
+      ? coupon.bannerMessage
+      : coupon.discountType === 'percent'
+        ? `TODOS OS HORÁRIOS COM ${coupon.discountValue}% DE DESCONTO`
+        : `TODOS OS HORÁRIOS COM R$ ${coupon.discountValue} DE DESCONTO`,
+    expiresAt: expiresAt || null,
+    updatedAt: FieldValue.serverTimestamp(),
   });
 });
