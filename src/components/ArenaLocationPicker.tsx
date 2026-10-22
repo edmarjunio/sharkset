@@ -204,8 +204,7 @@ export const ArenaLocationPicker: React.FC<Props> = ({ value, onChange }) => {
   };
 
   // 2. Search by Address Query
-  const handleAddressSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddressSearch = async () => {
     if (!searchQuery.trim()) return;
 
     setLoading(true);
@@ -337,23 +336,29 @@ export const ArenaLocationPicker: React.FC<Props> = ({ value, onChange }) => {
           <label className="block text-[11px] text-slate-300 font-semibold">
             Pesquise pelo nome da rua, praça ou ponto de referência:
           </label>
-          <form onSubmit={handleAddressSearch} className="flex gap-2">
+          <div className="flex gap-2">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                void handleAddressSearch();
+              }}
               placeholder="Ex: Av. Brasil 500, Centro, Mineiros - GO"
               className="flex-1 px-3.5 py-2 rounded-xl bg-[#05182C] border border-cyan-700/60 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400"
             />
             <button
-              type="submit"
+              type="button"
               disabled={loading || !searchQuery.trim()}
+              onClick={() => void handleAddressSearch()}
               className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs cursor-pointer inline-flex items-center gap-1.5 transition-all"
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
               <span>Pesquisar</span>
             </button>
-          </form>
+          </div>
 
           {searchResults.length > 0 && (
             <div className="space-y-1.5 max-h-48 overflow-y-auto pt-1">

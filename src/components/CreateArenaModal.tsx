@@ -1,5 +1,5 @@
 import { DropdownUI } from './DropdownUI';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { auth, getArenaCreationAccess, signInWithGooglePopup } from '../lib/firebase';
 import { Court, SportType, TenantConfig } from '../types';
@@ -20,12 +20,14 @@ interface PeakIntervalItem {
   id: string;
   startTime: string;
   endTime: string;
-  price: number;
+  price: string;
   label?: string;
 }
 
 export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
   const { addArena, setTenantId, setActiveTab, setArenaSubTab } = useApp();
+  const pointerStartedOnBackdrop = useRef(false);
+  const invalidFormNoticeScheduled = useRef(false);
 
   const [name, setName] = useState('');
   const [location, setLocation] = useState<ArenaLocationValue>({
@@ -53,7 +55,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
   // Peak Pricing
   const [hasPeakPricing, setHasPeakPricing] = useState(false);
   const [peakIntervals, setPeakIntervals] = useState<PeakIntervalItem[]>([
-    { id: 'peak-1', startTime: '18:00', endTime: '22:00', price: 110, label: 'Horário de Pico Noturno' },
+    { id: 'peak-1', startTime: '18:00', endTime: '22:00', price: '110', label: 'Horário de Pico Noturno' },
   ]);
 
   const [selectedSports, setSelectedSports] = useState<SportType[]>(['futevolei']);
@@ -94,7 +96,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
         id: `peak-${Date.now()}-${nextNum}`,
         startTime: '18:00',
         endTime: '22:00',
-        price: Number(hourlyRate) ? Number(hourlyRate) + 20 : 100,
+        price: Number(hourlyRate) ? String(Number(hourlyRate) + 20) : '100',
         label: `Intervalo ${nextNum}`,
       },
     ]);
@@ -112,8 +114,11 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     if (!auth.currentUser) {
       toast.error('Entre com sua conta antes de cadastrar uma arena.');
+      setIsSubmitting(false);
       return;
     }
 
@@ -121,17 +126,20 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
     if (!access.allowed) {
       toast.error(access.reason === 'login' ? 'Entre com sua conta para cadastrar uma arena.' : 'A criação de arena exige o plano pago de R$ 99 ou R$ 149, ou uma liberação administrativa.');
       setAccessState(access.reason === 'login' ? 'login' : 'plan');
+      setIsSubmitting(false);
       return;
     }
 
     if (!whatsappVerified) {
       setShowWhatsappVerifier(true);
       toast.info('Verifique o WhatsApp oficial da arena antes de finalizar o cadastro.');
+      setIsSubmitting(false);
       return;
     }
 
     const courtTotal = Number(courtCount);
     const hourlyRateValue = Number(hourlyRate);
+    const peakPrices = peakIntervals.map((interval) => Number(interval.price));
 
     if (
       !name.trim() ||
@@ -146,14 +154,14 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
       courtTotal > 12 ||
       !Number.isFinite(hourlyRateValue) ||
       hourlyRateValue < 0 ||
+      (hasPeakPricing && peakPrices.some((price) => !Number.isFinite(price) || price < 0)) ||
       selectedSports.length === 0 ||
       !surface
     ) {
       toast.error('Preencha os dados reais da arena, localização, horários e preço.');
+      setIsSubmitting(false);
       return;
     }
-
-    setIsSubmitting(true);
 
     try {
       const arenaId = `arena-${auth.currentUser.uid}-${Date.now()}`;
@@ -168,7 +176,7 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
         isCovered,
         hasLighting,
         hourlyRate: hourlyRateValue,
-        peakHourlyRate: hasPeakPricing && primaryPeak ? primaryPeak.price : hourlyRateValue,
+        peakHourlyRate: hasPeakPricing && primaryPeak ? Number(primaryPeak.price) : hourlyRateValue,
         peakStartTime: hasPeakPricing && primaryPeak ? primaryPeak.startTime : '18:00',
         peakEndTime: hasPeakPricing && primaryPeak ? primaryPeak.endTime : '22:00',
         openTime,
@@ -200,7 +208,9 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
         },
         defaultHourlyRate: hourlyRateValue,
         hasPeakPricing,
-        peakIntervals: hasPeakPricing ? peakIntervals : [],
+        peakIntervals: hasPeakPricing
+          ? peakIntervals.map((interval) => ({ ...interval, price: Number(interval.price) }))
+          : [],
         ownerId: auth.currentUser.uid,
         ownerName: auth.currentUser.displayName || '',
       };
@@ -240,15 +250,25 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-arena-title"
-        onClick={(event) => closeOnBackdrop(event, onClose)}
+        onPointerDownCapture={(event) => {
+          pointerStartedOnBackdrop.current = event.target === event.currentTarget;
+        }}
+        onPointerCancel={() => {
+          pointerStartedOnBackdrop.current = false;
+        }}
+        onClick={(event) => {
+          const shouldClose = pointerStartedOnBackdrop.current;
+          pointerStartedOnBackdrop.current = false;
+          if (shouldClose) closeOnBackdrop(event, onClose);
+        }}
       >
-        <div className="aquarium-glass bg-[#05182C] border border-cyan-500/40 rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in-95 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
+        <div className="aquarium-glass bg-[#05182C] border border-cyan-500/40 rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in-95 my-auto max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-[#05182C]/95 backdrop-blur-md flex items-center justify-between pb-3 border-b border-white/10 -mt-1 pt-1">
+          <div className="shrink-0 bg-[#05182C] flex items-center justify-between pb-3 border-b border-white/10 -mt-1 pt-1">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
                 <Building2 size={20} />
@@ -334,7 +354,18 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
               )}
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5 text-xs font-bold">
+            <form
+              onSubmit={handleSubmit}
+              onInvalidCapture={() => {
+                if (invalidFormNoticeScheduled.current) return;
+                invalidFormNoticeScheduled.current = true;
+                toast.error('Confira os campos obrigatórios destacados antes de cadastrar a arena.');
+                window.setTimeout(() => {
+                  invalidFormNoticeScheduled.current = false;
+                }, 0);
+              }}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-5 text-xs font-bold pr-1"
+            >
               {/* 1. Nome da Arena */}
               <div>
                 <label className="block text-slate-200 mb-1">Nome Oficial da Arena *</label>
@@ -454,12 +485,12 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
                     <div className="relative">
                       <DollarSign className="w-4 h-4 text-amber-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*([.,][0-9]+)?"
                         required
-                        min={0}
-                        step={5}
                         value={hourlyRate}
-                        onChange={(e) => setHourlyRate(e.target.value)}
+                        onChange={(e) => setHourlyRate(e.target.value.replace(',', '.'))}
                         className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#05182C] border border-cyan-700/60 text-white text-xs font-mono"
                       />
                     </div>
@@ -546,13 +577,13 @@ export const CreateArenaModal: React.FC<Props> = ({ isOpen, onClose, onCreated }
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-amber-300">Valor (R$):</span>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="decimal"
+                              pattern="[0-9]*([.,][0-9]+)?"
                               required
-                              min={0}
-                              step={5}
                               value={interval.price}
                               onChange={(e) =>
-                                handleUpdatePeakInterval(interval.id, { price: Number(e.target.value) })
+                                handleUpdatePeakInterval(interval.id, { price: e.target.value.replace(',', '.') })
                               }
                               className="w-20 px-2 py-1 rounded-lg bg-[#030D1A] border border-amber-500/50 text-amber-300 text-xs font-mono font-bold"
                             />
